@@ -1,8 +1,6 @@
 'use client'
-const GOOGLEMAPS_KEY = 'AIzaSyBLt_ENVCVtEq6bCyWu9ZgN6gZ-uEf_S_U'
 import { useState } from 'react'
 import { AppSidebar } from '@/components/app-sidebar'
-import Google from '@/components/map/google'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,6 +19,7 @@ import { Location } from '@/types/map'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Trash } from 'lucide-react'
 import { Bolt } from 'lucide-react'
+import MapComponent from '@/components/map/google'
 
 const filters = ['Highways', 'Unpaved Roads', 'Ferries', 'Tunnels', 'uTurns']
 const configurations = [
@@ -141,7 +140,7 @@ export default function Page() {
             {/* Right Section: Map */}
             <div className='w-full lg:w-[70%]'>
               <div className='relative w-full h-full lg:h-full'>
-                <Google location={dummy_location} />
+                <MapComponent location={dummy_location} />
               </div>
             </div>
           </div>

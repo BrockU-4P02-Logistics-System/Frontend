@@ -14,17 +14,17 @@ interface Props {
   location: Location;
 }
 
-export default ({ location: { latitude, longitude } }: Props) => {
-  const googleMapsApiKey = process.env.API_KEY!;
+const MapComponent = ({ location: { latitude, longitude } }: Props) => {
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
-    googleMapsApiKey: "AIzaSyBLt_ENVCVtEq6bCyWu9ZgN6gZ-uEf_S_U",
+    googleMapsApiKey: "AIzaSyBLt_ENVCtEq6bCyWu9ZgN6gZ-uEf_S_U",
   });
 
   const center = {
     lat: latitude,
     lng: longitude,
   };
+
   return (
     <>
       {!isLoaded ? (
@@ -37,3 +37,8 @@ export default ({ location: { latitude, longitude } }: Props) => {
     </>
   );
 };
+
+// Add a display name to the component for debugging purposes
+MapComponent.displayName = 'GoogleMap';
+
+export default MapComponent;
