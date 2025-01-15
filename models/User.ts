@@ -38,7 +38,7 @@ const UserSchema = new Schema<UserDocument>({
 
         type: String,
 
-        required: [true, "Name is required"]
+        required: [true, "Username is required"]
 
     },
 
