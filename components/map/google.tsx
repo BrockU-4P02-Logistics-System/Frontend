@@ -17,7 +17,7 @@ interface Props {
 const MapComponent = ({ location: { latitude, longitude } }: Props) => {
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
-    googleMapsApiKey: "AIzaSyBLt_ENVCtEq6bCyWu9ZgN6gZ-uEf_S_U",
+    googleMapsApiKey: "AIzaSyBLt_ENVCVtEq6bCyWu9ZgN6gZ-uEf_S_U",
   });
 
   const center = {
