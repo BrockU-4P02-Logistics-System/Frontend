@@ -8,7 +8,7 @@ export async function POST(request: { formData: () => any; }) {
 
     const username = process.env.NEXT_PUBLIC_EMAIL_USERNAME;
     const password = process.env.NEXT_PUBLIC_EMAIL_PASSWORD;
-    const myEmail = process.env.NEXT_PUBLIC_PERSONAL_EMAIL;
+    //const myEmail = process.env.NEXT_PUBLIC_PERSONAL_EMAIL;
 
 
     console.log("dealing with request")
@@ -38,12 +38,13 @@ export async function POST(request: { formData: () => any; }) {
 
         const mail = await transporter.sendMail({
             from: username,
-            to: myEmail,
-            replyTo: email,
-            subject: `Website activity from ${email}`,
+            to: email,
+            replyTo:  username,
+            subject: `Password Reset from ${username}`,
             html: `
             <p>Message: If you see this, you have received an email from Reroute
             to reset your password </p>
+                <a href="http://localhost:3000/reset-password/?id=${email}">Reset password here</a>
             `,
         })
 

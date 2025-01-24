@@ -1,0 +1,51 @@
+"use client"
+import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from 'next/navigation'
+import { resetpw } from "@/actions/resetpw";
+ 
+export default function Page() {
+  const router = useRouter()
+  const search = useSearchParams().get('id')
+  console.log(search);
+   const [error, setError] = useState("");
+
+  const handleSubmit = async (formData: FormData) => {
+          const r = await resetpw({
+              email: search,
+              password: formData.get("password"),
+          });
+          //ref.current?.reset();
+          if (r?.error) {
+              setError(r.error);
+              console.log('error');
+              return;
+          } else {
+              return router.push("/login");
+          }
+      };
+
+  //return <p>Post: {router.query.slug}</p>
+
+return (
+    <section className="w-full h-screen flex items-center justify-center">
+    <form
+    className="p-6 w-full max-w-[400px] flex flex-col justify-between items-center gap-2
+    border border-solid border-black bg-white rounded text-black"
+    action={handleSubmit}
+    >
+    {error && <div className="text-black">{error}</div>}
+    <h1 className="mb-5 w-full text-2xl font-bold">New Password</h1>
+    <label className="w-full text-sm">New Password for Account</label>
+    <input
+    type="password"
+    placeholder="Password"
+    className="w-full h-8 border border-solid border-black rounded p-2"
+    name="password"
+    />
+    <button className="w-full rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+    Update Password
+    </button>
+    </form>
+    </section>
+);
+}
