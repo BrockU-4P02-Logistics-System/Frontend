@@ -15,7 +15,7 @@ export async function POST(request: { formData: () => any; }) {
     const formData = await request.formData()
   
     const email = formData.get('email')
-  
+    const encrypt = Buffer.from(email).toString("base64")
 
 
     // create transporter object
@@ -44,7 +44,7 @@ export async function POST(request: { formData: () => any; }) {
             html: `
             <p>Message: If you see this, you have received an email from Reroute
             to reset your password </p>
-                <a href="http://localhost:3000/reset-password/?id=${email}">Reset password here</a>
+                <a href="http://localhost:3000/reset-password/?id=${encrypt}">Reset password here</a>
             `,
         })
 

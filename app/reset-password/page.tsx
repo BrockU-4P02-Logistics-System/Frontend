@@ -11,7 +11,7 @@ export default function Page() {
 
   const handleSubmit = async (formData: FormData) => {
           const r = await resetpw({
-              email: search,
+              email: Buffer.from(search!, 'base64').toString('ascii'),
               password: formData.get("password"),
           });
           //ref.current?.reset();
