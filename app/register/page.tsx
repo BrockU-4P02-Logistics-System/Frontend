@@ -13,7 +13,7 @@ export default function Register() {
         const r = await register({
             email: formData.get("email"),
                                  password: formData.get("password"),
-                                 username: formData.get("username"),
+                                 username: formData.get("username")
         });
         ref.current?.reset();
         if (r?.error) {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   const showSession = () => {
@@ -13,12 +13,12 @@ export default function Home() {
         <button
         className="rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
         onClick={() => {
-          signOut({ redirect: false }).then(() => {
+          signOut().then(() => {
             router.push("/main");
           });
         }}
         >
-        Sign Out
+        Sign Out from {session.user?.email}
         </button>
       );
     } else if (status === "loading") {

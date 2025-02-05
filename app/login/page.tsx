@@ -3,6 +3,7 @@ import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import styles from './styles.module.css';
 
 export default function Login() {
     const [error, setError] = useState("");
@@ -12,17 +13,22 @@ export default function Login() {
         const res = await signIn("credentials", {
             email: formData.get("email"),
                                  password: formData.get("password"),
-                                 redirect: false,
+                                
+                                 redirect: false
+                                 
         });
         if (res?.error) {
             setError(res.error as string);
         }
+        
         if (res?.ok) {
             return router.push("/main");
         }
+            
     };
 
     return (
+        <div>
         <section className="w-full h-screen flex items-center justify-center">
         <form
         className="p-6 w-full max-w-[400px] flex flex-col justify-between items-center gap-2
@@ -63,7 +69,21 @@ export default function Login() {
         >
         Forgot password?
         </Link>
+ 
+
+        <button className={`${styles['gsi-material-button']}`}
+        onClick={() => signIn("google", { callbackUrl: 'http://localhost:3000/verify-tp' })}>
+  <div className={`${styles['gsi-material-button-state']}`}></div>
+  <div className={`${styles['gsi-material-content-wrapper']}`}>
+    
+    <span className={`${styles['gsi-material-button-contents']}`}>Sign in with Google</span>
+    <span style={{ display: "none" }}>Sign in with Google</span>
+  </div>
+</button>
+
         </form>
+        
         </section>
+        </div>
     );
 };
