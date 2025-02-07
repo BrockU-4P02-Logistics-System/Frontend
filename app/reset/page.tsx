@@ -37,7 +37,7 @@ export default function Login() {
             console.error(err);
             alert("Error, please try resubmitting the form");
         }
-            //return router.push("/newpw");
+            return router.push("/login");
         }
     };
 

@@ -20,7 +20,8 @@ export const authOptions: NextAuthOptions = {
                     email: credentials?.email,
                 }).select("+password");
 
-                if (!user) throw new Error("Wrong Email");
+                if (!user ) throw new Error("Wrong Email");
+                if (!credentials?.password ) throw new Error("Invalid Password");
 
                 const passwordMatch = await bcrypt.compare(
                     credentials!.password,

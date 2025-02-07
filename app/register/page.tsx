@@ -18,7 +18,7 @@ export default function Register() {
         ref.current?.reset();
         if (r?.error) {
             setError(r.error);
-            return;
+            
         } else {
             return router.push("/login");
         }

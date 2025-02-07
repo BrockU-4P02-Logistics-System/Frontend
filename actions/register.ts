@@ -7,6 +7,13 @@ export const register = async (values: any) => {
     const { email, password, username } = values;
 
     try {
+
+        if (!email || !password || !username){
+
+            return {error: 'One or more fields are empty'}
+
+        }
+
         await connectDB();
         const userFound = await User.findOne({ email });
         if(userFound){
@@ -14,12 +21,14 @@ export const register = async (values: any) => {
                 error: 'Email already exists!'
             }
         }
-        const hashedPassword = await bcrypt.hash(password, 10);
+        //const hashedPassword = await bcrypt.hash(password, 10);
         const user = new User({
             username,
             email,
-            password: hashedPassword,
+            password
         });
+        
+
         await user.save();
 
     }catch(e){

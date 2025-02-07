@@ -1,4 +1,5 @@
-import  mongoose, { Schema, model } from  "mongoose";
+import { Schema, model,  models} from  "mongoose";
+import bcrypt from "bcryptjs"
 
 export interface UserDocument {
 
@@ -25,7 +26,7 @@ const UserSchema = new Schema<UserDocument>({
 
         match: [
 
-            /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+          /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
 
                                             "Email is invalid",
 
@@ -50,11 +51,53 @@ const UserSchema = new Schema<UserDocument>({
 
     }
 
+})
 
-}
+UserSchema.pre("save", function(next) {
 
-);
+    const user = this;
+ 
+    if (this.isModified("password") || this.isNew){
 
-const  User  =  mongoose.models?.User  ||  model<UserDocument>('User', UserSchema);
+     bcrypt.genSalt(10, function (saltError: any, salt: any){
+
+        if (saltError){
+
+            return next(saltError);
+
+        } else {
+
+            bcrypt.hash(user.password, salt, function (hashError: any, hash: any) {
+
+                if (hashError){
+
+                    return next(hashError);
+
+                }
+
+                user.password = hash
+                next();
+
+            })
+
+
+        }
+
+
+     })
+
+
+    } else {
+
+        return next();
+
+    }
+ 
+ 
+ })
+
+
+
+const  User  =  models.User  ||  model<UserDocument>('User', UserSchema);
 
 export  default  User;

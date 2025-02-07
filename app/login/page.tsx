@@ -19,9 +19,9 @@ export default function Login() {
         });
         if (res?.error) {
             setError(res.error as string);
-        }
-        
-        if (res?.ok) {
+            console.log(error);
+           
+        } else  {
             return router.push("/main");
         }
             
