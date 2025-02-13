@@ -5,22 +5,30 @@ import Link from "next/link";
 import { register } from "@/actions/register";
 
 export default function Register() {
+
     const [error, setError] = useState<string>();
     const router = useRouter();
     const ref = useRef<HTMLFormElement>(null);
 
     const handleSubmit = async (formData: FormData) => {
+
         const r = await register({
+
             email: formData.get("email"),
-                                 password: formData.get("password"),
-                                 username: formData.get("username")
+            password: formData.get("password"),
+            username: formData.get("username")
+
         });
         ref.current?.reset();
+
         if (r?.error) {
+
             setError(r.error);
             
         } else {
+
             return router.push("/login");
+            
         }
     };
 
@@ -51,7 +59,7 @@ export default function Register() {
         name="email"
         />
 
-        <label className="w-full text-sm">Password</label>
+        <label className="w-full text-sm">Password: must contain one digit from 1 to 9, one lowercase letter, one uppercase letter, one special character, no space, and between 8-16 characters</label>
         <div className="flex w-full">
         <input
         type="password"

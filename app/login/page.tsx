@@ -6,23 +6,30 @@ import Link from "next/link";
 import styles from './styles.module.css';
 
 export default function Login() {
+
     const [error, setError] = useState("");
     const router = useRouter();
 
     const handleSubmit = async (formData: FormData) => {
+
         const res = await signIn("credentials", {
-            email: formData.get("email"),
-                                 password: formData.get("password"),
+
+                email: formData.get("email"),
+                password: formData.get("password"),
                                 
-                                 redirect: false
+                redirect: false
                                  
         });
+
         if (res?.error) {
+            
             setError(res.error as string);
             console.log(error);
            
         } else  {
+
             return router.push("/main");
+
         }
             
     };

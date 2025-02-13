@@ -9,7 +9,6 @@ export async function POST(request: { formData: () => any; }) {
     const username = process.env.NEXT_PUBLIC_EMAIL_USERNAME;
     const password = process.env.NEXT_PUBLIC_EMAIL_PASSWORD;
 
-    console.log("dealing with request")
     const formData = await request.formData()
   
     const email = formData.get('email')
@@ -49,7 +48,9 @@ export async function POST(request: { formData: () => any; }) {
         return NextResponse.json({ message: "Success: email was sent" })
 
     } catch (error) {
+
         console.log(error)
+        
         return NextResponse.json({ message: "COULD NOT SEND MESSAGE" })
     }
 

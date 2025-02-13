@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const { data: session, status } = useSession();
+
+  const { data: session, status } = useSession(); // session holds account info, status is session verification
   const router = useRouter();
 
   const showSession = () => {

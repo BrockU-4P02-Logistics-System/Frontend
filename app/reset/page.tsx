@@ -2,9 +2,9 @@
 import { FormEvent, useState } from "react";
 import { checkmail } from "@/actions/resetpw";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 export default function Login() {
+
     const [error, setError] = useState("");
     const router = useRouter();
 
@@ -14,28 +14,38 @@ export default function Login() {
             email: formData.get("email")
            
         });
+
         if (res?.error) {
             setError(res.error as string);
         }
+
         if (res?.ok) {
+
             try{
+
             const response = await fetch('/api/contact', {
                 method: 'POST',
                 body: formData,
+
             });
 
             if (!response.ok) {
+
                 console.log("falling over")
                 throw new Error(`response status: ${response.status}`);
+                
             }
+
             const responseData = await response.json();
-            console.log(responseData['message'])
+            //console.log(responseData['message'])
     
             alert('Message successfully sent');
             
         } catch (err) {
+
             console.error(err);
             alert("Error, please try resubmitting the form");
+            
         }
             return router.push("/login");
         }

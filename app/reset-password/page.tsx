@@ -4,23 +4,31 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { resetpw } from "@/actions/resetpw";
  
 export default function Page() {
-  const router = useRouter()
-  const search = useSearchParams().get('id')
-  console.log(search);
-   const [error, setError] = useState("");
+
+  const router = useRouter();
+  const search = useSearchParams().get('id');
+  const [error, setError] = useState("");
 
   const handleSubmit = async (formData: FormData) => {
+
           const r = await resetpw({
+
               email: Buffer.from(search!, 'base64').toString('ascii'),
               password: formData.get("password"),
+
           });
           //ref.current?.reset();
+
           if (r?.error) {
+
               setError(r.error);
               console.log('error');
               return;
+
           } else {
+
               return router.push("/login");
+              
           }
       };
 
