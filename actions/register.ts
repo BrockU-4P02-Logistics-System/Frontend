@@ -5,8 +5,8 @@ import User from "@/models/User";
 export const register = async (values: any) => {
 
     const { email, password, username } = values;
-    var re = new RegExp(/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*\W)(?!.* ).{8,16}$/)
-    
+    var re = new RegExp(/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*\W)(?!.* ).{8,16}$/);
+    var re2 = new RegExp(/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/);
     try {
 
         if (!email || !password || !username){ // null check
@@ -18,6 +18,12 @@ export const register = async (values: any) => {
         if (!re.test(password)){ // Violates reqs
 
             return {error: 'Invalid password'}
+
+        }
+
+        if (!re2.test(email)){ // Violates reqs
+
+            return {error: 'Invalid email'}
 
         }
 

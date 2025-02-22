@@ -16,8 +16,12 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import React from "react";
 import Link from "next/link";
+import { register } from "@/actions/register";
+
 
 export default function SignupPage() {
+
+    const [error, setError] = React.useState<string>();
     const router = useRouter();
     const [isLoading, setIsLoading] = React.useState(false);
     const [formData, setFormData] = React.useState({
@@ -30,16 +34,29 @@ export default function SignupPage() {
     const handleSignup = async (e: React.FormEvent) => {
       e.preventDefault();
       if (formData.password !== formData.confirmPassword) {
-        toast.error('Passwords do not match');
+        setError("Passwords do not match");
         return;
       }
   
       setIsLoading(true);
       try {
-        // Add your signup logic here
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated API call
-        router.push('/routes');
-        toast.success('Account created successfully');
+        
+        const r = await register({
+
+          email: formData.email,
+          password: formData.password,
+          username: formData.companyName
+
+      });
+      if (r?.error) {
+
+        setError(r.error);
+        
+    } else {
+
+       return router.push("/auth/login");
+        
+    }
       } catch {
         toast.error('Failed to create account');
       } finally {
@@ -65,6 +82,7 @@ export default function SignupPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignup} className="space-y-4">
+            {error && <div className="">{error}</div>}
               <div className="space-y-2">
                 <Label htmlFor="company">Company Name</Label>
                 <Input
@@ -85,7 +103,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Password: must contain one digit from 1 to 9, one lowercase letter, one uppercase letter, one special character, no space, and between 8-16 characters</Label>
                 <Input
                   id="password"
                   type="password"

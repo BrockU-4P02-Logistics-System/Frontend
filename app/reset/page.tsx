@@ -2,6 +2,21 @@
 import { FormEvent, useState } from "react";
 import { checkmail } from "@/actions/resetpw";
 import { useRouter } from "next/navigation";
+import { ChevronLeft} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { toast } from "sonner";
+import Link from 'next/link';
+
+
 
 export default function Login() {
 
@@ -52,25 +67,43 @@ export default function Login() {
     };
 
     return (
-        <section className="w-full h-screen flex items-center justify-center">
-        <form
-        className="p-6 w-full max-w-[400px] flex flex-col justify-between items-center gap-2
-        border border-solid border-black bg-white rounded text-black"
+        <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
+         
+         <Card className="w-full max-w-md">
+             <CardHeader>
+                
+             <Link
+            href="/auth/login"
+            className="text-sm text-muted-foreground hover:text-primary inline-flex items-center mb-4"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back to login
+          </Link>
+          <CardTitle className="text-2xl">Reset password</CardTitle>
+
+          <CardDescription>
+                      {"Enter your email to reset your password"}
+                    </CardDescription>
+                    </CardHeader>
+            <CardContent>
+          <form
+       className="space-y-4"
         action={handleSubmit}
         >
         {error && <div className="text-black">{error}</div>}
-        <h1 className="mb-5 w-full text-2xl font-bold">Reset Password</h1>
-        <label className="w-full text-sm">Send Password Reset to Email</label>
+       <Label htmlFor="email">Email</Label>
         <input
         type="email"
-        placeholder="Email"
         className="w-full h-8 border border-solid border-black rounded p-2"
         name="email"
         />
-        <button className="w-full rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
-        Send Password Reset
-        </button>
+         <Button type="submit" className="w-full">
+                        { "Send reset link"}
+                      </Button>
         </form>
-        </section>
+        </CardContent>
+             </Card>
+        
+        </div>
     );
 };

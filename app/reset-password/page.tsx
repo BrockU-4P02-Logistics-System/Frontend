@@ -2,6 +2,17 @@
 import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from 'next/navigation'
 import { resetpw } from "@/actions/resetpw";
+import { ChevronLeft} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
  
 export default function Page() {
 
@@ -10,6 +21,11 @@ export default function Page() {
   const [error, setError] = useState("");
 
   const handleSubmit = async (formData: FormData) => {
+
+    if (formData.get("password") !== formData.get("confirmPassword")) {
+        setError("Passwords do not match");
+        return;
+      }
 
           const r = await resetpw({
 
@@ -22,12 +38,10 @@ export default function Page() {
           if (r?.error) {
 
               setError(r.error);
-              console.log('error');
-              return;
 
           } else {
 
-              return router.push("/login");
+              return router.push("/auth/login");
               
           }
       };
@@ -35,25 +49,47 @@ export default function Page() {
   //return <p>Post: {router.query.slug}</p>
 
 return (
-    <section className="w-full h-screen flex items-center justify-center">
-    <form
-    className="p-6 w-full max-w-[400px] flex flex-col justify-between items-center gap-2
-    border border-solid border-black bg-white rounded text-black"
-    action={handleSubmit}
-    >
-    {error && <div className="text-black">{error}</div>}
-    <h1 className="mb-5 w-full text-2xl font-bold">New Password</h1>
-    <label className="w-full text-sm">New Password for Account</label>
-    <input
-    type="password"
-    placeholder="Password"
-    className="w-full h-8 border border-solid border-black rounded p-2"
-    name="password"
-    />
-    <button className="w-full rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
-    Update Password
-    </button>
-    </form>
-    </section>
+    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
+         
+    <Card className="w-full max-w-md">
+        <CardHeader>
+           
+   
+     <CardTitle className="text-2xl">New Password</CardTitle>
+
+     <CardDescription>
+                 {"Password must contain one digit from 1 to 9, one lowercase letter, one uppercase letter, one special character, no space, and between 8-16 characters"}
+               </CardDescription>
+               </CardHeader>
+       <CardContent>
+
+      
+    
+   
+   <form
+   className="space-y-4"
+   action={handleSubmit}
+   >
+   {error && <div className="text-black">{error}</div>}
+   <input
+   type="password"
+   placeholder="Password"
+   className="w-full h-8 border border-solid border-black rounded p-2"
+   name="password"
+   />
+   <input
+   type="Password"
+   placeholder="Confirm Password"
+   className="w-full h-8 border border-solid border-black rounded p-2"
+   name="confirmPassword"
+   />
+    <Button type="submit" className="w-full">
+                   { "Update Account"}
+                 </Button>
+   </form> 
+   </CardContent>
+
+   </Card>
+   </div>
 );
 }

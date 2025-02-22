@@ -15,9 +15,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { signIn } from "next-auth/react";
 
 // Login Page Component
 export default function LoginPage() {
+
+  const [error, setError] = React.useState("");
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
   const [email, setEmail] = React.useState('');
@@ -28,10 +31,23 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      // Add your login logic here
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated API call
-      router.push('/routes');
-      toast.success('Successfully logged in');
+       const res = await signIn("credentials", {
+      
+                      email: email,
+                      password: password,
+                                      
+                      redirect: false
+                                       
+              });
+              if (res?.error) {
+            
+                setError(res.error as string);
+
+              } else  {
+
+                return router.push("/dashboard");
+    
+            }
     } catch {
       toast.error('Failed to log in');
     } finally {
@@ -42,9 +58,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      // Add Google OAuth logic here
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated API call
-      router.push('/routes');
+      signIn("google", { callbackUrl: 'http://localhost:3000/verify-tp'});
       toast.success('Successfully logged in with Google');
     } catch {
       toast.error('Failed to log in with Google');
@@ -67,6 +81,7 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
+          {error && <div className="">{error}</div>}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -82,7 +97,7 @@ export default function LoginPage() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
                 <Link 
-                  href="/auth/reset-password"
+                  href="/reset"
                   className="text-sm text-muted-foreground hover:text-primary"
                 >
                   Forgot password?
