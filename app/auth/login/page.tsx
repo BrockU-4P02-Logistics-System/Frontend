@@ -58,7 +58,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      signIn("google", { callbackUrl: 'http://localhost:3000/verify-tp'});
+      signIn("google", { callbackUrl: 'http://localhost:3000/auth/verify-tp'});
       toast.success('Successfully logged in with Google');
     } catch {
       toast.error('Failed to log in with Google');
@@ -97,7 +97,7 @@ export default function LoginPage() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
                 <Link 
-                  href="/reset"
+                  href="/auth/reset"
                   className="text-sm text-muted-foreground hover:text-primary"
                 >
                   Forgot password?

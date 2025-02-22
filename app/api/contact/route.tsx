@@ -41,7 +41,7 @@ export async function POST(request: { formData: () => any; }) {
             html: `
             <p>Message: If you see this, you have received an email from Reroute
             to reset your password </p>
-                <a href="http://localhost:3000/reset-password/?id=${encrypt}">Reset password here</a>
+                <a href="http://localhost:3000/auth/reset-password/?id=${encrypt}">Reset password here</a>
             `,
         })
 

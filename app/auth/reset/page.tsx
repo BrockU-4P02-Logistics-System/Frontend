@@ -62,7 +62,7 @@ export default function Login() {
             alert("Error, please try resubmitting the form");
             
         }
-            return router.push("/login");
+            return router.push("/auth/login");
         }
     };
 
