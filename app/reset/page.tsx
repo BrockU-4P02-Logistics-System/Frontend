@@ -31,7 +31,7 @@ export default function Login() {
 
             if (!response.ok) {
 
-                console.log("falling over")
+                //console.log("falling over")
                 throw new Error(`response status: ${response.status}`);
                 
             }

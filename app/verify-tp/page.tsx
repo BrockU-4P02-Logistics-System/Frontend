@@ -21,8 +21,8 @@ export default function Main() {
                                                 
                         });
                         
-                        console.log("Email: " + session?.user?.email);
-                        console.log(DBExists);
+                        //console.log("Email: " + session?.user?.email);
+                        //console.log(DBExists);
 
                 if (DBExists) {
 
