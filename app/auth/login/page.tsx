@@ -1,0 +1,139 @@
+'use client'
+import React from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { toast } from "sonner";
+
+// Login Page Component
+export default function LoginPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      // Add your login logic here
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated API call
+      router.push('/routes');
+      toast.success('Successfully logged in');
+    } catch {
+      toast.error('Failed to log in');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    try {
+      // Add Google OAuth logic here
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated API call
+      router.push('/routes');
+      toast.success('Successfully logged in with Google');
+    } catch {
+      toast.error('Failed to log in with Google');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <img src="/logo.svg" alt="Logo" className="h-8 w-8" />
+            <CardTitle className="text-2xl">Welcome back</CardTitle>
+          </div>
+          <CardDescription>
+            Sign in to your account to continue
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link 
+                  href="/auth/reset-password"
+                  className="text-sm text-muted-foreground hover:text-primary"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Sign in"}
+            </Button>
+          </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <Separator />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleGoogleLogin}
+            disabled={isLoading}
+          >
+            <img src="/google.svg" alt="Google" className="h-5 w-5 mr-2" />
+            Sign in with Google
+          </Button>
+        </CardContent>
+        <CardFooter className="justify-center">
+          <span className="text-sm text-muted-foreground">
+            Don&apos;t have an account?{' '}
+            <Link
+              href="/auth/signup"
+              className="text-primary hover:underline"
+            >
+              Sign up
+            </Link>
+          </span>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}

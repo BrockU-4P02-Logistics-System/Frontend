@@ -3,12 +3,13 @@
 import * as React from "react"
 import {
   Route,
-  AudioWaveform,
-  Command,
-  Frame,
-  Map,
-  PieChart,
+  Truck,
   Settings2,
+  Calculator,
+  Map,
+  Building2,
+  Boxes,
+  Warehouse
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -22,7 +23,6 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-// This is sample data.
 const data = {
   user: {
     name: "Cameron Carvalho",
@@ -31,82 +31,88 @@ const data = {
   },
   teams: [
     {
-      name: "Brock University",
-      logo: AudioWaveform,
+      name: "Logistics Division",
+      logo: Truck,
       plan: "Enterprise",
     },
     {
-      name: "Brock University",
-      logo: AudioWaveform,
-      plan: "Startup",
+      name: "Fleet Management",
+      logo: Warehouse,
+      plan: "Professional",
     },
     {
-      name: "Brock University",
-      logo: Command,
-      plan: "Free",
+      name: "Delivery Team",
+      logo: Boxes,
+      plan: "Standard",
     },
   ],
   navMain: [
     {
       title: "Routes",
-      url: "#",
+      url: "/routes",
       icon: Route,
       isActive: true,
       items: [
         {
-          title: "Create",
-          url: "#"
+          title: "Create Route",
+          url: "/dashboard",
         },
         {
-          title: "History",
-          url: "#",
+          title: "Saved Routes",
+          url: "/dashboard/routes/saved",
         },
-        {
-          title: "Starred",
-          url: "#",
-        },
-
       ],
     },
-    
+   
+    {
+      title: "Fleet",
+      url: "/fleet",
+      icon: Truck,
+      items: [
+        {
+          title: "Vehicles",
+          url: "/dashboard/fleet/vehicles",
+        }
+      ],
+    },
     {
       title: "Settings",
-      url: "#",
+      url: "/settings",
       icon: Settings2,
       items: [
         {
           title: "General",
-          url: "#",
+          url: "/dashboard/settings/general",
         },
         {
-          title: "Team",
-          url: "#",
+          title: "Team Management",
+          url: "/dashboard/settings/team",
         },
         {
           title: "Billing",
-          url: "#",
+          url: "/dashboard/settings/billing",
         },
         {
-          title: "Limits",
-          url: "#",
-        },
+          title: "API Integration",
+          url: "/dashboard/settings/api",
+        }
       ],
     },
   ],
-  projects: [
+  quickAccess: [
     {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
+      name: "Distribution Centers",
+      url: "/locations/distribution",
+      icon: Building2,
     },
     {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
+      name: "Route Optimization",
+      url: "/routes/optimize",
+      icon: Calculator,
     },
     {
-      name: "Travel",
-      url: "#",
+      name: "Live Tracking",
+      url: "/tracking",
       icon: Map,
     },
   ],
@@ -120,7 +126,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

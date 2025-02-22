@@ -1,44 +1,48 @@
 "use client";
+import { GoogleMap, MarkerF } from "@react-google-maps/api";
+import { MarkerLocation } from "@/types/map";
 
-import { GoogleMap, MarkerF, useJsApiLoader } from "@react-google-maps/api";
-import { Location } from "@/types/map";
-
-// Define map container style
 const containerStyle = {
-  width: "100%", // Adjust the size as needed
+  width: "100%",
   height: "100%",
   margin: "1em",
 };
 
 interface Props {
-  location: Location;
+  markers: MarkerLocation[];
+  isLoaded: boolean;
 }
 
-const MapComponent = ({ location: { latitude, longitude } }: Props) => {
-  const { isLoaded } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: "AIzaSyBLt_ENVCVtEq6bCyWu9ZgN6gZ-uEf_S_U",
-  });
+const MapComponent = ({ markers, isLoaded }: Props) => {
+  // Calculate center based on markers or default to a central location
+  const center = markers.length > 0
+    ? {
+        lat: markers[0].latitude,
+        lng: markers[0].longitude,
+      }
+    : { lat: 56.1304, lng: -106.3468 }; // Canada's approximate center
 
-  const center = {
-    lat: latitude,
-    lng: longitude,
-  };
+  if (!isLoaded) {
+    return <h1>Loading...</h1>;
+  }
 
   return (
-    <>
-      {!isLoaded ? (
-        <h1>Loading...</h1>
-      ) : (
-        <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={15}>
-          <MarkerF position={center} />
-        </GoogleMap>
-      )}
-    </>
+    <GoogleMap 
+      mapContainerStyle={containerStyle} 
+      center={center} 
+      zoom={markers.length === 1 ? 15 : 4}
+    >
+      {markers.map((marker, index) => (
+        <MarkerF
+          key={`${marker.address}-${index}`}
+          position={{ lat: marker.latitude, lng: marker.longitude }}
+          title={marker.address}
+        />
+      ))}
+    </GoogleMap>
   );
 };
 
-// Add a display name to the component for debugging purposes
 MapComponent.displayName = 'GoogleMap';
 
 export default MapComponent;
