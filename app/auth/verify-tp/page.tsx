@@ -72,10 +72,12 @@ export default function Main() {
              <CardHeader>
                 
         
-          <CardTitle className="text-2xl">Add Username & Password</CardTitle>
+          <CardTitle className="text-2xl">Add Username & Password
+            
+          </CardTitle>
 
           <CardDescription>
-                      {"Enter username and password for account"}
+                      {"Enter username and password for account."}
                     </CardDescription>
                     </CardHeader>
             <CardContent>
@@ -94,6 +96,9 @@ export default function Main() {
         className="w-full h-8 border border-solid border-black rounded p-2"
         name="username"
         />
+        <CardDescription>
+                      {"Password: must contain one digit from 1 to 9, one lowercase letter, one uppercase letter, one special character, no space, and between 8-16 characters"}
+                    </CardDescription>
         <input
         type="password"
         placeholder="Password"
