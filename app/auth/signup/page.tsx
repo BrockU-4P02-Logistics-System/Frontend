@@ -28,7 +28,7 @@ export default function SignupPage() {
       email: '',
       password: '',
       confirmPassword: '',
-      companyName: '',
+      username: '',
     });
   
     const handleSignup = async (e: React.FormEvent) => {
@@ -45,7 +45,7 @@ export default function SignupPage() {
 
           email: formData.email,
           password: formData.password,
-          username: formData.companyName
+          username: formData.username
 
       });
       if (r?.error) {
@@ -84,11 +84,11 @@ export default function SignupPage() {
             <form onSubmit={handleSignup} className="space-y-4">
             {error && <div className="">{error}</div>}
               <div className="space-y-2">
-                <Label htmlFor="company">Company Name</Label>
+                <Label htmlFor="company">Username</Label>
                 <Input
                   id="company"
-                  value={formData.companyName}
-                  onChange={(e) => setFormData({...formData, companyName: e.target.value})}
+                  value={formData.username}
+                  onChange={(e) => setFormData({...formData, username: e.target.value})}
                   required
                 />
               </div>
