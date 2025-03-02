@@ -5,15 +5,13 @@ describe('insert', () => {
   let connection;
   let db;
 
-  beforeEach(async () => {
-     db.collection('test_users').deleteMany({});
-  });
-
   beforeAll(async () => {
     connection = await MongoClient.connect(MONGODB_URI, {
       useNewUrlParser: true,
     });
     db = await connection.db('test_db');
+    db.collection('test_users').deleteMany({});
+
   });
 
   afterAll(async () => {
@@ -23,13 +21,25 @@ describe('insert', () => {
     }
   });
 
-  it('should insert a doc into collection', async () => {
+  it('Insert User following Schema', async () => {
     const users = db.collection('test_users');
 
-    const mockUser = {_id: 'some-user-id', name: 'John'};
+    const mockUser = {username: 'test', email: 'fake@mail', password: 'hash_pw'};
     await users.insertOne(mockUser);
 
-    const insertedUser = await users.findOne({_id: 'some-user-id'});
+    const insertedUser = await users.findOne({email: 'fake@mail'});
     expect(insertedUser).toEqual(mockUser);
   });
+
+  it('Delete User following Schema', async () => {
+
+    const users = db.collection('test_users');
+
+    const mockUser = {username: 'test', email: 'fake@mail', password: 'hash_pw'};
+    await users.insertOne(mockUser);
+
+    const insertedUser = await users.findOneAndDelete({email: 'fake@mail'});
+    expect(insertedUser.email).toEqual('fake@mail');
+  });
+
 });
