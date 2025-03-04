@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
 import { Truck, BarChart, Route, Shield, ChevronRight, Menu, X, Globe, Zap, Users } from 'lucide-react';
 
@@ -82,8 +83,14 @@ export default function LandingPage() {
               <button className="inline-flex items-center px-8 py-4 rounded-full border-2 border-white/10 text-white font-medium hover:bg-white/10 backdrop-blur-sm transition-all duration-300">
                 Watch Demo
               </button>
-            </div>
-
+              <li>
+             <Link href ="/auth/login">
+        <button className="px-8 py-3 rounded-full bg-blue-500 text-white hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 font-medium">
+          Login
+        </button>
+          </Link>
+          </li>
+      </div>
             <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-12">
               <StatCard label="Enterprise Clients" value="500+" />
               <StatCard label="Routes Optimized" value="1M+" />
