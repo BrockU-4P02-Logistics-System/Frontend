@@ -4,7 +4,7 @@ import User from "@/models/User";
 
 export const register = async (values: any) => {
 
-    const { email, password, username } = values;
+    const { email, password, username, org_address, org_name, org_phone, org_site } = values;
     var re = new RegExp(/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*\W)(?!.* ).{8,16}$/);
     var re2 = new RegExp(/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/);
     try {
@@ -43,7 +43,11 @@ export const register = async (values: any) => {
         const user = new User({ // Schema
             username,
             email,
-            password
+            password,
+            org_address,
+            org_name,
+            org_phone,
+            org_site
         });
         
 

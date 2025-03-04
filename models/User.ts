@@ -11,6 +11,14 @@ export interface UserDocument {
 
     email: string
 
+    org_name: string
+
+    org_address: string
+
+    org_phone: string
+
+    org_site: string
+
 
 }
 
@@ -58,7 +66,12 @@ const UserSchema = new Schema<UserDocument>({
 
         ]
 
-    }
+    },
+
+    org_name: {type: String, required: false},
+    org_address: {type: String, required: false},
+    org_phone: {type: String, required: false},
+    org_site: {type: String, required: false},
 
 })
 
