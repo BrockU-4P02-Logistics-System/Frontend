@@ -16,6 +16,10 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ChevronLeft } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -26,49 +30,113 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { register_vehicle, get_fleet, remove_vehicle } from "@/actions/register";
+import { useSession } from 'next-auth/react';
 
 interface Vehicle {
-  id: string;
+ 
   name: string;
-  type: string;
-  status: 'active' | 'maintenance' | 'inactive';
-  lastService: string;
-  nextService: string;
-  mileage: number;
   driver: string;
+  email: string;
+
 }
 
 const dummyVehicles: Vehicle[] = [
   {
-    id: '1',
+   
     name: 'Truck 001',
-    type: 'Heavy Duty',
-    status: 'active',
-    lastService: '2024-01-15',
-    nextService: '2024-03-15',
-    mileage: 125000,
-    driver: 'John Smith'
+    driver: 'John',
+    email: 'test@mail'
   },
   {
-    id: '2',
-    name: 'Van 002',
-    type: 'Light Duty',
-    status: 'maintenance',
-    lastService: '2024-02-01',
-    nextService: '2024-04-01',
-    mileage: 75000,
-    driver: 'Sarah Johnson'
+   
+    name: 'Truck 002',
+    driver: 'Bill',
+    email: 'test2@mail'
   },
   // Add more dummy vehicles
 ];
 
 export default function VehiclesPage() {
+
+  const { data: session, status } = useSession();
+
+  const [formData, setFormData] = React.useState({
+    name: '',
+    email: '',
+    driver: ''
+   });
+
+  const [data, setData] = React.useState([]);
+  const [load, setLoad] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string>();
+
+ 
+  const refresh = async () => {
+
+    const log = session?.user?.email;
+
+    //console.log("AUTH:" + log);
+
+    const list: any = await get_fleet(log);
+
+    let vehiclesList: any = Array.from((JSON.parse(list).fleet));
+
+    //console.log(vehiclesList);
+    
+    setData(vehiclesList);
+
+  };
+
+  const remove = async (vehicle: any) => {
+
+    await remove_vehicle(vehicle);
+    refresh();
+    //console.log(data);
+
+  };
+  
+      const handleVehicle = async (e: React.FormEvent) => {
+        e.preventDefault();
+       
+    
+        setIsLoading(true);
+        try {
+          
+          const r = await register_vehicle({
+
+            auth: session?.user.email,
+            name: formData.name,
+            email: formData.email,
+            driver: formData.driver
+
+        });
+        if (r?.error) {
+  
+          setError(r.error);
+          
+      } 
+        
+        
+        } finally {
+          refresh();
+          setIsLoading(false);
+        }
+      };
+
+    if (data.length <= 0){
+
+      refresh();
+
+    }
+    
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Fleet Management</h1>
-          <p className="text-muted-foreground">Manage your vehicles and track maintenance</p>
+          <p className="text-muted-foreground">Manage your vehicles and driver information</p>
         </div>
         <Dialog>
           <DialogTrigger asChild>
@@ -84,11 +152,44 @@ export default function VehiclesPage() {
                 Enter the details of the new vehicle to add it to your fleet.
               </DialogDescription>
             </DialogHeader>
+            <form onSubmit={handleVehicle} className="space-y-4">
+            {error && <div className="">{error}</div>}
+            <div className="space-y-2">
+                <Label htmlFor="username">Vehicle</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="username">Driver</Label>
+                <Input
+                  id="driver"
+                  value={formData.driver}
+                  onChange={(e) => setFormData({...formData, driver: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="username">Email</Label>
+                <Input
+                  id="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  required
+                />
+              </div>
             {/* Add form fields here */}
-            <DialogFooter>
-              <Button variant="outline">Cancel</Button>
-              <Button>Add Vehicle</Button>
-            </DialogFooter>
+            
+
+            <Button  type="submit" className="w-full" disabled={isLoading}>
+
+                {isLoading ? "Adding Vehicle..." : "Add Vehicle"}
+
+              </Button>
+                        </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -100,7 +201,7 @@ export default function VehiclesPage() {
             <Truck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dummyVehicles.length}</div>
+            <div className="text-2xl font-bold">{data.length}</div>
           </CardContent>
         </Card>
         {/* Add more stat cards */}
@@ -111,35 +212,20 @@ export default function VehiclesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Vehicle</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Last Service</TableHead>
-              <TableHead>Next Service</TableHead>
-              <TableHead>Mileage</TableHead>
               <TableHead>Driver</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead><Button variant ="outline"  onClick={() => refresh()}>Refresh</Button></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {dummyVehicles.map((vehicle) => (
-              <TableRow key={vehicle.id}>
+            {data.map((v) => (
+              <TableRow key={v[0]}>
+                <TableCell>{v[0]}</TableCell>
+                <TableCell>{v[1]}</TableCell>
+                <TableCell>{v[2]}</TableCell>
                 <TableCell>
-                  <div>
-                    <div className="font-medium">{vehicle.name}</div>
-                    <div className="text-sm text-muted-foreground">{vehicle.type}</div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge>
-                    {vehicle.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>{vehicle.lastService}</TableCell>
-                <TableCell>{vehicle.nextService}</TableCell>
-                <TableCell>{vehicle.mileage.toLocaleString()} km</TableCell>
-                <TableCell>{vehicle.driver}</TableCell>
-                <TableCell>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button variant="outline" onClick={() => remove(v)}>
+                    Delete
                   </Button>
                 </TableCell>
               </TableRow>
