@@ -33,30 +33,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { register_vehicle, get_fleet, remove_vehicle } from "@/actions/register";
 import { useSession } from 'next-auth/react';
 
-interface Vehicle {
- 
-  name: string;
-  driver: string;
-  email: string;
-
-}
-
-const dummyVehicles: Vehicle[] = [
-  {
-   
-    name: 'Truck 001',
-    driver: 'John',
-    email: 'test@mail'
-  },
-  {
-   
-    name: 'Truck 002',
-    driver: 'Bill',
-    email: 'test2@mail'
-  },
-  // Add more dummy vehicles
-];
-
 let vehiclesList: any = [];
 
 export default function VehiclesPage() {
@@ -70,10 +46,10 @@ export default function VehiclesPage() {
    });
 
   const [data, setData] = React.useState([]);
-  const [load, setLoad] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string>();
 
+  if (status === "authenticated"){
  
   const refresh = async () => {
 
@@ -240,4 +216,8 @@ export default function VehiclesPage() {
       </div>
     </div>
   );
+}
+ else {
+
+}
 }
