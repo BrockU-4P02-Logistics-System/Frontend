@@ -57,7 +57,7 @@ const dummyVehicles: Vehicle[] = [
   // Add more dummy vehicles
 ];
 
-let count = 0;
+let vehiclesList: any = [];
 
 export default function VehiclesPage() {
 
@@ -83,7 +83,7 @@ export default function VehiclesPage() {
 
     const list: any = await get_fleet(log);
 
-    let vehiclesList: any = Array.from((JSON.parse(list).fleet));
+    vehiclesList = Array.from((JSON.parse(list).fleet));
 
     //console.log(vehiclesList);
     
@@ -129,7 +129,11 @@ export default function VehiclesPage() {
 
     if (data.length <= 0){
 
-      refresh();
+      setTimeout(() => {
+
+          refresh();
+          
+    }, 0);
 
     }
     

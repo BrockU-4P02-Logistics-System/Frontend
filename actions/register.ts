@@ -110,7 +110,7 @@ export const get_fleet = async (auth: any) => {
 
         const fleet = JSON.stringify(await data());
         //console.log("GOT: " + fleet);
-       //console.log("NEW:" + JSON.stringify(JSON.parse(fleet)[0]))
+       //console.log("NEW:" + fleet[0])
         return JSON.stringify(JSON.parse(fleet)[0]);
 
         
