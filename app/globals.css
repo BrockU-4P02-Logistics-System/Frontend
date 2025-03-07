@@ -103,3 +103,12 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+nextjs-portal {
+  display: none;
+}
+
+body {
+  padding: 0 !important; 
+  overflow: auto !important;
+}

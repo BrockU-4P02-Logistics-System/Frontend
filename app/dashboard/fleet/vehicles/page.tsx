@@ -57,6 +57,8 @@ const dummyVehicles: Vehicle[] = [
   // Add more dummy vehicles
 ];
 
+let count = 0;
+
 export default function VehiclesPage() {
 
   const { data: session, status } = useSession();
@@ -214,7 +216,6 @@ export default function VehiclesPage() {
               <TableHead>Vehicle</TableHead>
               <TableHead>Driver</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead><Button variant ="outline"  onClick={() => refresh()}>Refresh</Button></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
