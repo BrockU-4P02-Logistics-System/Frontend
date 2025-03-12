@@ -1,6 +1,5 @@
 import { Schema, model,  models} from  "mongoose";
-import bcrypt from "bcryptjs"
-
+import bcrypt from "bcryptjs";
 
 export interface subFleet {
 

@@ -2,6 +2,11 @@
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import mongoose from "mongoose";
+import fs from 'fs';
+import path from 'path';
+import * as mongodb from "mongodb";
+const { MONGODB_URI } = process.env;
+
 
 export const register = async (values: any) => {
 
@@ -40,7 +45,7 @@ export const register = async (values: any) => {
             }
         }
         //const hashedPassword = await bcrypt.hash(password, 10);
-        const fleet = '';
+        let fleet:any[] = [];
 
         const user = new User({ // Schema
             username,
@@ -138,4 +143,39 @@ export const remove_vehicle = async (vehicle: any) => {
    }
 
 
+}
+
+export const save_route = async() =>{
+
+    try {
+
+    const inputPath = path.join('./', 'input.txt');
+    const input = fs.readFileSync(inputPath, 'utf-8');
+    //console.log(input);
+
+    //connectDB();
+
+    //const client = mongodb.MongoClient;
+    const url: any = MONGODB_URI;
+
+    const client = new mongodb.MongoClient(url);
+    await client.connect();
+    const db = client.db("reroute");
+    const myobj: any = JSON.parse(input);
+    await db.collection("routes").insertOne(myobj);
+    console.log("1 document inserted");
+
+
+    var id = '67cb5d55570913c32d9e1550';
+    var query = { _id: new mongodb.ObjectId(id)};
+    var doc = await db.collection("routes").findOne(query);
+
+    console.log(doc);
+
+    client.close();
+
+    }catch(e){
+
+        console.log(e);
+    }
 }

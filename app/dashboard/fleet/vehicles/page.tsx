@@ -30,7 +30,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { register_vehicle, get_fleet, remove_vehicle } from "@/actions/register";
+import { register_vehicle, get_fleet, remove_vehicle, save_route } from "@/actions/register";
 import { useSession } from 'next-auth/react';
 
 let vehiclesList: any = [];
@@ -196,6 +196,7 @@ export default function VehiclesPage() {
               <TableHead>Vehicle</TableHead>
               <TableHead>Driver</TableHead>
               <TableHead>Email</TableHead>
+              
             </TableRow>
           </TableHeader>
           <TableBody>
