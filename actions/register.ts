@@ -182,13 +182,13 @@ export const save_route = async() =>{
     }
 }
 
-export const add_credits = async(auth: any) => {
+export const add_credits = async(auth: any, increment:number) => {
 
     try {
 
         connectDB();
 
-        const data: any = await User.findOneAndUpdate({email: auth}, {$inc: {credits: 10}});
+        const data: any = await User.findOneAndUpdate({email: auth}, {$inc: {credits: increment}});
 
         //const rem = JSON.stringify(data);
         //console.log("credits: " + rem);
@@ -206,7 +206,34 @@ export const check_credits = async(auth: any) => {
 
         connectDB();
 
-        const data: any = await User.findOneAndUpdate({email: auth}, {$inc: {credits: 10}});
+        const data = () => {
+
+            return User.findOne({email: auth}, {"credits": 1, "_id": 0}).lean();
+        }
+
+        const credits = JSON.stringify(await data());
+        //console.log("GOT: " + credits);
+        const match:any = credits.match(/(\d+)/g);
+       //console.log("NEW:" + match);
+      // console.log(match[0]);
+      const value:number = match[0];
+        return value;
+
+       
+   }catch(e){
+
+       console.log(e);
+   }
+
+}
+
+export const remove_credits = async(auth: any, increment:number) =>{
+
+    try {
+
+        connectDB();
+
+        const data: any = await User.findOneAndUpdate({email: auth}, {$inc: {credits: increment}});
 
         //const rem = JSON.stringify(data);
         //console.log("credits: " + rem);
@@ -215,6 +242,8 @@ export const check_credits = async(auth: any) => {
 
        console.log(e);
    }
+
+
 
 }
 

@@ -131,7 +131,7 @@ export default function LoginPage() {
 
             
             <Image id="img1" onClick={handleGoogleLogin}
-            src="/signin-assets/signin-assets/Web (mobile + desktop)/png@1x/light/web_light_rd_ctn@1x.png" width="200" height="200" alt={'Google'}/>
+            src="/signin-assets/signin-assets/Web (mobile + desktop)/png@4x/light/web_light_rd_SI@4x.png" width="200" height="200" alt={'Google'}/>
         
         </CardContent>
         <CardFooter className="justify-center">

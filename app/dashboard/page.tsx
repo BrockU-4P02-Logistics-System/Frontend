@@ -32,6 +32,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { check_credits, remove_credits } from '@/actions/register';
 
 interface MarkerLocation {
   address: string;
@@ -76,7 +77,8 @@ export default function RoutePlanner() {
   // const [selectedMarkerIndex, setSelectedMarkerIndex] = useState<number | null>(null);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   const { data: session, status } = useSession();
-  
+  const [credit, setCredits] = useState(0);
+  const log = session?.user?.email;
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyBLt_ENVCVtEq6bCyWu9ZgN6gZ-uEf_S_U',
     libraries: ['places'],
@@ -216,10 +218,7 @@ const handleConfigChange = <K extends keyof RouteConfiguration>(
     };
     
     localStorage.setItem('savedRoute', JSON.stringify(routeData));
-
-    const log = session?.user?.email;
-
-
+    removeCredits();
     toast.success("Route saved successfully");
   };
 
@@ -237,12 +236,38 @@ const handleConfigChange = <K extends keyof RouteConfiguration>(
     }
   };
 
+  const loadCredits = async() => {
+
+    const credits = await check_credits(log);
+    setCredits(credits ?? 0);
+    console.log(credits);
+   
+  }
+
+  const removeCredits = async() => {
+
+    await remove_credits(log, 10);
+    loadCredits();
+
+
+  }
+
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
+  }
+
+  if (credit <= 0){
+
+    setTimeout(() => {
+
+       loadCredits();
+        
+  }, 0);
+
   }
 
   return (
@@ -253,6 +278,8 @@ const handleConfigChange = <K extends keyof RouteConfiguration>(
                 <div className="flex items-center justify-between mb-4">
                   <h1 className="text-xl font-bold">Route Planner</h1>
                   <div className="flex gap-2">
+                  <h1 className="text-xl font-bold">Credits: {credit} </h1>
+                 
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>

@@ -48,12 +48,12 @@ export default function VehiclesPage() {
   const [data, setData] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string>();
+  const log = session?.user?.email;
 
   if (status === "authenticated"){
  
   const refresh = async () => {
 
-    const log = session?.user?.email;
 
     //console.log("AUTH:" + log);
 
@@ -197,7 +197,7 @@ export default function VehiclesPage() {
               <TableHead>Driver</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>
-                  <Button variant="outline" onClick={() => add_credits(session?.user?.email)}>
+                  <Button variant="outline" onClick={() => add_credits(log, 10)}>
                     Add 10 Credits 
                   </Button>
                 </TableHead>
