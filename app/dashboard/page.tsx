@@ -1,5 +1,6 @@
 'use client'
-import React, { useState, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import React, { useState, useCallback, } from 'react';
 import { useJsApiLoader } from '@react-google-maps/api';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,7 +75,8 @@ export default function RoutePlanner() {
   const [showClearDialog, setShowClearDialog] = useState(false);
   // const [selectedMarkerIndex, setSelectedMarkerIndex] = useState<number | null>(null);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
-
+  const { data: session, status } = useSession();
+  
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyBLt_ENVCVtEq6bCyWu9ZgN6gZ-uEf_S_U',
     libraries: ['places'],
@@ -214,6 +216,10 @@ const handleConfigChange = <K extends keyof RouteConfiguration>(
     };
     
     localStorage.setItem('savedRoute', JSON.stringify(routeData));
+
+    const log = session?.user?.email;
+
+
     toast.success("Route saved successfully");
   };
 

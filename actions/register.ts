@@ -46,6 +46,7 @@ export const register = async (values: any) => {
         }
         //const hashedPassword = await bcrypt.hash(password, 10);
         let fleet:any[] = [];
+        let credits = 0;
 
         const user = new User({ // Schema
             username,
@@ -55,7 +56,8 @@ export const register = async (values: any) => {
             org_name,
             org_phone,
             org_site,
-            fleet
+            fleet,
+            credits
         });
         
 
@@ -179,3 +181,40 @@ export const save_route = async() =>{
         console.log(e);
     }
 }
+
+export const add_credits = async(auth: any) => {
+
+    try {
+
+        connectDB();
+
+        const data: any = await User.findOneAndUpdate({email: auth}, {$inc: {credits: 10}});
+
+        //const rem = JSON.stringify(data);
+        //console.log("credits: " + rem);
+       
+   }catch(e){
+
+       console.log(e);
+   }
+
+}
+
+export const check_credits = async(auth: any) => {
+
+    try {
+
+        connectDB();
+
+        const data: any = await User.findOneAndUpdate({email: auth}, {$inc: {credits: 10}});
+
+        //const rem = JSON.stringify(data);
+        //console.log("credits: " + rem);
+       
+   }catch(e){
+
+       console.log(e);
+   }
+
+}
+
