@@ -1,6 +1,14 @@
 import { Schema, model,  models} from  "mongoose";
-import bcrypt from "bcryptjs"
+import bcrypt from "bcryptjs";
 
+export interface subFleet {
+
+    name: string
+    driver: string
+    email: string
+
+
+}
 export interface UserDocument {
 
     _id: string;
@@ -10,6 +18,16 @@ export interface UserDocument {
     password: string
 
     email: string
+
+    org_name: string
+
+    org_address: string
+
+    org_phone: string
+
+    org_site: string
+
+    fleet: subFleet[]
 
 
 }
@@ -58,7 +76,15 @@ const UserSchema = new Schema<UserDocument>({
 
         ]
 
-    }
+    },
+
+    org_name: {type: String, required: false},
+    org_address: {type: String, required: false},
+    org_phone: {type: String, required: false},
+    org_site: {type: String, required: false},
+    fleet: {}
+
+
 
 })
 

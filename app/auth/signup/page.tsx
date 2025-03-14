@@ -28,7 +28,11 @@ export default function SignupPage() {
       email: '',
       password: '',
       confirmPassword: '',
-      companyName: '',
+      username: '',
+      org_name: '',
+      org_address: '',
+      org_phone: '',
+      org_site: ''
     });
   
     const handleSignup = async (e: React.FormEvent) => {
@@ -45,7 +49,11 @@ export default function SignupPage() {
 
           email: formData.email,
           password: formData.password,
-          username: formData.companyName
+          username: formData.username,
+          org_name: formData.org_name,
+          org_address: formData.org_address,
+          org_phone: formData.org_phone,
+          org_site: formData.org_site
 
       });
       if (r?.error) {
@@ -84,11 +92,11 @@ export default function SignupPage() {
             <form onSubmit={handleSignup} className="space-y-4">
             {error && <div className="">{error}</div>}
               <div className="space-y-2">
-                <Label htmlFor="company">Company Name</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
                   id="company"
-                  value={formData.companyName}
-                  onChange={(e) => setFormData({...formData, companyName: e.target.value})}
+                  value={formData.username}
+                  onChange={(e) => setFormData({...formData, username: e.target.value})}
                   required
                 />
               </div>
@@ -120,6 +128,42 @@ export default function SignupPage() {
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="org_name">Organization Name*</Label>
+                <Input
+                  id="org_name"
+                  value={formData.org_name}
+                  onChange={(e) => setFormData({...formData, org_name: e.target.value})}
+                  
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="org_name">Organization Address*</Label>
+                <Input
+                  id="org_address"
+                  value={formData.org_address}
+                  onChange={(e) => setFormData({...formData, org_address: e.target.value})}
+                  
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="org_phone">Organization Phone*</Label>
+                <Input
+                  id="org_phone"
+                  value={formData.org_phone}
+                  onChange={(e) => setFormData({...formData, org_phone: e.target.value})}
+                  
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="org_phone">Organization Site*</Label>
+                <Input
+                  id="org_site"
+                  value={formData.org_site}
+                  onChange={(e) => setFormData({...formData, org_site: e.target.value})}
+                  
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>

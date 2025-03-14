@@ -12,15 +12,11 @@ import {
   Share2,
   Undo2,
   GripVertical,
-  LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
 import MapComponent from "@/components/map/google";
 import AddressAutocomplete from "@/components/map/autocomplete";
-import Link from 'next/link'; // import link capability
-import { signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+
 import {
   AlertDialog,
   AlertDialogContent,
@@ -97,12 +93,6 @@ export default function RoutePlanner() {
       "AIzaSyBLt_ENVCVtEq6bCyWu9ZgN6gZ-uEf_S_U",
     libraries: ["places"],
   });
-
-  const router = useRouter();
-
-  const handleLogout = async () => {
-	  await signOut({ callbackUrl: "/"});
-  };
 
   const saveToHistory = useCallback(() => {
     setRouteHistory((prev) => [...prev, [...markers]]);
@@ -483,23 +473,7 @@ export default function RoutePlanner() {
                   <TooltipContent>Share route</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-  
-    	      {/* Logout Button */}
-	      <TooltipProvider>
-	      	<Tooltip>
-		  <TooltipTrigger asChild>
-		    <Button
-		      variant="outline"
-		      size="icon"
-		      onClick={handleLogout} //function for handling click
-		    >
-		      <LogOut className="h-4 w-4" />
-		    </Button>
-		  </TooltipTrigger>
-		<TooltipContent>Logout</TooltipContent>
-	      </Tooltip>
-	    </TooltipProvider>
-	   </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">
