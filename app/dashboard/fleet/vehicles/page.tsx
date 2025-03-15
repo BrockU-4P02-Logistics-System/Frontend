@@ -30,7 +30,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { register_vehicle, get_fleet, remove_vehicle, save_route, add_credits } from "@/actions/register";
+import { register_vehicle, get_fleet, remove_vehicle, add_credits } from "@/actions/register";
 import { useSession } from 'next-auth/react';
 
 let vehiclesList: any = [];
@@ -84,7 +84,7 @@ export default function VehiclesPage() {
           
           const r = await register_vehicle({
 
-            auth: session?.user.email,
+            auth: log,
             name: formData.name,
             email: formData.email,
             driver: formData.driver
@@ -112,7 +112,7 @@ export default function VehiclesPage() {
     }, 0);
 
     }
-    
+   
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">

@@ -31,6 +31,8 @@ export interface UserDocument {
 
     credits: Number
 
+    routes: any[]
+
 
 }
 
@@ -85,7 +87,8 @@ const UserSchema = new Schema<UserDocument>({
     org_phone: {type: String, required: false},
     org_site: {type: String, required: false},
     fleet: {},
-    credits: {}
+    credits: {},
+    routes: {}
 
 
 

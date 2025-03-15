@@ -13,6 +13,7 @@ import {
   Share2, 
   Undo2, 
   GripVertical,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import MapComponent from "@/components/map/google";
@@ -32,7 +33,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { check_credits, remove_credits } from '@/actions/register';
+import { check_credits, remove_credits, save_route } from '@/actions/register';
+import { DialogHeader } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Label } from "@/components/ui/label";
+import { error } from 'console';
 
 interface MarkerLocation {
   address: string;
@@ -76,9 +81,17 @@ export default function RoutePlanner() {
   const [showClearDialog, setShowClearDialog] = useState(false);
   // const [selectedMarkerIndex, setSelectedMarkerIndex] = useState<number | null>(null);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+  
   const { data: session, status } = useSession();
   const [credit, setCredits] = useState(0);
   const log = session?.user?.email;
+  const [error, setError] = React.useState<string>();
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  const [formData, setFormData] = React.useState({
+      name: '',
+     });
+  
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyBLt_ENVCVtEq6bCyWu9ZgN6gZ-uEf_S_U',
     libraries: ['places'],
@@ -218,6 +231,7 @@ const handleConfigChange = <K extends keyof RouteConfiguration>(
     };
     
     localStorage.setItem('savedRoute', JSON.stringify(routeData));
+    save_route(log, localStorage.getItem('savedRoute'), formData.name);
     removeCredits();
     toast.success("Route saved successfully");
   };
@@ -240,15 +254,14 @@ const handleConfigChange = <K extends keyof RouteConfiguration>(
 
     const credits = await check_credits(log);
     setCredits(credits ?? 0);
-    console.log(credits);
+   // console.log(credits);
    
   }
 
   const removeCredits = async() => {
 
-    await remove_credits(log, 10);
+    await remove_credits(log, -10);
     loadCredits();
-
 
   }
 
@@ -295,7 +308,6 @@ const handleConfigChange = <K extends keyof RouteConfiguration>(
                         <TooltipContent>Undo last change</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -307,10 +319,10 @@ const handleConfigChange = <K extends keyof RouteConfiguration>(
                             <Save className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Save route</TooltipContent>
+                        <TooltipContent>Save Route</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-
+                   
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>

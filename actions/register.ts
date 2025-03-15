@@ -45,8 +45,13 @@ export const register = async (values: any) => {
             }
         }
         //const hashedPassword = await bcrypt.hash(password, 10);
-        let fleet:any[] = [];
+        let fleet:any[] = [ [
+            "Example Car",
+            "Driver 1",
+            "test@gmail.com"
+          ]];
         let credits = 0;
+        let routes:any[] = [];
 
         const user = new User({ // Schema
             username,
@@ -57,7 +62,8 @@ export const register = async (values: any) => {
             org_phone,
             org_site,
             fleet,
-            credits
+            credits,
+            routes
         });
         
 
@@ -147,12 +153,12 @@ export const remove_vehicle = async (vehicle: any) => {
 
 }
 
-export const save_route = async() =>{
+export const save_route = async(auth:any, input:any, name:any) =>{
 
     try {
 
-    const inputPath = path.join('./', 'input.txt');
-    const input = fs.readFileSync(inputPath, 'utf-8');
+   // const inputPath = path.join('./', 'input.txt');
+    //const input = fs.readFileSync(inputPath, 'utf-8');
     //console.log(input);
 
     //connectDB();
@@ -164,22 +170,73 @@ export const save_route = async() =>{
     await client.connect();
     const db = client.db("reroute");
     const myobj: any = JSON.parse(input);
-    await db.collection("routes").insertOne(myobj);
-    console.log("1 document inserted");
+    var route = (await db.collection("routes").insertOne(myobj)).insertedId;
+   
+    //console.log(route);
 
+     await User.findOneAndUpdate({email: auth}, {$push: {routes: [name, route]}});
 
-    var id = '67cb5d55570913c32d9e1550';
-    var query = { _id: new mongodb.ObjectId(id)};
-    var doc = await db.collection("routes").findOne(query);
+    //var id = '67cb5d55570913c32d9e1550';
+   // var query = { _id: new mongodb.ObjectId(id)};
+    var doc = await db.collection("routes").findOne(route); // Find route by id
+    //console.log(doc);
 
-    console.log(doc);
-
+    
     client.close();
 
     }catch(e){
 
         console.log(e);
     }
+}
+
+export const get_routes = async (auth: any) => {
+
+    try {
+
+      connectDB();
+
+     const data = () => {
+
+         return User.find({email: auth}, {"routes": 1, "_id": 0}).lean();
+     }
+
+     const routes = JSON.stringify(await data());
+    //console.log("GOT: " + routes);
+    //console.log("NEW:" + JSON.stringify(JSON.parse(routes)[0]))
+     return JSON.stringify(JSON.parse(routes)[0]);
+
+     
+ }catch(e){
+
+     console.log(e);
+ }
+
+}
+ 
+export const remove_route = async (auth:any, name:any, route:any) => {
+
+    try {
+
+        connectDB();
+        const url: any = MONGODB_URI;
+
+        const client = new mongodb.MongoClient(url);
+        await client.connect();
+        const db = client.db("reroute");
+        var query =  new mongodb.ObjectId(route);
+
+        const user_route = await User.findOneAndUpdate({email: auth}, {$pull: {routes: [name, query]}});
+        const route_route = await db.collection("routes").deleteOne(query); // Find route by id
+        //console.log("User: " + user_route);
+        //console.log("Route: " + route_route);
+       
+   }catch(e){
+
+       console.log(e);
+   }
+
+
 }
 
 export const add_credits = async(auth: any, increment:number) => {
@@ -215,8 +272,8 @@ export const check_credits = async(auth: any) => {
         //console.log("GOT: " + credits);
         const match:any = credits.match(/(\d+)/g);
        //console.log("NEW:" + match);
-      // console.log(match[0]);
-      const value:number = match[0];
+       //console.log(match[0]);
+        const value:number = match[0];
         return value;
 
        

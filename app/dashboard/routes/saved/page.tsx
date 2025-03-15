@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useSession } from 'next-auth/react';
+import { get_routes, remove_route } from "@/actions/register";
 
 interface SavedRoute {
   id: string;
@@ -50,34 +52,66 @@ const dummyRoutes: SavedRoute[] = [
   // Add more dummy routes
 ];
 
+let routesList: any = [];
+
 export default function SavedRoutes() {
-  const handleDelete = (routeId: string) => {
-    toast.success(`Route updated successfully ${routeId}`);
+
+    const { data: session, status } = useSession();
+  
+    const [data, setData] = React.useState([]);
+    const [isLoading, setIsLoading] = React.useState(false);
+    const [error, setError] = React.useState<string>();
+    const log = session?.user?.email;
+    
+ const remove = async (route: any) => {
+ 
+     await remove_route(log, route[0], route[1]);
+     refresh();
+     //console.log(data);
+ 
+   };
+
+  const handleLoad = (routeId: string) => {
+
   };
 
-  const handleDuplicate = (routeId: string) => {
-    toast.success(`Route updated successfully ${routeId}`);
-  };
+  const refresh = async () => {
+  
+      //console.log("AUTH:" + log);
+  
+      const list: any = await get_routes(log);
+  
+      routesList = Array.from((JSON.parse(list).routes));
+  
+      console.log(routesList);
+      
+      setData(routesList);
+  
+    };
 
-  const toggleFavorite = (routeId: string) => {
-    toast.success(`Route updated successfully ${routeId}`);
-  };
+    if (data.length <= 0){
+
+      setTimeout(() => {
+
+          refresh();
+          
+    }, 0);
+
+    }
+
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Saved Routes</h1>
-        <Button>
-          <Route className="mr-2 h-4 w-4" />
-          Create New Route
-        </Button>
+        
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {dummyRoutes.map((route) => (
-          <Card key={route.id} className="relative">
+        {data.map((route) => (
+          <Card key={route[0]} className="relative">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-lg font-medium">{route.name}</CardTitle>
+              <CardTitle className="text-lg font-medium">{route[0]}</CardTitle>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
@@ -85,10 +119,10 @@ export default function SavedRoutes() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleDuplicate(route.id)}>
-                    Duplicate
+                  <DropdownMenuItem onClick={() => handleLoad(route)}>
+                    Load
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleDelete(route.id)} className="text-red-600">
+                  <DropdownMenuItem onClick={() => remove(route)} className="text-red-600">
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -98,26 +132,17 @@ export default function SavedRoutes() {
               <div className="space-y-2">
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Calendar className="mr-2 h-4 w-4" />
-                  {route.date}
+                  {route[1]}
                 </div>
                 <div className="flex items-center text-sm text-muted-foreground">
                   <MapPin className="mr-2 h-4 w-4" />
-                  {route.stops} stops
+                  {} stops
                 </div>
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Clock className="mr-2 h-4 w-4" />
-                  {route.duration} • {route.distance}
+                  {} • {}
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="absolute top-2 right-2"
-                  onClick={() => toggleFavorite(route.id)}
-                >
-                  <Star 
-                    className={`h-4 w-4 ${route.isFavorite ? 'fill-yellow-400 text-yellow-400' : ''}`}
-                  />
-                </Button>
+               
               </div>
             </CardContent>
           </Card>
