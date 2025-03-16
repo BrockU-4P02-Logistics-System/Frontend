@@ -290,6 +290,25 @@ const handleConfigChange = <K extends keyof RouteConfiguration>(
               <div className="rounded-xl bg-muted/50 p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h1 className="text-xl font-bold">Route Planner</h1>
+                              {error && <div className="">{error}</div>}
+                              <div className="space-y-2">
+                                  <Label htmlFor="username">Route Name</Label>
+                                  <Input
+                                    id="name"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                    required
+                                  />
+                                  
+                                </div>
+                               
+                                <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={handleSaveRoute}
+                          >
+                            <Save className="h-4 w-4" />
+                          </Button>
                   <div className="flex gap-2">
                   <h1 className="text-xl font-bold">Credits: {credit} </h1>
                  
