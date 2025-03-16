@@ -239,6 +239,34 @@ export const remove_route = async (auth:any, name:any, route:any) => {
 
 }
 
+export const load_route = async (routeID: any) => {
+
+    try {
+
+        connectDB();
+        const url: any = MONGODB_URI;
+
+        const client = new mongodb.MongoClient(url);
+        await client.connect();
+        const db = client.db("reroute");
+        var query =  new mongodb.ObjectId(routeID);
+
+
+        const data = await db.collection("routes").findOne(query);
+
+        const route = JSON.stringify(data);
+        //console.log("DB: " + route);
+        //console.log("NEW:" + JSON.stringify(JSON.parse(route)[0]))
+        return route;
+
+     
+ }catch(e){
+
+     console.log(e);
+ }
+
+}
+
 export const add_credits = async(auth: any, increment:number) => {
 
     try {

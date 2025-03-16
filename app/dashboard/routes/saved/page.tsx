@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useSession } from 'next-auth/react';
-import { get_routes, remove_route } from "@/actions/register";
+import { get_routes, remove_route, load_route } from "@/actions/register";
 
 interface SavedRoute {
   id: string;
@@ -53,6 +53,7 @@ const dummyRoutes: SavedRoute[] = [
 ];
 
 let routesList: any = [];
+let got_route: any;
 
 export default function SavedRoutes() {
 
@@ -71,7 +72,12 @@ export default function SavedRoutes() {
  
    };
 
-  const handleLoad = (routeId: string) => {
+  const load = async (routeId: string) => {
+
+    got_route = await load_route(routeId);
+
+    //console.log("GOT:" + got_route);
+
 
   };
 
@@ -83,7 +89,7 @@ export default function SavedRoutes() {
   
       routesList = Array.from((JSON.parse(list).routes));
   
-      console.log(routesList);
+      //console.log(routesList);
       
       setData(routesList);
   
@@ -119,7 +125,7 @@ export default function SavedRoutes() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleLoad(route)}>
+                  <DropdownMenuItem onClick={() => load(route[1])}>
                     Load
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => remove(route)} className="text-red-600">
