@@ -136,14 +136,6 @@ export default function RoutePlanner() {
 
     if (savedRoute) {
 
-      console.log(savedConfig);
-      console.log(savedMarkers);
-      console.log(savedRoutePath);
-      console.log(savedRouteDirections);
-      console.log(savedRouteDistance);
-      console.log(savedRouteDuration);
-      console.log(savedTimestamp);
-
      setRoutePath(savedRoutePath);
      setRouteDirections(savedRouteDirections);
      setTotalRouteDistance(savedRouteDistance);
@@ -566,13 +558,7 @@ export default function RoutePlanner() {
                                   
                                 </div>
                                
-                                <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={handleSaveRoute}
-                          >
-                            <Save className="h-4 w-4" />
-                          </Button>
+                                
                   <div className="flex gap-2">
                   <h1 className="text-xl font-bold">Credits: {credit} </h1>
                  
@@ -591,7 +577,25 @@ export default function RoutePlanner() {
                         <TooltipContent>Undo last change</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                        <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={handleSaveRoute}
+                          >
+                            <Save className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Save Route</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     
+                    
+
+
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
