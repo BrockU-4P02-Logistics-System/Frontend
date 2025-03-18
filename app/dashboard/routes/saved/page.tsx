@@ -65,7 +65,7 @@ export default function SavedRoutes() {
     const [isLoading, setIsLoading] = React.useState(false);
     const [error, setError] = React.useState<string>();
     const log = session?.user?.email;
-    
+    let mark: any = [];
  const remove = async (route: any) => {
  
      await remove_route(log, route[0], route[1]);
@@ -78,18 +78,18 @@ export default function SavedRoutes() {
 
     got_route = await load_route(routeId);
 
-    sessionStorage.setItem('savedRoute', JSON.stringify(got_route[0]));
-    sessionStorage.setItem('savedConfig', JSON.stringify(got_route[1]));
-    sessionStorage.setItem('savedMarkers', JSON.stringify(got_route[2]));
-    sessionStorage.setItem('savedRoutePath', JSON.stringify(got_route[3]));
-    sessionStorage.setItem('savedRouteDirections', JSON.stringify(got_route[4]));
-    sessionStorage.setItem('savedRouteDistance', JSON.stringify(got_route[5]));
-    sessionStorage.setItem('savedRouteDuration', JSON.stringify(got_route[6]));
-    sessionStorage.setItem('savedTimestamp', JSON.stringify(got_route[7]));
+    sessionStorage.setItem('savedLoadedRoute', JSON.stringify(got_route[0]));
+    sessionStorage.setItem('savedConfig', JSON.stringify(JSON.parse(got_route[0]).config));
+    sessionStorage.setItem('savedMarkers', JSON.stringify(Array.from(JSON.parse(got_route[0]).markers)));
+    sessionStorage.setItem('savedRoutePath', JSON.stringify(Array.from(JSON.parse(got_route[0]).routePath)));
+    sessionStorage.setItem('savedRouteDirections', JSON.stringify(Array.from(JSON.parse(got_route[0]).routeDirections)));
+    sessionStorage.setItem('savedRouteDistance', JSON.stringify(JSON.parse(got_route[0]).totalRouteDistance));
+    sessionStorage.setItem('savedRouteDuration', JSON.stringify(JSON.parse(got_route[0]).totalRouteDuration));
+    sessionStorage.setItem('savedTimestamp', JSON.stringify(JSON.parse(got_route[0]).timestamp));
 
-    //console.log("GOT:" + got_route[7]);
+    //console.log("GOT:" + JSON.stringify(got_route[0]));
 
-    return router.push("/dashboard")
+   return router.push("/dashboard")
 
   };
 

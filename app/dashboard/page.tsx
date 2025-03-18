@@ -116,6 +116,37 @@ export default function RoutePlanner() {
 
   const router = useRouter();
 
+  const savedRoute: any = sessionStorage.getItem('savedLoadedRoute');
+  const savedConfig: any = sessionStorage.getItem('savedConfig');
+  const savedMarkers: any = sessionStorage.getItem('savedMarkers') 
+    ? JSON.parse(sessionStorage.getItem('savedMarkers') as string) 
+    : null;
+  const savedRoutePath: any = sessionStorage.getItem('savedRoutePath') 
+    ? JSON.parse(sessionStorage.getItem('savedRoutePath') as string) 
+    : null;
+  const savedRouteDirections: any = sessionStorage.getItem('savedRouteDirections') 
+    ? JSON.parse(sessionStorage.getItem('savedRouteDirections') as string) 
+    : null;
+  const savedRouteDistance: any = sessionStorage.getItem('savedRouteDistance');
+  const savedRouteDuration: any = sessionStorage.getItem('savedRouteDuration');
+  const savedTimestamp: any = sessionStorage.getItem('savedTimestamp');
+
+  if (savedRoute) {
+
+    console.log(savedConfig);
+    console.log(savedMarkers);
+    console.log(savedRoutePath);
+    console.log(savedRouteDirections);
+    console.log(savedRouteDistance);
+    console.log(savedRouteDuration);
+    console.log(savedTimestamp);
+
+  } else {
+
+    console.log("No saved timestamp found in sessionStorage.");
+    
+  }
+
   const handleLogout = async () => {
 	  await signOut({ callbackUrl: "/"});
   };
@@ -410,7 +441,6 @@ export default function RoutePlanner() {
     if (credit <= 0){
 
       toast.error("Not enough credits!");
-      
 
     } else {
 
