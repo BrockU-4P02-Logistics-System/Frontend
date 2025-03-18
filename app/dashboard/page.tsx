@@ -35,7 +35,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { check_credits, remove_credits, save_route } from '@/actions/register';
+import { check_credits, num_routes, remove_credits, save_route } from '@/actions/register';
 import { DialogHeader } from '@/components/ui/dialog';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from "@/components/ui/label";
@@ -394,7 +394,7 @@ export default function RoutePlanner() {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSaveRoute = () => {
+  const handleSaveRoute = async () => {
     const routeData = {
       markers,
       config,
@@ -404,11 +404,39 @@ export default function RoutePlanner() {
       totalRouteDuration,
       timestamp: new Date().toISOString(),
     };
+
+    const num = await num_routes(log);
     
-    localStorage.setItem('savedRoute', JSON.stringify(routeData));
-    save_route(log, localStorage.getItem('savedRoute'), formData.name);
-    removeCredits();
-    toast.success("Route saved successfully");
+    if (credit <= 0){
+
+      toast.error("Not enough credits!");
+      
+
+    } else {
+
+    if (!formData.name){
+
+      toast.error("No name for route!");
+
+    } else if (!totalRouteDistance) {
+
+      toast.error("No route calculated!");
+
+    } else if (num == false) {
+
+      toast.error("Too many routes already saved.");
+
+    } else {
+
+      localStorage.setItem('savedRoute', JSON.stringify(routeData));
+      save_route(log, localStorage.getItem('savedRoute'), formData.name);
+      removeCredits();
+      toast.success("Route saved successfully");
+
+    }
+   
+
+    }
   };
 
   const handleShareRoute = async () => {

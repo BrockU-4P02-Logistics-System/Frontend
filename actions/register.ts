@@ -279,7 +279,7 @@ export const load_route = async (routeID: any) => {
             JSON.stringify(totalRouteDistance), 
             JSON.stringify(totalRouteDuration), 
             JSON.stringify(timestamp)
-            
+
         ];
 
         const route = JSON.stringify(data);
@@ -294,6 +294,35 @@ export const load_route = async (routeID: any) => {
  }
 
 }
+
+export const num_routes = async (auth: any) => {
+
+    try {
+
+        connectDB();
+
+        const num = await User.find({email: auth}, {_id: 0, routes: 1});
+       //console.log(num[0].length)
+       
+        if (num[0].routes.length < 6){
+
+            return true;
+
+        } else {
+
+            return false;
+            
+        }
+     
+ }catch(e){
+
+     console.log(e);
+ }
+
+
+
+}
+
 
 export const add_credits = async(auth: any, increment:number) => {
 

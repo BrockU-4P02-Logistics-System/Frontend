@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useSession } from 'next-auth/react';
-import { get_routes, remove_route, load_route } from "@/actions/register";
+import { get_routes, remove_route, load_route, num_routes } from "@/actions/register";
 import  { useRouter } from 'next/navigation';
 
 interface SavedRoute {
@@ -130,38 +130,15 @@ export default function SavedRoutes() {
           <Card key={route[0]} className="relative">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-lg font-medium">{route[0]}</CardTitle>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => load(route[1])}>
-                    Load
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => remove(route)} className="text-red-600">
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  {route[1]}
-                </div>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <MapPin className="mr-2 h-4 w-4" />
-                  {} stops
-                </div>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Clock className="mr-2 h-4 w-4" />
-                  {} • {}
-                </div>
-               
-              </div>
+               <Button variant="outline" onClick={() => load(route[1])}>
+                                  Load Route
+                                </Button>
+              <Button variant="outline" onClick={() => remove(route)}>
+                Delete Route
+              </Button>
             </CardContent>
           </Card>
         ))}
