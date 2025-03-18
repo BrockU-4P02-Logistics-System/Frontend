@@ -260,13 +260,13 @@ export const load_route = async (routeID: any) => {
         const totalRouteDuration = await db.collection("routes").findOne(query, { projection: { totalRouteDuration: 1, _id: 0 } });
         const timestamp = await db.collection("routes").findOne(query, { projection: { timestamp: 1, _id: 0 } });
 /*
-        localStorage.setItem('savedConfig', JSON.stringify(config));
-        localStorage.setItem('savedMarkers', JSON.stringify(markers));
-        localStorage.setItem('savedRoutePath', JSON.stringify(routePath));
-        localStorage.setItem('savedRouteDirections', JSON.stringify(routeDirections));
-        localStorage.setItem('savedRouteDistance', JSON.stringify(totalRouteDistance));
-        localStorage.setItem('savedRouteDuration', JSON.stringify(totalRouteDuration));
-        localStorage.setItem('savedTimestamp', JSON.stringify(timestamp));
+        sessionStorage.setItem('savedConfig', JSON.stringify(config));
+        sessionStorage.setItem('savedMarkers', JSON.stringify(markers));
+        sessionStorage.setItem('savedRoutePath', JSON.stringify(routePath));
+        sessionStorage.setItem('savedRouteDirections', JSON.stringify(routeDirections));
+        sessionStorage.setItem('savedRouteDistance', JSON.stringify(totalRouteDistance));
+        sessionStorage.setItem('savedRouteDuration', JSON.stringify(totalRouteDuration));
+        sessionStorage.setItem('savedTimestamp', JSON.stringify(timestamp));
         */
 
         const route_arr = [
@@ -303,7 +303,7 @@ export const num_routes = async (auth: any) => {
 
         const num = await User.find({email: auth}, {_id: 0, routes: 1});
        //console.log(num[0].length)
-       
+
         if (num[0].routes.length < 6){
 
             return true;

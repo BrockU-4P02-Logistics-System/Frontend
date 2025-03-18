@@ -78,14 +78,14 @@ export default function SavedRoutes() {
 
     got_route = await load_route(routeId);
 
-    localStorage.setItem('savedRoute', JSON.stringify(got_route[0]));
-    localStorage.setItem('savedConfig', JSON.stringify(got_route[1]));
-    localStorage.setItem('savedMarkers', JSON.stringify(got_route[2]));
-    localStorage.setItem('savedRoutePath', JSON.stringify(got_route[3]));
-    localStorage.setItem('savedRouteDirections', JSON.stringify(got_route[4]));
-    localStorage.setItem('savedRouteDistance', JSON.stringify(got_route[5]));
-    localStorage.setItem('savedRouteDuration', JSON.stringify(got_route[6]));
-    localStorage.setItem('savedTimestamp', JSON.stringify(got_route[7]));
+    sessionStorage.setItem('savedRoute', JSON.stringify(got_route[0]));
+    sessionStorage.setItem('savedConfig', JSON.stringify(got_route[1]));
+    sessionStorage.setItem('savedMarkers', JSON.stringify(got_route[2]));
+    sessionStorage.setItem('savedRoutePath', JSON.stringify(got_route[3]));
+    sessionStorage.setItem('savedRouteDirections', JSON.stringify(got_route[4]));
+    sessionStorage.setItem('savedRouteDistance', JSON.stringify(got_route[5]));
+    sessionStorage.setItem('savedRouteDuration', JSON.stringify(got_route[6]));
+    sessionStorage.setItem('savedTimestamp', JSON.stringify(got_route[7]));
 
     //console.log("GOT:" + got_route[7]);
 
