@@ -12,15 +12,11 @@ import {
   Share2,
   Undo2,
   GripVertical,
-  LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
 import MapComponent from "@/components/map/google";
 import AddressAutocomplete from "@/components/map/autocomplete";
-import Link from 'next/link'; // import link capability
-import { signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+
 import {
   AlertDialog,
   AlertDialogContent,
@@ -35,11 +31,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { check_credits, remove_credits, save_route } from '@/actions/register';
-import { DialogHeader } from '@/components/ui/dialog';
-import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Label } from "@/components/ui/label";
-import { error } from 'console';
 
 interface MarkerLocation {
   address: string;
@@ -96,29 +87,12 @@ export default function RoutePlanner() {
   const [totalRouteDistance, setTotalRouteDistance] = useState<string>("");
   const [totalRouteDuration, setTotalRouteDuration] = useState<string>("");
 
-  
-  const { data: session, status } = useSession();
-  const [credit, setCredits] = useState(0);
-  const log = session?.user?.email;
-  const [error, setError] = React.useState<string>();
-  const [isLoading, setIsLoading] = React.useState(false);
-
-  const [formData, setFormData] = React.useState({
-      name: '',
-     });
-  
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey:
       process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
       "AIzaSyBLt_ENVCVtEq6bCyWu9ZgN6gZ-uEf_S_U",
     libraries: ["places"],
   });
-
-  const router = useRouter();
-
-  const handleLogout = async () => {
-	  await signOut({ callbackUrl: "/"});
-  };
 
   const saveToHistory = useCallback(() => {
     setRouteHistory((prev) => [...prev, [...markers]]);
@@ -404,10 +378,8 @@ export default function RoutePlanner() {
       totalRouteDuration,
       timestamp: new Date().toISOString(),
     };
-    
-    localStorage.setItem('savedRoute', JSON.stringify(routeData));
-    save_route(log, localStorage.getItem('savedRoute'), formData.name);
-    removeCredits();
+
+    localStorage.setItem("savedRoute", JSON.stringify(routeData));
     toast.success("Route saved successfully");
   };
 
@@ -440,21 +412,6 @@ export default function RoutePlanner() {
     toast.success("Route cleared");
   };
 
-  const loadCredits = async() => {
-
-    const credits = await check_credits(log);
-    setCredits(credits ?? 0);
-   // console.log(credits);
-   
-  }
-
-  const removeCredits = async() => {
-
-    await remove_credits(log, -10);
-    loadCredits();
-
-  }
-
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -463,91 +420,61 @@ export default function RoutePlanner() {
     );
   }
 
-  if (credit <= 0){
-
-    setTimeout(() => {
-
-       loadCredits();
-        
-  }, 0);
-
-  }
-
   return (
-          <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
-            <div className="w-full lg:w-[30%] flex flex-col gap-4 p-4 overflow-y-auto">
-              {/* Add Location Section */}
-              <div className="rounded-xl bg-muted/50 p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h1 className="text-xl font-bold">Route Planner</h1>
-                              {error && <div className="">{error}</div>}
-                              <div className="space-y-2">
-                                  <Label htmlFor="username">Route Name</Label>
-                                  <Input
-                                    id="name"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                    required
-                                  />
-                                  
-                                </div>
-                               
-                                <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={handleSaveRoute}
-                          >
-                            <Save className="h-4 w-4" />
-                          </Button>
-                  <div className="flex gap-2">
-                  <h1 className="text-xl font-bold">Credits: {credit} </h1>
-                 
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={handleUndo}
-                            disabled={routeHistory.length === 0}
-                          >
-                            <Undo2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Undo last change</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={handleSaveRoute}
-                          >
-                            <Save className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Save Route</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                   
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={handleShareRoute}
-                          >
-                            <Share2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Share route</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </div>
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
+      <div className="w-full lg:w-[30%] flex flex-col gap-4 p-4 overflow-y-auto">
+        {/* Add Location Section */}
+        <div className="rounded-xl bg-muted/50 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-xl font-bold">Route Planner</h1>
+            <div className="flex gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleUndo}
+                      disabled={routeHistory.length === 0}
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Undo last change</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleSaveRoute}
+                    >
+                      <Save className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Save route</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleShareRoute}
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Share route</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
 
           <div className="flex flex-col gap-2">
             <AddressAutocomplete
