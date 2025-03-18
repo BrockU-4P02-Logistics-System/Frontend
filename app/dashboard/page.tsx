@@ -517,20 +517,7 @@ export default function RoutePlanner() {
                         <TooltipContent>Undo last change</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={handleSaveRoute}
-                          >
-                            <Save className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Save Route</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    
                    
                     <TooltipProvider>
                       <Tooltip>

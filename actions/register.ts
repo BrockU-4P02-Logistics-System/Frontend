@@ -251,13 +251,41 @@ export const load_route = async (routeID: any) => {
         const db = client.db("reroute");
         var query =  new mongodb.ObjectId(routeID);
 
+        const data = await db.collection("routes").findOne(query, { projection: {_id: 0 } });
+        const config = await db.collection("routes").findOne(query, { projection: { config: 1, _id: 0 } });
+        const markers = await db.collection("routes").findOne(query, { projection: { markers: 1, _id: 0 } });
+        const routePath = await db.collection("routes").findOne(query, { projection: { routePath: 1, _id: 0 } });
+        const routeDirections = await db.collection("routes").findOne(query, { projection: { routeDirections: 1, _id: 0 } });
+        const totalRouteDistance = await db.collection("routes").findOne(query, { projection: { totalRouteDistance: 1, _id: 0 } });
+        const totalRouteDuration = await db.collection("routes").findOne(query, { projection: { totalRouteDuration: 1, _id: 0 } });
+        const timestamp = await db.collection("routes").findOne(query, { projection: { timestamp: 1, _id: 0 } });
+/*
+        localStorage.setItem('savedConfig', JSON.stringify(config));
+        localStorage.setItem('savedMarkers', JSON.stringify(markers));
+        localStorage.setItem('savedRoutePath', JSON.stringify(routePath));
+        localStorage.setItem('savedRouteDirections', JSON.stringify(routeDirections));
+        localStorage.setItem('savedRouteDistance', JSON.stringify(totalRouteDistance));
+        localStorage.setItem('savedRouteDuration', JSON.stringify(totalRouteDuration));
+        localStorage.setItem('savedTimestamp', JSON.stringify(timestamp));
+        */
 
-        const data = await db.collection("routes").findOne(query);
+        const route_arr = [
+
+            JSON.stringify(data), 
+            JSON.stringify(config), 
+            JSON.stringify(markers), 
+            JSON.stringify(routePath), 
+            JSON.stringify(routeDirections), 
+            JSON.stringify(totalRouteDistance), 
+            JSON.stringify(totalRouteDuration), 
+            JSON.stringify(timestamp)
+            
+        ];
 
         const route = JSON.stringify(data);
         //console.log("DB: " + route);
         //console.log("NEW:" + JSON.stringify(JSON.parse(route)[0]))
-        return route;
+        return route_arr;
 
      
  }catch(e){
