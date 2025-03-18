@@ -426,6 +426,10 @@ export default function RoutePlanner() {
 
       toast.error("Too many routes already saved.");
 
+    } else if (localStorage.getItem('savedRoute') !== null) {
+
+      toast.error("Already saved route.");
+
     } else {
 
       localStorage.setItem('savedRoute', JSON.stringify(routeData));
