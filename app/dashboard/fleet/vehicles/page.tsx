@@ -61,7 +61,7 @@ export default function VehiclesPage() {
 
     vehiclesList = Array.from((JSON.parse(list).fleet));
 
-    console.log(vehiclesList);
+    //console.log(vehiclesList);
     
     setData(vehiclesList);
 

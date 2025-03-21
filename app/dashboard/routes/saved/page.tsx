@@ -66,6 +66,7 @@ export default function SavedRoutes() {
     const [error, setError] = React.useState<string>();
     const log = session?.user?.email;
     let mark: any = [];
+    
  const remove = async (route: any) => {
  
      await remove_route(log, route[0], route[1]);
@@ -89,7 +90,7 @@ export default function SavedRoutes() {
 
     //console.log("GOT:" + JSON.stringify(got_route[0]));
 
-   return router.push("/dashboard")
+   return router.push("/dashboard?load=true")
 
   };
 

@@ -20,7 +20,7 @@ import MapComponent from "@/components/map/google";
 import AddressAutocomplete from "@/components/map/autocomplete";
 import Link from 'next/link'; // import link capability
 import { signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   AlertDialog,
@@ -103,6 +103,7 @@ export default function RoutePlanner() {
   const log = session?.user?.email;
   const [error, setError] = React.useState<string>();
   const [isLoading, setIsLoading] = React.useState(false);
+  const search = useSearchParams().get('load');
 
   const [formData, setFormData] = React.useState({
       name: '',
@@ -148,6 +149,8 @@ export default function RoutePlanner() {
       console.log("No saved timestamp found in sessionStorage.");
 
     }
+
+    //setIsLoading(true);
 
 };
 
@@ -534,6 +537,12 @@ export default function RoutePlanner() {
     setTimeout(() => {
 
        loadCredits();
+
+       if (search === 'true'){
+
+        loadRoute();
+
+       }
         
   }, 0);
 
@@ -593,23 +602,6 @@ export default function RoutePlanner() {
                       </Tooltip>
                     </TooltipProvider>
                     
-                    
-
-
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={loadRoute}
-                          >
-                            <Upload className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Load Route</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
