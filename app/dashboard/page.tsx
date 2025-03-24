@@ -1,9 +1,10 @@
 "use client";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useJsApiLoader } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import TestRouteButton from "@/components/map/TestRouteButton";
 import {
   Trash,
   Bolt,
@@ -13,11 +14,13 @@ import {
   Undo2,
   GripVertical,
   LogOut,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { toast } from "sonner";
 import MapComponent from "@/components/map/google";
 import AddressAutocomplete from "@/components/map/autocomplete";
-import Link from 'next/link'; // import link capability
+import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -35,6 +38,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface MarkerLocation {
   address: string;
@@ -43,6 +53,7 @@ interface MarkerLocation {
   note?: string;
   arrivalTime?: string;
   departureTime?: string;
+  driverId?: number; // Add driver ID to associate markers with drivers
 }
 
 interface RouteConfiguration {
@@ -64,6 +75,17 @@ interface RouteStep {
   duration: string;
 }
 
+// Driver routes interface
+interface DriverRoute {
+  driverId: number;
+  markers: MarkerLocation[];
+  routePath: google.maps.LatLngLiteral[];
+  directions: RouteStep[];
+  totalDistance: string;
+  totalDuration: string;
+  color: string; // Color for the route on the map
+}
+
 const DEFAULT_CONFIG: RouteConfiguration = {
   maxSpeed: 90,
   weight: 4500,
@@ -76,6 +98,20 @@ const DEFAULT_CONFIG: RouteConfiguration = {
   avoidUTurns: true,
 };
 
+// Generate a color palette for driver routes
+const ROUTE_COLORS = [
+  "#4285F4", // Google Blue
+  "#EA4335", // Google Red
+  "#FBBC05", // Google Yellow
+  "#34A853", // Google Green
+  "#FF6D01", // Orange
+  "#46BDC6", // Teal
+  "#9C27B0", // Purple
+  "#795548", // Brown
+  "#607D8B", // Blue Grey
+  "#FF5722", // Deep Orange
+];
+
 export default function RoutePlanner() {
   const [markers, setMarkers] = useState<MarkerLocation[]>([]);
   const [config, setConfig] = useState<RouteConfiguration>(DEFAULT_CONFIG);
@@ -84,12 +120,23 @@ export default function RoutePlanner() {
   const [routeHistory, setRouteHistory] = useState<MarkerLocation[][]>([]);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
-  const [routePath, setRoutePath] = useState<google.maps.LatLngLiteral[]>([]);
 
-  // New state for route directions
+  // Multi-driver state
+  const [numDrivers, setNumDrivers] = useState<number>(1);
+  const [driverRoutes, setDriverRoutes] = useState<DriverRoute[]>([]);
+  const [selectedDriverId, setSelectedDriverId] = useState<number | null>(null);
+
+  // New state for current view
+  const [routePath, setRoutePath] = useState<google.maps.LatLngLiteral[]>([]);
   const [routeDirections, setRouteDirections] = useState<RouteStep[]>([]);
   const [totalRouteDistance, setTotalRouteDistance] = useState<string>("");
   const [totalRouteDuration, setTotalRouteDuration] = useState<string>("");
+
+  const exposedProcessDriverRoutes = async (
+    optimizedMarkers: MarkerLocation[]
+  ) => {
+    await processDriverRoutes(optimizedMarkers);
+  };
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey:
@@ -100,8 +147,37 @@ export default function RoutePlanner() {
 
   const router = useRouter();
 
+  // Maximum number of drivers based on number of markers
+  const maxDrivers = Math.min(10, Math.max(1, markers.length - 1));
+
+  // Effect to handle driver count changes
+  useEffect(() => {
+    // Ensure we don't have more drivers than possible
+    if (numDrivers > maxDrivers) {
+      setNumDrivers(maxDrivers);
+    }
+  }, [markers.length, maxDrivers]);
+
+  // Effect to select first driver when routes are calculated
+  useEffect(() => {
+    if (driverRoutes.length > 0 && selectedDriverId === null) {
+      setSelectedDriverId(driverRoutes[0].driverId);
+
+      // Set the view to the first driver's route
+      updateRouteView(driverRoutes[0]);
+    }
+  }, [driverRoutes]);
+
+  // Update the displayed route based on selected driver
+  const updateRouteView = (driverRoute: DriverRoute) => {
+    setRoutePath(driverRoute.routePath);
+    setRouteDirections(driverRoute.directions);
+    setTotalRouteDistance(driverRoute.totalDistance);
+    setTotalRouteDuration(driverRoute.totalDuration);
+  };
+
   const handleLogout = async () => {
-	  await signOut({ callbackUrl: "/"});
+    await signOut({ callbackUrl: "/" });
   };
 
   const saveToHistory = useCallback(() => {
@@ -117,6 +193,8 @@ export default function RoutePlanner() {
       setRouteDirections([]);
       setTotalRouteDistance("");
       setTotalRouteDuration("");
+      setDriverRoutes([]);
+      setSelectedDriverId(null);
     }
   };
 
@@ -161,6 +239,8 @@ export default function RoutePlanner() {
         setRouteDirections([]);
         setTotalRouteDistance("");
         setTotalRouteDuration("");
+        setDriverRoutes([]);
+        setSelectedDriverId(null);
         toast.success("Location added successfully");
       }
     } else {
@@ -175,6 +255,8 @@ export default function RoutePlanner() {
     setRouteDirections([]);
     setTotalRouteDistance("");
     setTotalRouteDuration("");
+    setDriverRoutes([]);
+    setSelectedDriverId(null);
     toast.success("Location removed");
   };
 
@@ -197,14 +279,28 @@ export default function RoutePlanner() {
     setRouteDirections([]);
     setTotalRouteDistance("");
     setTotalRouteDuration("");
+    setDriverRoutes([]);
+    setSelectedDriverId(null);
   };
 
   const handleDragEnd = () => {
     setDraggedItemIndex(null);
   };
 
-  const getDetailedDirections = async (markers: MarkerLocation[]) => {
-    if (!isLoaded || markers.length < 2) return [];
+  const getDetailedDirections = async (
+    markers: MarkerLocation[]
+  ): Promise<{
+    directions: RouteStep[];
+    totalDistance: string;
+    totalDuration: string;
+  }> => {
+    if (!isLoaded || markers.length < 2) {
+      return {
+        directions: [],
+        totalDistance: "0 km",
+        totalDuration: "0 min",
+      };
+    }
 
     const directionsService = new google.maps.DirectionsService();
     let completeDirections: RouteStep[] = [];
@@ -252,22 +348,31 @@ export default function RoutePlanner() {
       }
 
       // Convert total metrics to human-readable format
-      setTotalRouteDistance(`${totalDistance.toFixed(1)} km`);
+      const formattedDistance = `${totalDistance.toFixed(1)} km`;
       const hours = Math.floor(totalDuration / 3600);
       const minutes = Math.floor((totalDuration % 3600) / 60);
-      setTotalRouteDuration(
-        hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`
-      );
+      const formattedDuration =
+        hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`;
 
-      return completeDirections;
+      return {
+        directions: completeDirections,
+        totalDistance: formattedDistance,
+        totalDuration: formattedDuration,
+      };
     } catch (error) {
       console.error("Error getting detailed directions:", error);
       toast.error("Failed to get route directions");
-      return [];
+      return {
+        directions: [],
+        totalDistance: "0 km",
+        totalDuration: "0 min",
+      };
     }
   };
 
-  const getRoutePathFromDirections = async (markers: MarkerLocation[]) => {
+  const getRoutePathFromDirections = async (
+    markers: MarkerLocation[]
+  ): Promise<google.maps.LatLngLiteral[]> => {
     if (!isLoaded || markers.length < 2) return [];
 
     const directionsService = new google.maps.DirectionsService();
@@ -320,6 +425,49 @@ export default function RoutePlanner() {
     }
   };
 
+  const processDriverRoutes = async (optimizedMarkers: MarkerLocation[]) => {
+    const driverRoutesMap = new Map<number, MarkerLocation[]>();
+
+    // Group markers by driver ID
+    optimizedMarkers.forEach((marker) => {
+      const driverId = marker.driverId || 0;
+      if (!driverRoutesMap.has(driverId)) {
+        driverRoutesMap.set(driverId, []);
+      }
+      driverRoutesMap.get(driverId)?.push(marker);
+    });
+
+    const routes: DriverRoute[] = [];
+
+    // Process each driver's route
+    for (const [driverId, driverMarkers] of driverRoutesMap.entries()) {
+      // Only process if driver has at least 2 markers (start and end)
+      if (driverMarkers.length >= 2) {
+        const routePath = await getRoutePathFromDirections(driverMarkers);
+        const { directions, totalDistance, totalDuration } =
+          await getDetailedDirections(driverMarkers);
+
+        routes.push({
+          driverId,
+          markers: driverMarkers,
+          routePath,
+          directions,
+          totalDistance,
+          totalDuration,
+          color: ROUTE_COLORS[driverId % ROUTE_COLORS.length],
+        });
+      }
+    }
+
+    setDriverRoutes(routes);
+
+    // If we have routes, select the first one
+    if (routes.length > 0) {
+      setSelectedDriverId(routes[0].driverId);
+      updateRouteView(routes[0]);
+    }
+  };
+
   const calculateRoute = async () => {
     if (markers.length < 2) {
       toast.error("Please add at least two locations");
@@ -338,6 +486,7 @@ export default function RoutePlanner() {
         body: JSON.stringify({
           markers,
           config,
+          numDrivers, // Send the number of drivers to the backend
         }),
       });
 
@@ -348,16 +497,16 @@ export default function RoutePlanner() {
       const data = await response.json();
 
       if (data.route) {
-        const optimizedMarkers = data.route;
+        // Add driver IDs to markers based on the response
+        const optimizedMarkers = data.route.map((marker: MarkerLocation) => ({
+          ...marker,
+          driverId: marker.driverId || 0,
+        }));
+
         setMarkers(optimizedMarkers);
 
-        // Get detailed route path using Directions API
-        const detailedPath = await getRoutePathFromDirections(optimizedMarkers);
-        setRoutePath(detailedPath);
-
-        // Get step-by-step directions
-        const directions = await getDetailedDirections(optimizedMarkers);
-        setRouteDirections(directions);
+        // Process each driver's route
+        await processDriverRoutes(optimizedMarkers);
 
         toast.success("Route optimized successfully!");
       } else {
@@ -382,10 +531,8 @@ export default function RoutePlanner() {
     const routeData = {
       markers,
       config,
-      routePath,
-      routeDirections,
-      totalRouteDistance,
-      totalRouteDuration,
+      driverRoutes,
+      numDrivers,
       timestamp: new Date().toISOString(),
     };
 
@@ -398,10 +545,8 @@ export default function RoutePlanner() {
       const routeData = {
         markers,
         config,
-        routePath,
-        routeDirections,
-        totalRouteDistance,
-        totalRouteDuration,
+        driverRoutes,
+        numDrivers,
       };
 
       await navigator.clipboard.writeText(JSON.stringify(routeData));
@@ -418,8 +563,30 @@ export default function RoutePlanner() {
     setRouteDirections([]);
     setTotalRouteDistance("");
     setTotalRouteDuration("");
+    setDriverRoutes([]);
+    setSelectedDriverId(null);
+    setNumDrivers(1);
     setShowClearDialog(false);
     toast.success("Route cleared");
+  };
+
+  const handleDriverSelect = (driverId: number) => {
+    setSelectedDriverId(driverId);
+
+    // Update the displayed route information
+    const driverRoute = driverRoutes.find(
+      (route) => route.driverId === driverId
+    );
+    if (driverRoute) {
+      updateRouteView(driverRoute);
+    }
+  };
+
+  const handleDriverCountChange = (value: string) => {
+    const count = parseInt(value, 10);
+    if (!isNaN(count) && count >= 1 && count <= maxDrivers) {
+      setNumDrivers(count);
+    }
   };
 
   if (!isLoaded) {
@@ -432,196 +599,302 @@ export default function RoutePlanner() {
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
-      <div className="w-full lg:w-[30%] flex flex-col gap-4 p-4 overflow-y-auto">
-        {/* Add Location Section */}
-        <div className="rounded-xl bg-muted/50 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-bold">Route Planner</h1>
-            <div className="flex gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={handleUndo}
-                      disabled={routeHistory.length === 0}
-                    >
-                      <Undo2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Undo last change</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={handleSaveRoute}
-                    >
-                      <Save className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Save route</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={handleShareRoute}
-                    >
-                      <Share2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Share route</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-  
-    	      {/* Logout Button */}
-	      <TooltipProvider>
-	      	<Tooltip>
-		  <TooltipTrigger asChild>
-		    <Button
-		      variant="outline"
-		      size="icon"
-		      onClick={handleLogout} //function for handling click
-		    >
-		      <LogOut className="h-4 w-4" />
-		    </Button>
-		  </TooltipTrigger>
-		<TooltipContent>Logout</TooltipContent>
-	      </Tooltip>
-	    </TooltipProvider>
-	   </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <AddressAutocomplete
-              value={newAddress}
-              onChange={(e) => setNewAddress(e.target.value)}
-              onAddressSelect={(address) => setNewAddress(address)}
-              isLoaded={isLoaded}
-            />
-            <Button
-              className="w-full"
-              onClick={handleAddAddress}
-              disabled={!newAddress.trim()}
-            >
-              Add Location
-            </Button>
-          </div>
-        </div>
-
-        {/* Destinations List */}
-        {markers.length > 0 && (
+      <div className="w-full lg:w-[30%] flex flex-col overflow-y-auto">
+        <div className="p-4 space-y-4">
+          {/* Add Location Section */}
           <div className="rounded-xl bg-muted/50 p-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-lg">Destinations</h2>
-              <span className="text-sm text-muted-foreground">
-                {markers.length} location{markers.length !== 1 ? "s" : ""}
-              </span>
+              <h1 className="text-xl font-bold">Route Planner</h1>
+              <div className="flex gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleUndo}
+                        disabled={routeHistory.length === 0}
+                      >
+                        <Undo2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Undo last change</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleSaveRoute}
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Save route</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleShareRoute}
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Share route</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                {/* Logout Button */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Logout</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              {markers.map((marker, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
-                  draggable
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={() => handleDragOver(index)}
-                  onDragEnd={handleDragEnd}
+            <div className="flex flex-col gap-2">
+              <AddressAutocomplete
+                value={newAddress}
+                onChange={(e) => setNewAddress(e.target.value)}
+                onAddressSelect={(address) => setNewAddress(address)}
+                isLoaded={isLoaded}
+              />
+              <Button
+                className="w-full"
+                onClick={handleAddAddress}
+                disabled={!newAddress.trim()}
+              >
+                Add Location
+              </Button>
+            </div>
+          </div>
+
+          {/* Driver Count Selection */}
+          {/* Replace the Driver Count Selection section with this */}
+          {markers.length >= 2 && (
+            <div className="rounded-xl bg-muted/50 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="font-bold text-lg">Driver Assignment</h2>
+                <span className="text-sm text-muted-foreground">
+                  {numDrivers} driver{numDrivers !== 1 ? "s" : ""}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-center space-x-4">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    handleDriverCountChange((numDrivers - 1).toString())
+                  }
+                  disabled={numDrivers <= 1}
                 >
-                  <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {marker.address}
-                    </p>
-                    {marker.note && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        {marker.note}
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveAddress(index)}
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="text-lg font-semibold">{numDrivers}</span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    handleDriverCountChange((numDrivers + 1).toString())
+                  }
+                  disabled={numDrivers >= maxDrivers}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="text-sm text-muted-foreground text-center mt-2">
+                {maxDrivers < 10
+                  ? `Limited to ${maxDrivers} driver${
+                      maxDrivers !== 1 ? "s" : ""
+                    } based on number of stops`
+                  : "Maximum 10 drivers allowed"}
+              </div>
+            </div>
+          )}
+
+          {/* Destinations List */}
+          {markers.length > 0 && (
+            <div className="rounded-xl bg-muted/50 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-lg">Destinations</h2>
+                <span className="text-sm text-muted-foreground">
+                  {markers.length} location{markers.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {markers.map((marker, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={() => handleDragOver(index)}
+                    onDragEnd={handleDragEnd}
                   >
-                    <Trash className="h-4 w-4 text-red-500" />
+                    <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {marker.address}
+                      </p>
+                      {marker.driverId !== undefined &&
+                        driverRoutes.length > 0 && (
+                          <p
+                            className="text-xs font-medium"
+                            style={{
+                              color:
+                                ROUTE_COLORS[
+                                  marker.driverId % ROUTE_COLORS.length
+                                ],
+                            }}
+                          >
+                            Driver {marker.driverId + 1}
+                          </p>
+                        )}
+                      {marker.note && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {marker.note}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveAddress(index)}
+                    >
+                      <Trash className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-between items-center mt-4">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowClearDialog(true)}
+                  >
+                    Clear All
                   </Button>
+                  <TestRouteButton
+                    setMarkers={setMarkers}
+                    saveToHistory={saveToHistory}
+                    processDriverRoutes={exposedProcessDriverRoutes}
+                  />
+                </div>
+                <Button
+                  onClick={calculateRoute}
+                  disabled={isCalculating || markers.length < 2}
+                >
+                  {isCalculating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Calculating...
+                    </>
+                  ) : (
+                    <>
+                      <Bolt className="mr-2 h-4 w-4" />
+                      Optimize Route
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Directions Panel */}
+          {selectedDriverId !== null && routeDirections.length > 0 && (
+            <div className="rounded-xl bg-muted/50 p-4">
+              <div className="mb-4">
+                <h2
+                  className="text-lg font-semibold"
+                  style={{
+                    color: ROUTE_COLORS[selectedDriverId % ROUTE_COLORS.length],
+                  }}
+                >
+                  Driver {selectedDriverId + 1} Route
+                </h2>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Total Distance: {totalRouteDistance}</span>
+                  <span>Total Duration: {totalRouteDuration}</span>
+                </div>
+              </div>
+
+              {routeDirections.map((step, index) => (
+                <div key={index} className="mb-2 pb-2 border-b">
+                  <div
+                    className="text-sm font-medium"
+                    dangerouslySetInnerHTML={{ __html: step.instruction }}
+                  />
+                  <div className="text-xs text-muted-foreground">
+                    Distance: {step.distance} | Duration: {step.duration}
+                  </div>
                 </div>
               ))}
             </div>
-
-            <div className="flex justify-between items-center mt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowClearDialog(true)}
-              >
-                Clear All
-              </Button>
-              <Button
-                onClick={calculateRoute}
-                disabled={isCalculating || markers.length < 2}
-              >
-                {isCalculating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Calculating...
-                  </>
-                ) : (
-                  <>
-                    <Bolt className="mr-2 h-4 w-4" />
-                    Optimize Route
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Directions Panel */}
-        {routeDirections.length > 0 && (
-          <div className="rounded-xl bg-muted/50 p-4 overflow-y-auto max-h-[500px]">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold">Route Directions</h2>
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Total Distance: {totalRouteDistance}</span>
-                <span>Total Duration: {totalRouteDuration}</span>
-              </div>
-            </div>
-
-            {routeDirections.map((step, index) => (
-              <div key={index} className="mb-2 pb-2 border-b">
-                <div
-                  className="text-sm font-medium"
-                  dangerouslySetInnerHTML={{ __html: step.instruction }}
-                />
-                <div className="text-xs text-muted-foreground">
-                  Distance: {step.distance} | Duration: {step.duration}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Map Section */}
-      <div className="w-full lg:w-[70%] relative">
-        <MapComponent
-          markers={markers}
-          isLoaded={isLoaded}
-          routePath={routePath}
-        />
+      <div className="w-full lg:w-[70%] flex flex-col relative">
+        <div className="flex-grow relative">
+          <MapComponent
+            markers={markers}
+            isLoaded={isLoaded}
+            routePath={routePath}
+            driverRoutes={driverRoutes}
+            selectedDriverId={selectedDriverId}
+          />
+        </div>
+
+        {/* Driver Selection Tabs */}
+        {driverRoutes.length > 0 && (
+          <div className="absolute bottom-16 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
+            {driverRoutes.map((route) => (
+              <Button
+                key={route.driverId}
+                variant={
+                  selectedDriverId === route.driverId ? "default" : "outline"
+                }
+                size="sm"
+                onClick={() => handleDriverSelect(route.driverId)}
+                style={{
+                  backgroundColor:
+                    selectedDriverId === route.driverId
+                      ? route.color
+                      : undefined,
+                  borderColor: route.color,
+                  color:
+                    selectedDriverId === route.driverId ? "white" : route.color,
+                }}
+              >
+                Driver {route.driverId + 1}
+              </Button>
+            ))}
+          </div>
+        )}
 
         {/* Clear Route Dialog */}
         <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>

@@ -10,6 +10,25 @@ interface MarkerLocation {
   note?: string;
   arrivalTime?: string;
   departureTime?: string;
+  driverId?: number; // Add driver ID to associate markers with drivers
+}
+
+// Driver routes interface
+interface DriverRoute {
+  driverId: number;
+  markers: MarkerLocation[];
+  routePath: google.maps.LatLngLiteral[];
+  directions: RouteStep[];
+  totalDistance: string;
+  totalDuration: string;
+  color: string; // Color for the route on the map
+}
+
+// Route step interface
+interface RouteStep {
+  instruction: string;
+  distance: string;
+  duration: string;
 }
 
 interface MapComponentProps {
@@ -18,6 +37,8 @@ interface MapComponentProps {
   routePath?: google.maps.LatLngLiteral[];
   selectedMarkerIndex?: number | null;
   onMarkerClick?: (index: number) => void;
+  driverRoutes?: DriverRoute[];
+  selectedDriverId?: number | null;
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
@@ -26,12 +47,14 @@ const MapComponent: React.FC<MapComponentProps> = ({
   routePath = [],
   selectedMarkerIndex,
   onMarkerClick,
+  driverRoutes = [],
+  selectedDriverId = null,
 }) => {
   const [map, setMap] = useState<google.maps.Map | null>(null);
 
   const mapContainerStyle = {
-    width: "100%",
-    height: "100%",
+    width: "95%",
+    height: "90%",
   };
 
   // Center the map based on markers, or default to a central location
@@ -73,6 +96,35 @@ const MapComponent: React.FC<MapComponentProps> = ({
     }
   }, [map, routePath]);
 
+  // Get marker color based on driver ID
+  const getMarkerColor = (driverId: number | undefined) => {
+    if (driverId === undefined) return "#FF0000"; // Default red for unassigned
+
+    // Find the driver route to get the color
+    const driverRoute = driverRoutes.find(
+      (route) => route.driverId === driverId
+    );
+    return driverRoute?.color || "#FF0000";
+  };
+
+  // Get marker label based on index and driver ID
+  const getMarkerLabel = (index: number, driverId: number | undefined) => {
+    // If we have driver routes, prefix the label with the driver number
+    if (driverRoutes.length > 0 && driverId !== undefined) {
+      return {
+        text: `${driverId + 1}:${index + 1}`,
+        color: "white",
+        fontWeight: "bold",
+      };
+    }
+
+    // Otherwise, just use the index
+    return {
+      text: (index + 1).toString(),
+      color: selectedMarkerIndex === index ? "white" : "black",
+    };
+  };
+
   if (!isLoaded) return <div>Loading...</div>;
 
   return (
@@ -96,27 +148,48 @@ const MapComponent: React.FC<MapComponentProps> = ({
           position={{ lat: marker.latitude, lng: marker.longitude }}
           title={marker.address}
           onClick={() => onMarkerClick && onMarkerClick(index)}
-          label={{
-            text: (index + 1).toString(),
-            color: selectedMarkerIndex === index ? "white" : "black",
-          }}
+          label={getMarkerLabel(index, marker.driverId)}
           animation={google.maps.Animation.DROP}
           zIndex={selectedMarkerIndex === index ? 1000 : index}
+          icon={{
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: getMarkerColor(marker.driverId),
+            fillOpacity: 1,
+            strokeWeight: 2,
+            strokeColor: "#FFFFFF",
+            scale: 8,
+          }}
         />
       ))}
 
-      {/* Only draw route polyline if routePath exists and has points */}
-      {routePath && routePath.length > 1 && (
-        <Polyline
-          path={routePath}
-          options={{
-            strokeColor: "#4285F4",
-            strokeOpacity: 0.8,
-            strokeWeight: 5,
-            geodesic: true,
-          }}
-        />
-      )}
+      {/* If there are driver routes, draw them all with different colors */}
+      {driverRoutes.length > 0
+        ? driverRoutes.map((route) => (
+            <Polyline
+              key={`route-${route.driverId}`}
+              path={route.routePath}
+              options={{
+                strokeColor: route.color,
+                strokeOpacity: selectedDriverId === route.driverId ? 1.0 : 0.5,
+                strokeWeight: selectedDriverId === route.driverId ? 6 : 4,
+                geodesic: true,
+                zIndex: selectedDriverId === route.driverId ? 100 : 1,
+              }}
+            />
+          ))
+        : // Fallback to single route if no driver routes are defined
+          routePath &&
+          routePath.length > 1 && (
+            <Polyline
+              path={routePath}
+              options={{
+                strokeColor: "#4285F4",
+                strokeOpacity: 0.8,
+                strokeWeight: 5,
+                geodesic: true,
+              }}
+            />
+          )}
     </GoogleMap>
   );
 };
