@@ -20,11 +20,15 @@ interface RouteConfiguration {
     avoidFerries: boolean;
     avoidTunnels: boolean;
     avoidUTurns: boolean;
+    numberDrivers: number;
+    returnToStart: boolean;
 }
 
 interface RequestBody {
     markers: MarkerLocation[];
     config: RouteConfiguration;
+    numberDrivers: number;
+    returnToStart: boolean;
 }
 
 interface GeoJsonGeometry {
@@ -95,10 +99,17 @@ export async function POST(req: NextRequest) {
             exclusive: true
         });
 
+        // Include the new parameters in the message
+        const message = {
+            features: features,
+            numberDrivers: body.numberDrivers || 1, // Default to 1 if not provided
+            returnToStart: body.returnToStart || false // Default to false if not provided
+        };
+
         // Send message to queue
         channel.sendToQueue(
             QUEUE_NAME, 
-            Buffer.from(JSON.stringify(features)),
+            Buffer.from(JSON.stringify(message)),
             {
                 correlationId,
                 replyTo,
