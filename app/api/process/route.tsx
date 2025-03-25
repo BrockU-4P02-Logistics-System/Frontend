@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
         // Send message to queue
         channel.sendToQueue(
             QUEUE_NAME, 
-            Buffer.from(JSON.stringify(message)),
+            Buffer.from(JSON.stringify(features)),
             {
                 correlationId,
                 replyTo,
