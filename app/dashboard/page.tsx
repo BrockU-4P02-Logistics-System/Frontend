@@ -117,7 +117,17 @@ export default function RoutePlanner() {
   });
 
   const router = useRouter();
-
+  
+  /*
+  sessionStorage.setItem('savedLoadedRoute', '');
+    sessionStorage.setItem('savedConfig', '');
+    sessionStorage.setItem('savedMarkers', '');
+    sessionStorage.setItem('savedRoutePath', '');
+    sessionStorage.setItem('savedRouteDirections', '');
+    sessionStorage.setItem('savedRouteDistance', '');
+    sessionStorage.setItem('savedRouteDuration', '');
+    sessionStorage.setItem('savedTimestamp', '');
+*/
   const loadRoute = async () => {
 	  
     const savedRoute: any = sessionStorage.getItem('savedLoadedRoute');
@@ -538,12 +548,13 @@ export default function RoutePlanner() {
 
        loadCredits();
 
-       if (search === 'true'){
+       if (search === "true"){
 
         loadRoute();
 
        }
-        
+
+
   }, 0);
 
   }
@@ -601,7 +612,7 @@ export default function RoutePlanner() {
                         <TooltipContent>Save Route</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    
+                   
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
