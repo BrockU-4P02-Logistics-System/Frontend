@@ -79,7 +79,9 @@ export async function POST(req: NextRequest) {
                 note: marker.note,
                 arrivalTime: marker.arrivalTime,
                 departureTime: marker.departureTime
-            }
+            },
+            numberDrivers: body.numberDrivers || 1, // Default to 1 if not provided
+            returnToStart: body.returnToStart || false // Default to false if not provided
         }));
 
         // Connect to RabbitMQ
