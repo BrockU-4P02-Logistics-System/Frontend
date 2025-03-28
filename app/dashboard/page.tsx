@@ -104,6 +104,7 @@ export default function RoutePlanner() {
   const [error, setError] = React.useState<string>();
   const [isLoading, setIsLoading] = React.useState(false);
   const search = useSearchParams().get('load');
+  const [mapsUrls, setMapURLs] = React.useState<string[]>([]);
 
   const [formData, setFormData] = React.useState({
       name: '',
@@ -410,7 +411,6 @@ export default function RoutePlanner() {
       }
 
       const data = await response.json();
-      console.log(data);
 
       if (data.route) {
         const optimizedMarkers = data.route;
@@ -424,6 +424,9 @@ export default function RoutePlanner() {
         const directions = await getDetailedDirections(optimizedMarkers);
         setRouteDirections(directions);
 
+        const urls = generateGoogleMapsRouteUrls(optimizedMarkers);
+        setMapURLs(urls);
+
         toast.success("Route optimized successfully!");
       } else {
         toast.error("Invalid route data received");
@@ -435,6 +438,24 @@ export default function RoutePlanner() {
       setIsCalculating(false);
     }
   };
+
+  function generateGoogleMapsRouteUrls(markers: any) {
+    if (!Array.isArray(markers) || markers.length === 0) {
+        throw new Error("Invalid markers array");
+    }
+    
+    const baseUrl = "https://www.google.com/maps/dir/";
+    const urls = [];
+    
+    for (let i = 0; i < markers.length; i += 10) {
+        const chunk = markers.slice(i, i + 10);
+        const waypoints = chunk.map(marker => encodeURIComponent(marker.address)).join("/");
+        urls.push(`${baseUrl}${waypoints}?dirflg=d`);
+    }
+    
+    return urls;
+}
+
 
   const handleConfigChange = <K extends keyof RouteConfiguration>(
     key: K,
@@ -455,7 +476,7 @@ export default function RoutePlanner() {
     };
 
     const num = await num_routes(log);
-    
+    console.log(num);
     if (credit <= 0){
 
       toast.error("Not enough credits!");
@@ -474,11 +495,11 @@ export default function RoutePlanner() {
 
       toast.error("Too many routes already saved.");
 
-    } else if (sessionStorage.getItem('savedRoute') !== null) {
+    } /*else if (sessionStorage.getItem('savedRoute') !== null) {
 
       toast.error("Already saved route.");
 
-    } else {
+    }*/ else {
 
       sessionStorage.setItem('savedRoute', JSON.stringify(routeData));
       save_route(log, sessionStorage.getItem('savedRoute'), formData.name);
@@ -752,6 +773,16 @@ export default function RoutePlanner() {
           routePath={routePath}
         />
 
+      <div>
+            <h1>Google Maps Routes</h1>
+            <div id="urlContainer">
+              {mapsUrls.map((url, index) => (
+                <p key={index} style={{ marginBottom: '10px' }}>
+                  <a href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}  >{url}</a>
+                </p>
+              ))}
+            </div>
+          </div>
         {/* Clear Route Dialog */}
         <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
           <AlertDialogContent>
