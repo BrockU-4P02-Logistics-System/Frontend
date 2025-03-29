@@ -411,6 +411,7 @@ export default function RoutePlanner() {
       }
 
       const data = await response.json();
+      //console.log(data);
 
       if (data.route) {
         const optimizedMarkers = data.route;

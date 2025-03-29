@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
                 arrivalTime: marker.arrivalTime,
                 departureTime: marker.departureTime
             },
-            numberDrivers: body.numberDrivers || 1, // Default to 1 if not provided
+            numberDrivers: body.numberDrivers || 2, // Default to 1 if not provided
             returnToStart: body.returnToStart || false // Default to false if not provided
         }));
 
