@@ -16,6 +16,7 @@ import {
   LogOut,
   Plus,
   Minus,
+  Settings,
 } from "lucide-react";
 import { toast } from "sonner";
 import MapComponent from "@/components/map/google";
@@ -45,6 +46,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface MarkerLocation {
   address: string;
@@ -62,10 +72,12 @@ interface RouteConfiguration {
   length: number;
   height: number;
   avoidHighways: boolean;
+  avoidTolls: boolean;
   avoidUnpaved: boolean;
   avoidFerries: boolean;
   avoidTunnels: boolean;
   avoidUTurns: boolean;
+  returnToStart: boolean;
 }
 
 // New interface for step details
@@ -92,10 +104,12 @@ const DEFAULT_CONFIG: RouteConfiguration = {
   length: 240,
   height: 96,
   avoidHighways: false,
+  avoidTolls: false,
   avoidUnpaved: true,
-  avoidFerries: true,
+  avoidFerries: false,
   avoidTunnels: false,
   avoidUTurns: true,
+  returnToStart: false,
 };
 
 // Generate a color palette for driver routes
@@ -120,6 +134,7 @@ export default function RoutePlanner() {
   const [routeHistory, setRouteHistory] = useState<MarkerLocation[][]>([]);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+  const [showRouteOptions, setShowRouteOptions] = useState(false);
 
   // Multi-driver state
   const [numDrivers, setNumDrivers] = useState<number>(1);
@@ -322,6 +337,7 @@ export default function RoutePlanner() {
           travelMode: google.maps.TravelMode.DRIVING,
           avoidHighways: config.avoidHighways,
           avoidFerries: config.avoidFerries,
+          avoidTolls: config.avoidTolls,
         });
 
         if (result.routes && result.routes.length > 0) {
@@ -393,6 +409,7 @@ export default function RoutePlanner() {
           travelMode: google.maps.TravelMode.DRIVING,
           avoidHighways: config.avoidHighways,
           avoidFerries: config.avoidFerries,
+          avoidTolls: config.avoidTolls,
         });
 
         // Check if we got a valid result
@@ -443,13 +460,19 @@ export default function RoutePlanner() {
     for (const [driverId, driverMarkers] of driverRoutesMap.entries()) {
       // Only process if driver has at least 2 markers (start and end)
       if (driverMarkers.length >= 2) {
-        const routePath = await getRoutePathFromDirections(driverMarkers);
+        // Handle "return home" option by adding the first stop as the last stop if needed
+        let routeMarkers = [...driverMarkers];
+        if (config.returnToStart && driverMarkers.length > 2) {
+          routeMarkers.push(driverMarkers[0]);
+        }
+
+        const routePath = await getRoutePathFromDirections(routeMarkers);
         const { directions, totalDistance, totalDuration } =
-          await getDetailedDirections(driverMarkers);
+          await getDetailedDirections(routeMarkers);
 
         routes.push({
           driverId,
-          markers: driverMarkers,
+          markers: routeMarkers,
           routePath,
           directions,
           totalDistance,
@@ -570,6 +593,15 @@ export default function RoutePlanner() {
     toast.success("Route cleared");
   };
 
+  const handleRouteOptionsApply = () => {
+    if (driverRoutes.length > 0) {
+      // If we already have routes, recalculate them with the new options
+      processDriverRoutes(markers);
+      toast.success("Route options updated");
+    }
+    setShowRouteOptions(false);
+  };
+
   const handleDriverSelect = (driverId: number) => {
     setSelectedDriverId(driverId);
 
@@ -688,7 +720,6 @@ export default function RoutePlanner() {
           </div>
 
           {/* Driver Count Selection */}
-          {/* Replace the Driver Count Selection section with this */}
           {markers.length >= 2 && (
             <div className="rounded-xl bg-muted/50 p-4">
               <div className="flex items-center justify-between mb-2">
@@ -729,6 +760,20 @@ export default function RoutePlanner() {
                     } based on number of stops`
                   : "Maximum 10 drivers allowed"}
               </div>
+            </div>
+          )}
+
+          {/* Route Options Button */}
+          {markers.length >= 2 && (
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setShowRouteOptions(true)}
+                className="w-full"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Route Options
+              </Button>
             </div>
           )}
 
@@ -919,6 +964,74 @@ export default function RoutePlanner() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Route Options Dialog */}
+        <Dialog open={showRouteOptions} onOpenChange={setShowRouteOptions}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Route Options</DialogTitle>
+              <DialogDescription>
+                Configure options for route calculation
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4 py-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="avoidHighways"
+                  checked={config.avoidHighways}
+                  onCheckedChange={(checked) =>
+                    handleConfigChange("avoidHighways", checked === true)
+                  }
+                />
+                <Label htmlFor="avoidHighways">Avoid highways</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="avoidTolls"
+                  checked={config.avoidTolls}
+                  onCheckedChange={(checked) =>
+                    handleConfigChange("avoidTolls", checked === true)
+                  }
+                />
+                <Label htmlFor="avoidTolls">Avoid tolls</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="avoidFerries"
+                  checked={config.avoidFerries}
+                  onCheckedChange={(checked) =>
+                    handleConfigChange("avoidFerries", checked === true)
+                  }
+                />
+                <Label htmlFor="avoidFerries">Avoid ferries</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="returnToStart"
+                  checked={config.returnToStart}
+                  onCheckedChange={(checked) =>
+                    handleConfigChange("returnToStart", checked === true)
+                  }
+                />
+                <Label htmlFor="returnToStart">Return home</Label>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowRouteOptions(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleRouteOptionsApply}>Apply</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
