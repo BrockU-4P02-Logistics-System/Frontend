@@ -22,11 +22,14 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { useSession } from "next-auth/react"
+import { useState } from "react"
+import { check_credits } from "@/actions/register"
 
 const data = {
   user: {
-    name: "Cameron Carvalho",
-    email: "cam@brocku.ca",
+    name: "",
+    email: "",
     avatar: "/avatars/shadcn.jpg",
   },
   teams: [
@@ -119,16 +122,48 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+
+  const { data: session, status } = useSession();
+  const log: any = session?.user?.email;
+  const [credit, setCredits] = useState(0);
+
+  data.user.email = log;
+
+  const loadCredits = async() => {
+  
+      const credits = await check_credits(log);
+      setCredits(credits ?? 0);
+     // console.log(credits);
+     
+    }
+
+    if (credit <= 0){
+
+      setTimeout(() => {
+  
+         loadCredits();
+  
+        
+  
+  
+    }, 0);
+  
+    }
+
+  
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
+      Credits: {credit}
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
+        
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
