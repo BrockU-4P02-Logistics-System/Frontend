@@ -401,8 +401,9 @@ export default function RoutePlanner() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          markers,
-          config,
+          features: markers,
+          numberDrivers: 1,
+          returnToStart: false
         }),
       });
 
@@ -414,27 +415,43 @@ export default function RoutePlanner() {
       console.log(data);
 
       if (data.route) {
-        const optimizedMarkers = data.route;
-        setMarkers(optimizedMarkers);
+        // Use the first driver's route if we get multiple drivers
+        setMarkers(data.route);
+        console.log("Optimized route:", data.route);
 
         // Get detailed route path using Directions API
-        const detailedPath = await getRoutePathFromDirections(optimizedMarkers);
+        const detailedPath = await getRoutePathFromDirections(data.route);
         setRoutePath(detailedPath);
 
         // Get step-by-step directions
-        const directions = await getDetailedDirections(optimizedMarkers);
+        const directions = await getDetailedDirections(data.route);
         setRouteDirections(directions);
 
         const urls = generateGoogleMapsRouteUrls(optimizedMarkers);
         setMapURLs(urls);
 
         toast.success("Route optimized successfully!");
+      } else if (data.routes && data.routes.length > 0) {
+        // If we have driver-specific routes, use the first one
+        const firstDriverRoute = data.routes[0].stops;
+        setMarkers(firstDriverRoute);
+        console.log("Using first driver route:", firstDriverRoute);
+
+        // Get detailed route path using Directions API
+        const detailedPath = await getRoutePathFromDirections(firstDriverRoute);
+        setRoutePath(detailedPath);
+
+        // Get step-by-step directions
+        const directions = await getDetailedDirections(firstDriverRoute);
+        setRouteDirections(directions);
+
+        toast.success(`Route optimized successfully! (${data.totalDrivers} drivers)`);
       } else {
         toast.error("Invalid route data received");
       }
     } catch (error) {
       console.error("Error calculating route:", error);
-      toast.error("Failed to calculate route");
+      toast.error("Failed to calculate route: " + (error instanceof Error ? error.message : "Unknown error"));
     } finally {
       setIsCalculating(false);
     }
