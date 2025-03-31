@@ -87,9 +87,7 @@ export async function POST(req: NextRequest) {
                 note: marker.note,
                 arrivalTime: marker.arrivalTime,
                 departureTime: marker.departureTime
-            },
-            numberDrivers: body.numberDrivers || 2, // Default to 1 if not provided
-            returnToStart: body.returnToStart || false // Default to false if not provided
+            }
         }));
 
         // Connect to RabbitMQ
@@ -135,7 +133,7 @@ export async function POST(req: NextRequest) {
             }
         );
 
-        const response = await new Promise((resolve, reject) => {
+        const response: any = await new Promise((resolve, reject) => {
             let timeout: NodeJS.Timeout;
 
             const cleanup = () => {
@@ -190,7 +188,7 @@ export async function POST(req: NextRequest) {
         let driverRoutes: DriverRoute[] = [];
 
         // Handle different response formats
-        if (response.route && Array.isArray(response.route)) {
+        if (response?.route && Array.isArray(response.route)) {
             // Format: { route: [ [features], [features] ] }
             const routesArray = response.route;
 
@@ -198,7 +196,7 @@ export async function POST(req: NextRequest) {
                 const driverFeatures = routesArray[i];
                 console.log("Route locations:", driverFeatures);
 
-                const driverStops = driverFeatures.map(feature => {
+                const driverStops = driverFeatures.map((feature: { geometry: { coordinates: [any, any]; }; properties: { address: any; driverId: any; order: any; }; }) => {
                     const [lon, lat] = feature.geometry.coordinates;
                     const key = `${lon},${lat}`;
                     const originalMarker = addressMap.get(key);
@@ -228,7 +226,7 @@ export async function POST(req: NextRequest) {
                 const driverFeatures = routesArray[i];
                 console.log("Route locations:", driverFeatures);
 
-                const driverStops = driverFeatures.map(feature => {
+                const driverStops = driverFeatures.map((feature: { geometry: { coordinates: [any, any]; }; properties: { address: any; driverId: any; order: any; }; }) => {
                     const [lon, lat] = feature.geometry.coordinates;
                     const key = `${lon},${lat}`;
                     const originalMarker = addressMap.get(key);
