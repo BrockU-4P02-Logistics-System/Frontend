@@ -329,18 +329,18 @@ export default function RoutePlanner() {
     setIsCalculating(true);
     saveToHistory();
 
-    try {
-      const response = await fetch("/api/process", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          markers,
-          config,
-        }),
-      });
-
+    const response = await fetch("/api/process", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        markers,
+        config,
+        numberDrivers: 2, 
+        returnToStart: false
+      }),
+    });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
