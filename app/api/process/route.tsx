@@ -25,7 +25,7 @@ interface RouteConfiguration {
 }
 
 interface RequestBody {
-    markers: MarkerLocation[];
+    features: MarkerLocation[];
     config: RouteConfiguration;
     numberDrivers: number;
     returnToStart: boolean;
@@ -65,15 +65,17 @@ export async function POST(req: NextRequest) {
         const body: RequestBody = await req.json();
         
         // Validate input
-        if (!Array.isArray(body.markers)) {
+        if (!Array.isArray(body.features)) {
             return NextResponse.json(
-                { error: 'Invalid request body: markers array is required' },
+                { error: 'Invalid request body: features array is required' },
                 { status: 400 }
             );
         }
 
+        console.log("Converting features")
+
         // Convert markers to GeoJSON features
-        const features = body.markers.map((marker, index) => ({
+        const features = body.features.map((marker, index) => ({
             type: "Feature",
             geometry: {
                 type: "Point",
@@ -89,8 +91,10 @@ export async function POST(req: NextRequest) {
         }));
 
         // Connect to RabbitMQ
+        console.log("Connecting to RabbitMQ");
         const connection = await amqp.connect(RABBITMQ_URL);
         const channel = await connection.createChannel();
+        console.log("Connected to RabbitMQ");
 
         // Ensure queue exists
         await channel.assertQueue(QUEUE_NAME, {
@@ -114,7 +118,6 @@ export async function POST(req: NextRequest) {
             numberDrivers: numberDrivers,
             returnToStart: body.returnToStart || false
         };
-
         // Send message to queue
         channel.sendToQueue(
             QUEUE_NAME, 
@@ -155,26 +158,26 @@ export async function POST(req: NextRequest) {
 
         // Create lookup map for original addresses
         const addressMap = new Map<string, MarkerLocation>();
-        body.markers.forEach(marker => {
+        body.features.forEach(marker => {
             const key = `${marker.longitude},${marker.latitude}`;
             addressMap.set(key, marker);
         });
 
-        console.log("Response received:", response);
         
         // Process the response for multiple drivers
         const driverRoutes: DriverRoute[] = [];
         
         // Handle both array of arrays (multiple drivers) and single array (one driver) formats
         const routesArray = Array.isArray(response[0]) ? response : [response];
-        
         for (let i = 0; i < routesArray.length; i++) {
-            const driverFeatures = routesArray[i];
+            const driverFeatures = routesArray[i]; // Already an array
+            console.log("Route locations:", driverFeatures);
+
             const driverStops = driverFeatures.map(feature => {
                 const [lon, lat] = feature.geometry.coordinates;
                 const key = `${lon},${lat}`;
                 const originalMarker = addressMap.get(key);
-                
+
                 return {
                     address: originalMarker?.address ?? 'Unknown',
                     latitude: lat,
@@ -182,16 +185,18 @@ export async function POST(req: NextRequest) {
                     note: originalMarker?.note,
                     arrivalTime: originalMarker?.arrivalTime,
                     departureTime: originalMarker?.departureTime,
-                    driverId: feature.properties.driverId ?? i, // Use the driverId from properties if available
+                    driverId: feature.properties.driverId ?? i,
                     order: feature.properties.order
                 };
             });
-            
+
             driverRoutes.push({
                 driverId: i,
                 stops: driverStops
             });
         }
+
+
 
         return NextResponse.json({ 
             routes: driverRoutes,

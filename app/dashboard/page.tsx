@@ -328,18 +328,18 @@ export default function RoutePlanner() {
 
     setIsCalculating(true);
     saveToHistory();
-
+  try{
     const response = await fetch("/api/process", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        markers,
-        config,
-        numberDrivers: 2, 
-        returnToStart: false
-      }),
+        features: markers,
+        numberDrivers : 2,
+        returnToStart : false
+      })
+      ,
     });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -350,6 +350,7 @@ export default function RoutePlanner() {
       if (data.route) {
         const optimizedMarkers = data.route;
         setMarkers(optimizedMarkers);
+        console.log(data.route)
 
         // Get detailed route path using Directions API
         const detailedPath = await getRoutePathFromDirections(optimizedMarkers);
@@ -363,7 +364,7 @@ export default function RoutePlanner() {
       } else {
         toast.error("Invalid route data received");
       }
-    } catch (error) {
+      }catch (error) {
       console.error("Error calculating route:", error);
       toast.error("Failed to calculate route");
     } finally {
