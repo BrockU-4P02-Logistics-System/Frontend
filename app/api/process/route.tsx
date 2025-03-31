@@ -39,6 +39,7 @@ interface GeoJsonGeometry {
 interface GeoJsonProperties {
     address?: string;
     order?: number;
+    driverId?: number;
     note?: string;
     arrivalTime?: string;
     departureTime?: string;
@@ -48,6 +49,11 @@ interface GeoJsonFeature {
     type: string;
     geometry: GeoJsonGeometry;
     properties: GeoJsonProperties;
+}
+
+interface DriverRoute {
+    driverId: number;
+    stops: MarkerLocation[];
 }
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
@@ -99,11 +105,14 @@ export async function POST(req: NextRequest) {
             exclusive: true
         });
 
-        // Include the new parameters in the message
+        // Ensure there's at least 1 driver
+        const numberDrivers = body.numberDrivers || 1;
+
+        // Include the parameters in the message
         const message = {
             features: features,
-            numberDrivers: body.numberDrivers || 1, // Default to 1 if not provided
-            returnToStart: body.returnToStart || false // Default to false if not provided
+            numberDrivers: numberDrivers,
+            returnToStart: body.returnToStart || false
         };
 
         // Send message to queue
@@ -118,7 +127,7 @@ export async function POST(req: NextRequest) {
         );
 
         // Wait for response with timeout
-        const response = await new Promise<GeoJsonFeature[]>((resolve, reject) => {
+        const response = await new Promise<GeoJsonFeature[][]>((resolve, reject) => {
             const timeout = setTimeout(() => {
                 cleanup();
                 reject(new Error('Processing timeout'));
@@ -134,7 +143,7 @@ export async function POST(req: NextRequest) {
                 if (!msg) return;
                 
                 if (msg.properties.correlationId === correlationId) {
-                    const content = JSON.parse(msg.content.toString()) as GeoJsonFeature[];
+                    const content = JSON.parse(msg.content.toString()) as GeoJsonFeature[][];
                     channel.ack(msg);
                     cleanup();
                     resolve(content);
@@ -151,23 +160,43 @@ export async function POST(req: NextRequest) {
             addressMap.set(key, marker);
         });
 
-        // Convert response back to MarkerLocation format
-        const optimizedRoute = response.map(feature => {
-            const [lon, lat] = feature.geometry.coordinates;
-            const key = `${lon},${lat}`;
-            const originalMarker = addressMap.get(key);
+        console.log("Response received:", response);
+        
+        // Process the response for multiple drivers
+        const driverRoutes: DriverRoute[] = [];
+        
+        // Handle both array of arrays (multiple drivers) and single array (one driver) formats
+        const routesArray = Array.isArray(response[0]) ? response : [response];
+        
+        for (let i = 0; i < routesArray.length; i++) {
+            const driverFeatures = routesArray[i];
+            const driverStops = driverFeatures.map(feature => {
+                const [lon, lat] = feature.geometry.coordinates;
+                const key = `${lon},${lat}`;
+                const originalMarker = addressMap.get(key);
+                
+                return {
+                    address: originalMarker?.address ?? 'Unknown',
+                    latitude: lat,
+                    longitude: lon,
+                    note: originalMarker?.note,
+                    arrivalTime: originalMarker?.arrivalTime,
+                    departureTime: originalMarker?.departureTime,
+                    driverId: feature.properties.driverId ?? i, // Use the driverId from properties if available
+                    order: feature.properties.order
+                };
+            });
             
-            return {
-                address: originalMarker?.address ?? 'Unknown',
-                latitude: lat,
-                longitude: lon,
-                note: originalMarker?.note,
-                arrivalTime: originalMarker?.arrivalTime,
-                departureTime: originalMarker?.departureTime
-            };
-        });
+            driverRoutes.push({
+                driverId: i,
+                stops: driverStops
+            });
+        }
 
-        return NextResponse.json({ route: optimizedRoute });
+        return NextResponse.json({ 
+            routes: driverRoutes,
+            totalDrivers: driverRoutes.length
+        });
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
