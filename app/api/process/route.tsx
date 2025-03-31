@@ -56,14 +56,14 @@ interface DriverRoute {
     stops: MarkerLocation[];
 }
 
-const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
+const RABBITMQ_URL = 'amqp://guest:guest@localhost:5672';
 const QUEUE_NAME = 'logistic-request';
 
 export async function POST(req: NextRequest) {
     console.log("Received request");
     try {
         const body: RequestBody = await req.json();
-        
+
         // Validate input
         if (!Array.isArray(body.features)) {
             return NextResponse.json(
@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
                 coordinates: [marker.longitude, marker.latitude]
             },
             properties: {
-                address: marker.address,
-                order: index,
+                address: marker.address+1,
+                order: index+1,
                 note: marker.note,
                 arrivalTime: marker.arrivalTime,
                 departureTime: marker.departureTime
@@ -104,10 +104,9 @@ export async function POST(req: NextRequest) {
         // Generate correlation ID
         const correlationId = Math.random().toString() + Date.now().toString();
 
-        // Create response queue
-        const { queue: replyTo } = await channel.assertQueue('', {
-            exclusive: true
-        });
+        // Create response queue and clear out any stale messages
+        const { queue: replyTo } = await channel.assertQueue('', { exclusive: true });
+        await channel.purgeQueue(replyTo);
 
         // Ensure there's at least 1 driver
         const numberDrivers = body.numberDrivers || 1;
@@ -118,9 +117,14 @@ export async function POST(req: NextRequest) {
             numberDrivers: numberDrivers,
             returnToStart: body.returnToStart || false
         };
+        console.log("Sending message to queue:", message.features[0].properties);
+        for (const feature of message.features) {
+            console.log("Address:", feature.properties.address);
+            console.log("Order:", feature.properties.order);
+        }
         // Send message to queue
         channel.sendToQueue(
-            QUEUE_NAME, 
+            QUEUE_NAME,
             Buffer.from(JSON.stringify(message)),
             {
                 correlationId,
@@ -129,12 +133,8 @@ export async function POST(req: NextRequest) {
             }
         );
 
-        // Wait for response with timeout
-        const response = await new Promise<GeoJsonFeature[][]>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                cleanup();
-                reject(new Error('Processing timeout'));
-            }, 30000);
+        const response = await new Promise((resolve, reject) => {
+            let timeout: NodeJS.Timeout;
 
             const cleanup = () => {
                 clearTimeout(timeout);
@@ -142,18 +142,39 @@ export async function POST(req: NextRequest) {
                 connection.close().catch(console.error);
             };
 
+            timeout = setTimeout(() => {
+                cleanup();
+                reject(new Error('Processing timeout'));
+            }, 30000);
+
             channel.consume(replyTo, (msg) => {
                 if (!msg) return;
-                
-                if (msg.properties.correlationId === correlationId) {
-                    const content = JSON.parse(msg.content.toString()) as GeoJsonFeature[][];
+
+                if (msg.properties.correlationId !== correlationId) {
+                    // For messages that don’t belong to this request,
+                    // simply acknowledge them to clear them out.
+                    channel.ack(msg);
+                    return;
+                }
+
+                try {
+                    const content = JSON.parse(msg.content.toString());
+                    console.log("Received response from backend:", content);
+                    if (content?.error) {
+                        throw new Error(`Backend error: ${content.error}`);
+                    }
                     channel.ack(msg);
                     cleanup();
                     resolve(content);
-                } else {
-                    channel.nack(msg);
+                } catch (err) {
+                    console.error("Error parsing backend response:", err);
+                    // Acknowledge even on error so the message isn’t requeued.
+                    channel.ack(msg);
+                    cleanup();
+                    reject(err);
                 }
             });
+
         });
 
         // Create lookup map for original addresses
@@ -163,44 +184,89 @@ export async function POST(req: NextRequest) {
             addressMap.set(key, marker);
         });
 
-        
-        // Process the response for multiple drivers
-        const driverRoutes: DriverRoute[] = [];
-        
-        // Handle both array of arrays (multiple drivers) and single array (one driver) formats
-        const routesArray = Array.isArray(response[0]) ? response : [response];
-        for (let i = 0; i < routesArray.length; i++) {
-            const driverFeatures = routesArray[i]; // Already an array
-            console.log("Route locations:", driverFeatures);
+        // Process the response
+        let driverRoutes: DriverRoute[] = [];
 
-            const driverStops = driverFeatures.map(feature => {
-                const [lon, lat] = feature.geometry.coordinates;
-                const key = `${lon},${lat}`;
-                const originalMarker = addressMap.get(key);
+        // Handle different response formats
+        if (response.route && Array.isArray(response.route)) {
+            // Format: { route: [ [features], [features] ] }
+            const routesArray = response.route;
 
-                return {
-                    address: originalMarker?.address ?? 'Unknown',
-                    latitude: lat,
-                    longitude: lon,
-                    note: originalMarker?.note,
-                    arrivalTime: originalMarker?.arrivalTime,
-                    departureTime: originalMarker?.departureTime,
-                    driverId: feature.properties.driverId ?? i,
-                    order: feature.properties.order
-                };
-            });
+            for (let i = 0; i < routesArray.length; i++) {
+                const driverFeatures = routesArray[i];
+                console.log("Route locations:", driverFeatures);
 
-            driverRoutes.push({
-                driverId: i,
-                stops: driverStops
-            });
+                const driverStops = driverFeatures.map(feature => {
+                    const [lon, lat] = feature.geometry.coordinates;
+                    const key = `${lon},${lat}`;
+                    const originalMarker = addressMap.get(key);
+
+                    return {
+                        address: originalMarker?.address ?? feature.properties.address ?? 'Unknown',
+                        latitude: lat,
+                        longitude: lon,
+                        note: originalMarker?.note,
+                        arrivalTime: originalMarker?.arrivalTime,
+                        departureTime: originalMarker?.departureTime,
+                        driverId: feature.properties.driverId ?? i,
+                        order: feature.properties.order
+                    };
+                });
+
+                driverRoutes.push({
+                    driverId: i,
+                    stops: driverStops
+                });
+            }
+        } else if (Array.isArray(response)) {
+            // Format: [ [features], [features] ] or [ features ]
+            const routesArray = Array.isArray(response[0]) ? response : [response];
+
+            for (let i = 0; i < routesArray.length; i++) {
+                const driverFeatures = routesArray[i];
+                console.log("Route locations:", driverFeatures);
+
+                const driverStops = driverFeatures.map(feature => {
+                    const [lon, lat] = feature.geometry.coordinates;
+                    const key = `${lon},${lat}`;
+                    const originalMarker = addressMap.get(key);
+
+                    return {
+                        address: originalMarker?.address ?? feature.properties.address ?? 'Unknown',
+                        latitude: lat,
+                        longitude: lon,
+                        note: originalMarker?.note,
+                        arrivalTime: originalMarker?.arrivalTime,
+                        departureTime: originalMarker?.departureTime,
+                        driverId: feature.properties.driverId ?? i,
+                        order: feature.properties.order
+                    };
+                });
+
+                driverRoutes.push({
+                    driverId: i,
+                    stops: driverStops
+                });
+            }
+        } else {
+            throw new Error("Unexpected response format from backend");
         }
 
+        // For front-end compatibility, also return a single optimized route
+        const allStops = driverRoutes.flatMap(route => route.stops);
+        const sortedStops = allStops.sort((a, b) => {
+            // First sort by driver ID
+            if (a.driverId !== b.driverId) {
+                return a.driverId - b.driverId;
+            }
+            // Then by order within each driver's route
+            return (a.order || 0) - (b.order || 0);
+        });
 
-
-        return NextResponse.json({ 
+        return NextResponse.json({
             routes: driverRoutes,
-            totalDrivers: driverRoutes.length
+            totalDrivers: driverRoutes.length,
+            route: sortedStops  // For backward compatibility with frontend
         });
 
     } catch (error) {
