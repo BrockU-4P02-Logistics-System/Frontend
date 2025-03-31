@@ -19,6 +19,8 @@
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-tooltip": "^1.1.6",
     "@react-google-maps/api": "^2.20.5",
+    "@stripe/react-stripe-js": "^3.5.1",
+    "@stripe/stripe-js": "^6.1.0",
     "amqplib": "^0.10.5",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
@@ -34,6 +36,7 @@
     "react": "^18",
     "react-dom": "^18",
     "sonner": "^2.0.1",
+    "stripe": "^17.7.0",
     "style-loader": "^4.0.0",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7"

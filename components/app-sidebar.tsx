@@ -30,7 +30,7 @@ const data = {
   user: {
     name: "",
     email: "",
-    avatar: "/avatars/shadcn.jpg",
+    avatar: "",
   },
   teams: [
     {
@@ -83,22 +83,12 @@ const data = {
       url: "/settings",
       icon: Settings2,
       items: [
-        {
-          title: "General",
-          url: "/dashboard/settings/general",
-        },
-        {
-          title: "Team Management",
-          url: "/dashboard/settings/team",
-        },
+       
         {
           title: "Billing",
           url: "/dashboard/settings/billing",
         },
-        {
-          title: "API Integration",
-          url: "/dashboard/settings/api",
-        }
+        
       ],
     },
   ],
@@ -128,7 +118,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [credit, setCredits] = useState(0);
 
   data.user.email = log;
-
+/*
   const loadCredits = async() => {
   
       const credits = await check_credits(log);
@@ -150,14 +140,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   
     }
 
-  
+  */
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+      <div className="mb-8">
+              {/* Logo centered just below the top */}
+              <img
+                src="/logo.png"  // Logo path
+                alt="Reroute Logo"
+                className="h-32 mb-6"  // Logo size doubled (h-64) and moved closer to the top
+              />
+              Reroute (Put better text here)
+            </div>
       </SidebarHeader>
-      Credits: {credit}
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
