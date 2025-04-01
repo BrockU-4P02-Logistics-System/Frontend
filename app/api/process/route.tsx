@@ -56,7 +56,7 @@ interface DriverRoute {
     stops: MarkerLocation[];
 }
 
-const RABBITMQ_URL = 'amqp://cole:corbett@132.145.102.107:5672';
+const RABBITMQ_URL = process.env.RABBITMQ_URL;
 const QUEUE_NAME = 'logistic-request';
 
 export async function POST(req: NextRequest) {

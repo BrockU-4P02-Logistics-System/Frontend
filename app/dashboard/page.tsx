@@ -114,8 +114,7 @@ export default function RoutePlanner() {
   
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey:
-      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
-      "AIzaSyBLt_ENVCVtEq6bCyWu9ZgN6gZ-uEf_S_U",
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "ERR",
     libraries: ["places"],
   });
 
