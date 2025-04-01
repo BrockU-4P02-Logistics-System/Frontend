@@ -442,16 +442,32 @@ export default function RoutePlanner() {
     }
   };
 
+  // In the processDriverRoutes function:
   const processDriverRoutes = async (optimizedMarkers: MarkerLocation[]) => {
     const driverRoutesMap = new Map<number, MarkerLocation[]>();
 
+    // Get the starting location (first marker entered by user)
+    const startLocation = optimizedMarkers[0];
+
     // Group markers by driver ID
     optimizedMarkers.forEach((marker) => {
-      const driverId = marker.driverId || 0;
+      // Make sure undefined driverId is treated as 0
+      const driverId = marker.driverId !== undefined ? marker.driverId : 0;
       if (!driverRoutesMap.has(driverId)) {
         driverRoutesMap.set(driverId, []);
+        // Add the start location as the first stop for each driver
+        driverRoutesMap
+          .get(driverId)
+          ?.push({ ...startLocation, driverId: driverId });
       }
-      driverRoutesMap.get(driverId)?.push(marker);
+
+      // Only add the marker if it's not the start location (to avoid duplicates)
+      if (
+        marker.latitude !== startLocation.latitude ||
+        marker.longitude !== startLocation.longitude
+      ) {
+        driverRoutesMap.get(driverId)?.push(marker);
+      }
     });
 
     const routes: DriverRoute[] = [];
@@ -462,8 +478,16 @@ export default function RoutePlanner() {
       if (driverMarkers.length >= 2) {
         // Handle "return home" option by adding the first stop as the last stop if needed
         let routeMarkers = [...driverMarkers];
-        if (config.returnToStart && driverMarkers.length > 2) {
-          routeMarkers.push(driverMarkers[0]);
+        if (
+          config.returnToStart &&
+          !routeMarkers.some(
+            (m) =>
+              m !== routeMarkers[0] &&
+              m.latitude === routeMarkers[0].latitude &&
+              m.longitude === routeMarkers[0].longitude
+          )
+        ) {
+          routeMarkers.push({ ...routeMarkers[0] });
         }
 
         const routePath = await getRoutePathFromDirections(routeMarkers);
@@ -484,6 +508,11 @@ export default function RoutePlanner() {
 
     setDriverRoutes(routes);
 
+    // Update numDrivers to match the actual number of drivers detected
+    if (routes.length > 0) {
+      setNumDrivers(routes.length);
+    }
+
     // If we have routes, select the first one
     if (routes.length > 0) {
       setSelectedDriverId(routes[0].driverId);
@@ -491,6 +520,7 @@ export default function RoutePlanner() {
     }
   };
 
+  // Update calculateRoute function to better handle the backend response:
   const calculateRoute = async () => {
     if (markers.length < 2) {
       toast.error("Please add at least two locations");
@@ -507,9 +537,10 @@ export default function RoutePlanner() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          markers,
+          features: markers,
           config,
-          numDrivers, // Send the number of drivers to the backend
+          numberDrivers: numDrivers,
+          returnToStart: config.returnToStart,
         }),
       });
 
@@ -519,11 +550,33 @@ export default function RoutePlanner() {
 
       const data = await response.json();
 
-      if (data.route) {
-        // Add driver IDs to markers based on the response
+      if (data.routes && Array.isArray(data.routes)) {
+        // New format with explicit driver routes
+        let allMarkers: MarkerLocation[] = [];
+
+        // Process each driver's route from the response
+        data.routes.forEach(
+          (driverRoute: { driverId: number; stops: MarkerLocation[] }) => {
+            const driverMarkers = driverRoute.stops.map((marker) => ({
+              ...marker,
+              driverId: driverRoute.driverId,
+            }));
+
+            allMarkers = [...allMarkers, ...driverMarkers];
+          }
+        );
+
+        setMarkers(allMarkers);
+
+        // Process each driver's route
+        await processDriverRoutes(allMarkers);
+
+        toast.success("Route optimized successfully!");
+      } else if (data.route) {
+        // Backward compatibility with old format
         const optimizedMarkers = data.route.map((marker: MarkerLocation) => ({
           ...marker,
-          driverId: marker.driverId || 0,
+          driverId: marker.driverId !== undefined ? marker.driverId : 0,
         }));
 
         setMarkers(optimizedMarkers);
