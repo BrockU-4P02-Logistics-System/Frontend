@@ -20,6 +20,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 interface TeamMember {
   id: string;
@@ -69,6 +71,16 @@ const roleStats: RoleCount[] = [
 ];
 
 export default function TeamManagement() {
+
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  
+  if (status === "unauthenticated"){
+
+    router.push("/auth/login");
+
+  }
+  
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">

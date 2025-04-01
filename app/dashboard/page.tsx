@@ -83,6 +83,7 @@ const DEFAULT_CONFIG: RouteConfiguration = {
 };
 
 export default function RoutePlanner() {
+
   const [markers, setMarkers] = useState<MarkerLocation[]>([]);
   const [config, setConfig] = useState<RouteConfiguration>(DEFAULT_CONFIG);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -106,6 +107,7 @@ export default function RoutePlanner() {
   const search = useSearchParams().get('load');
   const [mapsUrls, setMapURLs] = React.useState<string[]>([]);
 
+
   const [formData, setFormData] = React.useState({
       name: '',
      });
@@ -118,6 +120,14 @@ export default function RoutePlanner() {
   });
 
   const router = useRouter();
+
+  console.log(status);
+
+  if (status === "unauthenticated"){
+
+    router.push("/auth/login");
+
+  }
   
   /*
   sessionStorage.setItem('savedLoadedRoute', '');
@@ -427,7 +437,7 @@ export default function RoutePlanner() {
         const directions = await getDetailedDirections(data.route);
         setRouteDirections(directions);
 
-        const urls = generateGoogleMapsRouteUrls(optimizedMarkers);
+        const urls = generateGoogleMapsRouteUrls(data.route);
         setMapURLs(urls);
 
         toast.success("Route optimized successfully!");

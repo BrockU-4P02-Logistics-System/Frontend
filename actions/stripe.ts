@@ -7,6 +7,8 @@ import { headers } from "next/headers";
 import { CURRENCY } from "@/config";
 import { formatAmountForStripe } from "@/utils/stripe-helpers";
 import { stripe } from "@/lib/stripe";
+import { add_credits } from "@/actions/register"; // Import the add_credits function
+
 
 export async function createCheckoutSession(
   data: FormData,
@@ -20,14 +22,14 @@ export async function createCheckoutSession(
   const checkoutSession: Stripe.Checkout.Session =
     await stripe.checkout.sessions.create({
       mode: "payment",
-      submit_type: "donate",
+      submit_type: "pay",
       line_items: [
         {
           quantity: 1,
           price_data: {
             currency: CURRENCY,
             product_data: {
-              name: "Custom amount donation",
+              name: "Credits",
             },
             unit_amount: formatAmountForStripe(
               Number(data.get("customDonation") as string),
@@ -37,11 +39,11 @@ export async function createCheckoutSession(
         },
       ],
       ...(ui_mode === "hosted" && {
-        success_url: `${origin}/donate-with-checkout/result?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin}/donate-with-checkout`,
+        success_url: `${origin}/dashboard/settings/billing/result?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/dashboard/settings/billing`,
       }),
       ...(ui_mode === "embedded" && {
-        return_url: `${origin}/donate-with-embedded-checkout/result?session_id={CHECKOUT_SESSION_ID}`,
+        return_url: `${origin}/dashboard/settings/billing/result?session_id={CHECKOUT_SESSION_ID}`,
       }),
       ui_mode,
     });
@@ -64,6 +66,7 @@ export async function createPaymentIntent(
       automatic_payment_methods: { enabled: true },
       currency: CURRENCY,
     });
+
 
   return { client_secret: paymentIntent.client_secret as string };
 }

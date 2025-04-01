@@ -32,6 +32,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { register_vehicle, get_fleet, remove_vehicle, add_credits } from "@/actions/register";
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 let vehiclesList: any = [];
 
@@ -49,9 +50,14 @@ export default function VehiclesPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string>();
   const log = session?.user?.email;
+  const router = useRouter();
 
-  if (status === "authenticated"){
- 
+  if (status === "unauthenticated"){
+
+    router.push("/auth/login");
+
+  }
+
   const refresh = async () => {
 
 
@@ -221,8 +227,5 @@ export default function VehiclesPage() {
       </div>
     </div>
   );
-}
- else {
 
-}
 }

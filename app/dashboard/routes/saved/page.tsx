@@ -66,6 +66,12 @@ export default function SavedRoutes() {
     const [error, setError] = React.useState<string>();
     const log = session?.user?.email;
     let mark: any = [];
+
+    if (status === "unauthenticated"){
+
+      router.push("/auth/login");
+  
+    }
     
  const remove = async (route: any) => {
  

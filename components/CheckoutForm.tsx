@@ -60,13 +60,13 @@ export default function CheckoutForm(props: CheckoutFormProps): JSX.Element {
           onChange={handleInputChange}
           value={input.customDonation}
         />
-        <StripeTestCards />
+       
         <button
           className="checkout-style-background"
           type="submit"
           disabled={loading}
         >
-          Donate {formatAmountForDisplay(input.customDonation, config.CURRENCY)}
+          Pay for {input.customDonation * 10} credits = {formatAmountForDisplay(input.customDonation, config.CURRENCY)} 
         </button>
       </form>
       {clientSecret ? (
