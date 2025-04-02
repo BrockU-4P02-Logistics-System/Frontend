@@ -565,6 +565,7 @@ export default function RoutePlanner() {
     setTotalRouteDistance("");
     setTotalRouteDuration("");
     setShowClearDialog(false);
+    
     toast.success("Route cleared");
   };
 
