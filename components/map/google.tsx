@@ -53,7 +53,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   resetKey,
 }) => {
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const defaultCenter = { lat: 56.1304, lng: -106.3468 }; // Canada's approximate center
+  const defaultCenter = { lat: 47.1304, lng: -99.3468 }; // Canada's approximate center
   
   // Center the map based on markers, or default to a central location
   const center = markers.length > 0
