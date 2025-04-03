@@ -127,6 +127,8 @@ const ROUTE_COLORS = [
 ];
 
 export default function RoutePlanner() {
+  const [mapResetKey, setMapKey] = useState<number>(Date.now());
+
   const [markers, setMarkers] = useState<MarkerLocation[]>([]);
   const [config, setConfig] = useState<RouteConfiguration>(DEFAULT_CONFIG);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -634,6 +636,7 @@ export default function RoutePlanner() {
 
   const handleClearRoute = () => {
     saveToHistory();
+    // Clear all route-related state
     setMarkers([]);
     setRoutePath([]);
     setRouteDirections([]);
@@ -642,6 +645,10 @@ export default function RoutePlanner() {
     setDriverRoutes([]);
     setSelectedDriverId(null);
     setNumDrivers(1);
+    
+    // Force map to refresh by generating a new key
+    setMapKey(Date.now());
+    
     setShowClearDialog(false);
     toast.success("Route cleared");
   };
@@ -958,13 +965,15 @@ export default function RoutePlanner() {
       {/* Map Section */}
       <div className="w-full lg:w-[70%] flex flex-col relative">
         <div className="flex-grow relative">
-          <MapComponent
-            markers={markers}
-            isLoaded={isLoaded}
-            routePath={routePath}
-            driverRoutes={driverRoutes}
-            selectedDriverId={selectedDriverId}
-          />
+        <MapComponent
+          key={mapResetKey} // Add this key prop
+          markers={markers}
+          isLoaded={isLoaded}
+          routePath={routePath}
+          driverRoutes={driverRoutes}
+          selectedDriverId={selectedDriverId}
+          resetKey={mapResetKey} // Add this prop
+        />
         </div>
 
         {/* Driver Selection Tabs */}
