@@ -4,7 +4,6 @@ import { useJsApiLoader } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import TestRouteButton from "@/components/map/TestRouteButton";
 import {
   Trash,
   Bolt,
@@ -902,11 +901,6 @@ export default function RoutePlanner() {
                   >
                     Clear All
                   </Button>
-                  <TestRouteButton
-                    setMarkers={setMarkers}
-                    saveToHistory={saveToHistory}
-                    processDriverRoutes={exposedProcessDriverRoutes}
-                  />
                 </div>
                 <Button
                   onClick={calculateRoute}
