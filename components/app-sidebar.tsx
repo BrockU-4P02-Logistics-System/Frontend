@@ -79,13 +79,13 @@ const data = {
       ],
     },
     {
-      title: "Settings",
+      title: "Billing",
       url: "/settings",
       icon: Settings2,
       items: [
        
         {
-          title: "Billing",
+          title: "Stripe Payments",
           url: "/dashboard/settings/billing",
         },
         

@@ -107,6 +107,7 @@ export default function RoutePlanner() {
   const search = useSearchParams().get('load');
   const [mapsUrls, setMapURLs] = React.useState<string[]>([]);
 
+  const [showPopup, setShowPopup] = useState(false);
 
   const [formData, setFormData] = React.useState({
       name: '',
@@ -502,6 +503,8 @@ export default function RoutePlanner() {
       timestamp: new Date().toISOString(),
     };
 
+    setShowPopup(true);
+
     const num = await num_routes(log);
     console.log(num);
     if (credit <= 0){
@@ -534,6 +537,8 @@ export default function RoutePlanner() {
       toast.success("Route saved successfully");
 
     }
+
+    handlePopupClose();
    
 
     }
@@ -584,6 +589,15 @@ export default function RoutePlanner() {
 
   }
 
+  const handlePopupClose = () => {
+    setShowPopup(false);
+  };
+
+  const handlePopupOpen = () => {
+    setShowPopup(true);
+  };
+  
+
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -615,21 +629,31 @@ export default function RoutePlanner() {
               {/* Add Location Section */}
               <div className="rounded-xl bg-muted/50 p-4">
                 <div className="flex items-center justify-between mb-4">
-                  <h1 className="text-xl font-bold">Route Planner</h1>
-                              {error && <div className="">{error}</div>}
-                              <div className="space-y-2">
-                                  <Label htmlFor="username">Route Name</Label>
-                                  <Input
-                                    id="name"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                    required
-                                  />
-                                  
-                                </div>
-                               
-                                
-                  <div className="flex gap-2">
+                  
+                <h1 className="text-xl font-bold">Route Planner</h1>
+          {error && <div className="">{error}</div>}
+          
+    {showPopup && (
+      <div className="popup-overlay">
+        <div className="popup-content">
+          <h2>Enter Route Name</h2>
+          <Input
+            id="popup-name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+          />
+          <div className="flex gap-2 mt-4">
+            <button onClick={handlePopupClose} className="btn-secondary">
+              Close
+            </button>
+            <button onClick={handleSaveRoute} className="btn-primary">
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
                   <h1 className="text-xl font-bold">Credits: {credit} </h1>
                  
                     <TooltipProvider>
@@ -654,7 +678,7 @@ export default function RoutePlanner() {
                         <Button 
                             variant="outline" 
                             size="icon"
-                            onClick={handleSaveRoute}
+                            onClick={handlePopupOpen}
                           >
                             <Save className="h-4 w-4" />
                           </Button>
@@ -677,9 +701,8 @@ export default function RoutePlanner() {
                         <TooltipContent>Share route</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                  </div>
-                </div>
-
+                    </div>
+                    </div>
           <div className="flex flex-col gap-2">
             <AddressAutocomplete
               value={newAddress}
@@ -695,7 +718,7 @@ export default function RoutePlanner() {
               Add Location
             </Button>
           </div>
-        </div>
+
 
         {/* Destinations List */}
         {markers.length > 0 && (
@@ -791,7 +814,7 @@ export default function RoutePlanner() {
             ))}
           </div>
         )}
-      </div>
+</div>
 
       {/* Map Section */}
       <div className="w-full lg:w-[70%] relative">
@@ -836,5 +859,6 @@ export default function RoutePlanner() {
         </AlertDialog>
       </div>
     </div>
+              
   );
 }
