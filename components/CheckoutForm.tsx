@@ -15,6 +15,7 @@ import {
   EmbeddedCheckout,
   EmbeddedCheckoutProvider,
 } from "@stripe/react-stripe-js";
+import { Button } from "./ui/button";
 
 interface CheckoutFormProps {
   uiMode: Stripe.Checkout.SessionCreateParams.UiMode;
@@ -61,13 +62,14 @@ export default function CheckoutForm(props: CheckoutFormProps): JSX.Element {
           value={input.customDonation}
         />
        
-        <button
-          className="checkout-style-background"
+        <Button
+          className="checkout-style-background my-4"
           type="submit"
           disabled={loading}
+
         >
-          Pay for {input.customDonation * 10} credits = {formatAmountForDisplay(input.customDonation, config.CURRENCY)} 
-        </button>
+          Get {input.customDonation * 10} credits for {formatAmountForDisplay(input.customDonation, config.CURRENCY)} USD
+        </Button>
       </form>
       {clientSecret ? (
         <EmbeddedCheckoutProvider

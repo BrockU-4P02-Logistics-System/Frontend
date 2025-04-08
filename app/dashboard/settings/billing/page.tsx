@@ -17,9 +17,22 @@ export default function DonatePage(): JSX.Element {
 
   }
   return (
-    <div className="page-container">
-      <h1>Pay for Credits: 1 USD = 10 Credits</h1>
-      <CheckoutForm uiMode="hosted" />
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+      <div className="bg-white shadow-md rounded-lg p-6 w-full max-w-md">
+        <h1 className="text-2xl font-bold text-center mb-4">
+          Purchase Credits
+        </h1>
+        <p className="text-gray-600 text-center mb-6">
+          10 Credits = $1 USD. Select your payment option below.
+        </p>
+        <div className="border-t border-gray-200 my-4"></div>        
+        <div className="mt-6 text-center">
+        <CheckoutForm uiMode="hosted" />
+          <p className="text-sm text-gray-500">
+            Secure payments powered by Stripe.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
