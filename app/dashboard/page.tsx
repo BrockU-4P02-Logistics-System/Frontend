@@ -254,6 +254,7 @@ export default function RoutePlanner() {
      setDriverRoutes(savedDriverRoutes);
      setNumDrivers(savedNumDrivers);
      setSelectedDriverId(0);
+     handleDriverSelect(0);
 
      /*
      setRoutePath(savedRoutePath);
