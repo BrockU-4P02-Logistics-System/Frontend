@@ -46,17 +46,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { check_credits, num_routes, remove_credits, save_route } from '@/actions/register';
-import { DialogHeader } from '@/components/ui/dialog';
+import { DialogFooter, DialogHeader } from '@/components/ui/dialog';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from "@/components/ui/label";
 import { error } from 'console';
@@ -233,10 +224,18 @@ export default function RoutePlanner() {
   const loadRoute = async () => {
 	  
     const savedRoute: any = sessionStorage.getItem('savedLoadedRoute');
-    const savedConfig: any = sessionStorage.getItem('savedConfig');
     const savedMarkers: any = sessionStorage.getItem('savedMarkers') 
       ? JSON.parse(sessionStorage.getItem('savedMarkers') as string) 
       : null;
+    const savedConfig: any = sessionStorage.getItem('savedConfig');
+    const savedDriverRoutes: any = sessionStorage.getItem('savedDriverRoutes') 
+    ? JSON.parse(sessionStorage.getItem('savedDriverRoutes') as string) 
+    : null;
+    const savedNumDrivers: any = sessionStorage.getItem('savedNumDrivers')
+    const savedTimestamp: any = sessionStorage.getItem('savedTimestamp');
+
+
+     /*
     const savedRoutePath: any = sessionStorage.getItem('savedRoutePath') 
       ? JSON.parse(sessionStorage.getItem('savedRoutePath') as string) 
       : null;
@@ -245,16 +244,24 @@ export default function RoutePlanner() {
       : null;
     const savedRouteDistance: any = sessionStorage.getItem('savedRouteDistance');
     const savedRouteDuration: any = sessionStorage.getItem('savedRouteDuration');
-    const savedTimestamp: any = sessionStorage.getItem('savedTimestamp');
+    */
 
     if (savedRoute) {
 
+    
+     setMarkers(savedMarkers);
+     setConfig(savedConfig);
+     setDriverRoutes(savedDriverRoutes);
+     setNumDrivers(savedNumDrivers);
+     setSelectedDriverId(0);
+
+     /*
      setRoutePath(savedRoutePath);
      setRouteDirections(savedRouteDirections);
      setTotalRouteDistance(savedRouteDistance);
      setTotalRouteDuration(savedRouteDuration);
-     setMarkers(savedMarkers);
-     setConfig(savedConfig);
+     */
+
 
     } else {
 
@@ -627,7 +634,7 @@ export default function RoutePlanner() {
       }
 
       const data = await response.json();
-      console.log(data);
+      console.log(data.routes);
 
       if (data.routes && Array.isArray(data.routes)) {
         // New format with explicit driver routes
@@ -664,21 +671,6 @@ export default function RoutePlanner() {
         await processDriverRoutes(optimizedMarkers);
 
         toast.success("Route optimized successfully!");
-      } else if (data.routes && data.routes.length > 0) {
-        // If we have driver-specific routes, use the first one
-        const firstDriverRoute = data.routes[0].stops;
-        setMarkers(firstDriverRoute);
-        console.log("Using first driver route:", firstDriverRoute);
-
-        // Get detailed route path using Directions API
-        const detailedPath = await getRoutePathFromDirections(firstDriverRoute);
-        setRoutePath(detailedPath);
-
-        // Get step-by-step directions
-        const directions = await getDetailedDirections(firstDriverRoute);
-        setRouteDirections(directions);
-
-        toast.success(`Route optimized successfully! (${data.totalDrivers} drivers)`);
       } else {
         toast.error("Invalid route data received");
       }
@@ -706,7 +698,6 @@ export default function RoutePlanner() {
     
     return urls;
 }
-
 
   const handleConfigChange = <K extends keyof RouteConfiguration>(
     key: K,
@@ -811,14 +802,21 @@ export default function RoutePlanner() {
   };
 
   const handleDriverSelect = (driverId: number) => {
+
     setSelectedDriverId(driverId);
 
     // Update the displayed route information
     const driverRoute = driverRoutes.find(
       (route) => route.driverId === driverId
     );
+
     if (driverRoute) {
+
       updateRouteView(driverRoute);
+
+      const urls = generateGoogleMapsRouteUrls(driverRoute.markers);
+      setMapURLs(urls);
+
     }
   };
 
@@ -973,7 +971,63 @@ export default function RoutePlanner() {
               Add Location
             </Button>
           </div>
+ {/* Driver Count Selection */}
+ {markers.length >= 2 && (
+            <div className="rounded-xl bg-muted/50 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="font-bold text-lg">Driver Assignment</h2>
+                <span className="text-sm text-muted-foreground">
+                  {numDrivers} driver{numDrivers !== 1 ? "s" : ""}
+                </span>
+              </div>
 
+              <div className="flex items-center justify-center space-x-4">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    handleDriverCountChange((numDrivers - 1).toString())
+                  }
+                  disabled={numDrivers <= 1}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="text-lg font-semibold">{numDrivers}</span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    handleDriverCountChange((numDrivers + 1).toString())
+                  }
+                  disabled={numDrivers >= maxDrivers}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="text-sm text-muted-foreground text-center mt-2">
+                {maxDrivers < 10
+                  ? `Limited to ${maxDrivers} driver${
+                      maxDrivers !== 1 ? "s" : ""
+                    } based on number of stops`
+                  : "Maximum 10 drivers allowed"}
+              </div>
+            </div>
+          )}
+
+          {/* Route Options Button */}
+          {markers.length >= 2 && (
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setShowRouteOptions(true)}
+                className="w-full"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Route Options
+              </Button>
+            </div>
+          )}
 
           {/* Destinations List */}
           {markers.length > 0 && (
@@ -1110,7 +1164,7 @@ export default function RoutePlanner() {
 
         {/* Driver Selection Tabs */}
         {driverRoutes.length > 0 && (
-          <div className="absolute bottom-16 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
+          <div className="absolute bottom-24 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
             {driverRoutes.map((route) => (
               <Button
                 key={route.driverId}
@@ -1135,7 +1189,7 @@ export default function RoutePlanner() {
           </div>
         )}
 
-      <div>
+          <div >
             <h1>Google Maps Routes</h1>
             <div id="urlContainer">
               {mapsUrls.map((url, index) => (

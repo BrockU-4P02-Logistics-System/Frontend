@@ -88,13 +88,19 @@ export default function SavedRoutes() {
     sessionStorage.setItem('savedLoadedRoute', JSON.stringify(got_route[0]));
     sessionStorage.setItem('savedConfig', JSON.stringify(JSON.parse(got_route[0]).config));
     sessionStorage.setItem('savedMarkers', JSON.stringify(Array.from(JSON.parse(got_route[0]).markers)));
+    sessionStorage.setItem('savedDriverRoutes', JSON.stringify(Array.from(JSON.parse(got_route[0]).driverRoutes)));
+    sessionStorage.setItem('savedNumDrivers', JSON.stringify(JSON.parse(got_route[0]).numDrivers));
+
+    sessionStorage.setItem('savedTimestamp', JSON.stringify(JSON.parse(got_route[0]).timestamp));
+
+    /*
     sessionStorage.setItem('savedRoutePath', JSON.stringify(Array.from(JSON.parse(got_route[0]).routePath)));
     sessionStorage.setItem('savedRouteDirections', JSON.stringify(Array.from(JSON.parse(got_route[0]).routeDirections)));
     sessionStorage.setItem('savedRouteDistance', JSON.stringify(JSON.parse(got_route[0]).totalRouteDistance));
     sessionStorage.setItem('savedRouteDuration', JSON.stringify(JSON.parse(got_route[0]).totalRouteDuration));
-    sessionStorage.setItem('savedTimestamp', JSON.stringify(JSON.parse(got_route[0]).timestamp));
+    */
 
-    //console.log("GOT:" + JSON.stringify(got_route[0]));
+  //console.log("GOT:" + JSON.stringify(Array.from(JSON.parse(got_route[0]).driverRoutes)));
 
    return router.push("/dashboard?load=true")
 
