@@ -257,6 +257,7 @@ export default function RoutePlanner() {
         setTotalRouteDuration("");
         setDriverRoutes([]);
         setSelectedDriverId(null);
+	setMapKey(Date.now());
         toast.success("Location added successfully");
       }
     } else {
@@ -274,6 +275,7 @@ export default function RoutePlanner() {
     setDriverRoutes([]);
     setSelectedDriverId(null);
     toast.success("Location removed");
+    setMapKey(Date.now());
   };
 
   const handleDragStart = (index: number) => {
@@ -297,6 +299,7 @@ export default function RoutePlanner() {
     setTotalRouteDuration("");
     setDriverRoutes([]);
     setSelectedDriverId(null);
+    setMapKey(Date.now());
   };
 
   const handleDragEnd = () => {
