@@ -253,7 +253,6 @@ export default function RoutePlanner() {
      setConfig(savedConfig);
      setDriverRoutes(savedDriverRoutes);
      setNumDrivers(savedNumDrivers);
-     setSelectedDriverId(0);
      handleDriverSelect(0);
 
      /*
@@ -658,6 +657,7 @@ export default function RoutePlanner() {
         // Process each driver's route
         await processDriverRoutes(allMarkers);
 
+        handleDriverSelect(0);
         toast.success("Route optimized successfully!");
       } else if (data.route) {
         // Backward compatibility with old format
