@@ -201,6 +201,10 @@ export default function RoutePlanner() {
     setRouteDirections(driverRoute.directions);
     setTotalRouteDistance(driverRoute.totalDistance);
     setTotalRouteDuration(driverRoute.totalDuration);
+
+    const urls = generateGoogleMapsRouteUrls(driverRoute.markers);
+    setMapURLs(urls);
+
   };
 
   console.log(status);
@@ -648,6 +652,17 @@ export default function RoutePlanner() {
       return;
     }
 
+    if (credit <= 0){
+
+      toast.error("Not enough credits!");
+      return;
+
+    } else {
+
+      removeCredits();
+
+    }
+
     setIsCalculating(true);
     saveToHistory();
 
@@ -705,7 +720,6 @@ export default function RoutePlanner() {
           setShowDriverCountAlert(true);
         }
 
-        handleDriverSelect(0);
         toast.success("Route optimized successfully!");
       } else if (data.route) {
         // Backward compatibility with old format
@@ -767,6 +781,21 @@ export default function RoutePlanner() {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
+  const removeCredits = async() => {
+
+    await remove_credits(log, -10);
+    loadCredits();
+
+  }
+
+  const handlePopupClose = () => {
+    setShowPopup(false);
+  };
+
+  const handlePopupOpen = () => {
+    setShowPopup(true);
+  };
+
   const handleSaveRoute = async () => {
     const routeData = {
       markers,
@@ -779,12 +808,6 @@ export default function RoutePlanner() {
     setShowPopup(true);
 
     const num = await num_routes(log);
-    console.log(num);
-    if (credit <= 0){
-
-      toast.error("Not enough credits!");
-
-    } else {
 
     if (!formData.name){
 
@@ -798,23 +821,17 @@ export default function RoutePlanner() {
 
       toast.error("Too many routes already saved.");
 
-    } /*else if (sessionStorage.getItem('savedRoute') !== null) {
-
-      toast.error("Already saved route.");
-
-    }*/ else {
+    } else {
 
       sessionStorage.setItem('savedRoute', JSON.stringify(routeData));
       save_route(log, sessionStorage.getItem('savedRoute'), formData.name);
-      removeCredits();
+      handlePopupClose();
       toast.success("Route saved successfully");
-
+    
     }
 
-    handlePopupClose();
-   
 
-    }
+    
   };
 
   const handleShareRoute = async () => {
@@ -899,20 +916,7 @@ export default function RoutePlanner() {
    
   }
 
-  const removeCredits = async() => {
-
-    await remove_credits(log, -10);
-    loadCredits();
-
-  }
-
-  const handlePopupClose = () => {
-    setShowPopup(false);
-  };
-
-  const handlePopupOpen = () => {
-    setShowPopup(true);
-  };
+  
   
 
   if (!isLoaded) {
