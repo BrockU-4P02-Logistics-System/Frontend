@@ -16,13 +16,14 @@ import {
   Plus,
   Minus,
   Settings,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import MapComponent from "@/components/map/google";
 import AddressAutocomplete from "@/components/map/autocomplete";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   AlertDialog,
@@ -45,15 +46,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { check_credits, num_routes, remove_credits, save_route } from '@/actions/register';
+import { DialogFooter, DialogHeader } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from "@/components/ui/label";
+import { error } from 'console';
 
 interface MarkerLocation {
   address: string;
@@ -154,10 +151,24 @@ export default function RoutePlanner() {
     await processDriverRoutes(optimizedMarkers);
   };
 
+  
+  const { data: session, status } = useSession();
+  const [credit, setCredits] = useState(0);
+  const log = session?.user?.email;
+  const [error, setError] = React.useState<string>();
+  const [isLoading, setIsLoading] = React.useState(false);
+  const search = useSearchParams().get('load');
+  const [mapsUrls, setMapURLs] = React.useState<string[]>([]);
+
+  const [showPopup, setShowPopup] = useState(false);
+
+  const [formData, setFormData] = React.useState({
+      name: '',
+     });
+  
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey:
-      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
-      "AIzaSyBLt_ENVCVtEq6bCyWu9ZgN6gZ-uEf_S_U",
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "ERR",
     libraries: ["places"],
   });
 
@@ -191,6 +202,76 @@ export default function RoutePlanner() {
     setTotalRouteDistance(driverRoute.totalDistance);
     setTotalRouteDuration(driverRoute.totalDuration);
   };
+
+  console.log(status);
+
+  if (status === "unauthenticated"){
+
+    router.push("/auth/login");
+
+  }
+  
+  /*
+  sessionStorage.setItem('savedLoadedRoute', '');
+    sessionStorage.setItem('savedConfig', '');
+    sessionStorage.setItem('savedMarkers', '');
+    sessionStorage.setItem('savedRoutePath', '');
+    sessionStorage.setItem('savedRouteDirections', '');
+    sessionStorage.setItem('savedRouteDistance', '');
+    sessionStorage.setItem('savedRouteDuration', '');
+    sessionStorage.setItem('savedTimestamp', '');
+*/
+  const loadRoute = async () => {
+	  
+    const savedRoute: any = sessionStorage.getItem('savedLoadedRoute');
+    const savedMarkers: any = sessionStorage.getItem('savedMarkers') 
+      ? JSON.parse(sessionStorage.getItem('savedMarkers') as string) 
+      : null;
+    const savedConfig: any = sessionStorage.getItem('savedConfig');
+    const savedDriverRoutes: any = sessionStorage.getItem('savedDriverRoutes') 
+    ? JSON.parse(sessionStorage.getItem('savedDriverRoutes') as string) 
+    : null;
+    const savedNumDrivers: any = sessionStorage.getItem('savedNumDrivers')
+    const savedTimestamp: any = sessionStorage.getItem('savedTimestamp');
+
+
+     /*
+    const savedRoutePath: any = sessionStorage.getItem('savedRoutePath') 
+      ? JSON.parse(sessionStorage.getItem('savedRoutePath') as string) 
+      : null;
+    const savedRouteDirections: any = sessionStorage.getItem('savedRouteDirections') 
+      ? JSON.parse(sessionStorage.getItem('savedRouteDirections') as string) 
+      : null;
+    const savedRouteDistance: any = sessionStorage.getItem('savedRouteDistance');
+    const savedRouteDuration: any = sessionStorage.getItem('savedRouteDuration');
+    */
+
+    if (savedRoute) {
+
+    
+     setMarkers(savedMarkers);
+     setConfig(savedConfig);
+     setDriverRoutes(savedDriverRoutes);
+     setNumDrivers(savedNumDrivers);
+     handleDriverSelect(0);
+
+     /*
+     setRoutePath(savedRoutePath);
+     setRouteDirections(savedRouteDirections);
+     setTotalRouteDistance(savedRouteDistance);
+     setTotalRouteDuration(savedRouteDuration);
+     */
+
+
+    } else {
+
+      console.log("No saved timestamp found in sessionStorage.");
+
+    }
+
+    //setIsLoading(true);
+
+};
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/" });
@@ -624,6 +705,7 @@ export default function RoutePlanner() {
           setShowDriverCountAlert(true);
         }
 
+        handleDriverSelect(0);
         toast.success("Route optimized successfully!");
       } else if (data.route) {
         // Backward compatibility with old format
@@ -639,7 +721,7 @@ export default function RoutePlanner() {
         await processDriverRoutes(uniqueMarkers);
 
         // Check how many unique driver IDs are in the response
-        const uniqueDriverIds = new Set(optimizedMarkers.map((m) => m.driverId))
+        const uniqueDriverIds = new Set(optimizedMarkers.map((m: { driverId: any; }) => m.driverId))
           .size;
         if (uniqueDriverIds < originalDriverCount) {
           toast.info(
@@ -655,11 +737,28 @@ export default function RoutePlanner() {
       }
     } catch (error) {
       console.error("Error calculating route:", error);
-      toast.error("Failed to calculate route");
+      toast.error("Failed to calculate route: " + (error instanceof Error ? error.message : "Unknown error"));
     } finally {
       setIsCalculating(false);
     }
   };
+
+  function generateGoogleMapsRouteUrls(markers: any) {
+    if (!Array.isArray(markers) || markers.length === 0) {
+        throw new Error("Invalid markers array");
+    }
+    
+    const baseUrl = "https://www.google.com/maps/dir/";
+    const urls = [];
+    
+    for (let i = 0; i < markers.length; i += 10) {
+        const chunk = markers.slice(i, i + 10);
+        const waypoints = chunk.map(marker => encodeURIComponent(marker.address)).join("/");
+        urls.push(`${baseUrl}${waypoints}?dirflg=d`);
+    }
+    
+    return urls;
+}
 
   const handleConfigChange = <K extends keyof RouteConfiguration>(
     key: K,
@@ -668,7 +767,7 @@ export default function RoutePlanner() {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSaveRoute = () => {
+  const handleSaveRoute = async () => {
     const routeData = {
       markers,
       config,
@@ -677,8 +776,45 @@ export default function RoutePlanner() {
       timestamp: new Date().toISOString(),
     };
 
-    localStorage.setItem("savedRoute", JSON.stringify(routeData));
-    toast.success("Route saved successfully");
+    setShowPopup(true);
+
+    const num = await num_routes(log);
+    console.log(num);
+    if (credit <= 0){
+
+      toast.error("Not enough credits!");
+
+    } else {
+
+    if (!formData.name){
+
+      toast.error("No name for route!");
+
+    } else if (!totalRouteDistance) {
+
+      toast.error("No route calculated!");
+
+    } else if (num == false) {
+
+      toast.error("Too many routes already saved.");
+
+    } /*else if (sessionStorage.getItem('savedRoute') !== null) {
+
+      toast.error("Already saved route.");
+
+    }*/ else {
+
+      sessionStorage.setItem('savedRoute', JSON.stringify(routeData));
+      save_route(log, sessionStorage.getItem('savedRoute'), formData.name);
+      removeCredits();
+      toast.success("Route saved successfully");
+
+    }
+
+    handlePopupClose();
+   
+
+    }
   };
 
   const handleShareRoute = async () => {
@@ -713,6 +849,7 @@ export default function RoutePlanner() {
     setMapKey(Date.now());
 
     setShowClearDialog(false);
+    
     toast.success("Route cleared");
   };
 
@@ -726,14 +863,21 @@ export default function RoutePlanner() {
   };
 
   const handleDriverSelect = (driverId: number) => {
+
     setSelectedDriverId(driverId);
 
     // Update the displayed route information
     const driverRoute = driverRoutes.find(
       (route) => route.driverId === driverId
     );
+
     if (driverRoute) {
+
       updateRouteView(driverRoute);
+
+      const urls = generateGoogleMapsRouteUrls(driverRoute.markers);
+      setMapURLs(urls);
+
     }
   };
 
@@ -747,6 +891,30 @@ export default function RoutePlanner() {
   const [showDriverCountAlert, setShowDriverCountAlert] = useState(false);
   const [driverCountMessage, setDriverCountMessage] = useState("");
 
+  const loadCredits = async() => {
+
+    const credits = await check_credits(log);
+    setCredits(credits ?? 0);
+   // console.log(credits);
+   
+  }
+
+  const removeCredits = async() => {
+
+    await remove_credits(log, -10);
+    loadCredits();
+
+  }
+
+  const handlePopupClose = () => {
+    setShowPopup(false);
+  };
+
+  const handlePopupOpen = () => {
+    setShowPopup(true);
+  };
+  
+
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -755,98 +923,120 @@ export default function RoutePlanner() {
     );
   }
 
+  if (credit <= 0){
+
+    setTimeout(() => {
+
+       loadCredits();
+
+       if (search === "true"){
+
+        loadRoute();
+
+       }
+
+
+  }, 0);
+
+  }
+
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
-      <div className="w-full lg:w-[30%] flex flex-col overflow-y-auto">
-        <div className="p-4 space-y-4">
-          {/* Add Location Section */}
-          <div className="rounded-xl bg-muted/50 p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-xl font-bold">Route Planner</h1>
-              <div className="flex gap-2">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={handleUndo}
-                        disabled={routeHistory.length === 0}
-                      >
-                        <Undo2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Undo last change</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={handleSaveRoute}
-                      >
-                        <Save className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Save route</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={handleShareRoute}
-                      >
-                        <Share2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Share route</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
-                {/* Logout Button */}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={handleLogout}
-                      >
-                        <LogOut className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Logout</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <AddressAutocomplete
-                value={newAddress}
-                onChange={(e) => setNewAddress(e.target.value)}
-                onAddressSelect={(address) => setNewAddress(address)}
-                isLoaded={isLoaded}
-              />
-              <Button
-                className="w-full"
-                onClick={handleAddAddress}
-                disabled={!newAddress.trim()}
-              >
-                Add Location
-              </Button>
-            </div>
+          <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
+            <div className="w-full lg:w-[30%] flex flex-col gap-4 p-4 overflow-y-auto">
+              {/* Add Location Section */}
+              <div className="rounded-xl bg-muted/50 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  
+                <h1 className="text-xl font-bold">Route Planner</h1>
+          {error && <div className="">{error}</div>}
+          
+    {showPopup && (
+      <div className="popup-overlay">
+        <div className="popup-content">
+          <h2>Enter Route Name</h2>
+          <Input
+            id="popup-name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+          />
+          <div className="flex gap-2 mt-4">
+            <button onClick={handlePopupClose} className="btn-secondary">
+              Close
+            </button>
+            <button onClick={handleSaveRoute} className="btn-primary">
+              Save
+            </button>
           </div>
+        </div>
+      </div>
+    )}
+                  <h1 className="text-xl font-bold">Credits: {credit} </h1>
+                 
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={handleUndo}
+                            disabled={routeHistory.length === 0}
+                          >
+                            <Undo2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Undo last change</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
 
-          {/* Driver Count Selection */}
-          {markers.length >= 2 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                        <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={handlePopupOpen}
+                          >
+                            <Save className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Save Route</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                   
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={handleShareRoute}
+                          >
+                            <Share2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Share route</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    </div>
+                    </div>
+          <div className="flex flex-col gap-2">
+            <AddressAutocomplete
+              value={newAddress}
+              onChange={(e) => setNewAddress(e.target.value)}
+              onAddressSelect={(address) => setNewAddress(address)}
+              isLoaded={isLoaded}
+            />
+            <Button
+              className="w-full"
+              onClick={handleAddAddress}
+              disabled={!newAddress.trim()}
+            >
+              Add Location
+            </Button>
+          </div>
+ {/* Driver Count Selection */}
+ {markers.length >= 2 && (
             <div className="rounded-xl bg-muted/50 p-4">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="font-bold text-lg">Driver Assignment</h2>
@@ -1040,21 +1230,20 @@ export default function RoutePlanner() {
                 </div>
               </div>
 
-              {routeDirections.map((step, index) => (
-                <div key={index} className="mb-2 pb-2 border-b">
-                  <div
-                    className="text-sm font-medium"
-                    dangerouslySetInnerHTML={{ __html: step.instruction }}
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    Distance: {step.distance} | Duration: {step.duration}
-                  </div>
+            {routeDirections.map((step, index) => (
+              <div key={index} className="mb-2 pb-2 border-b">
+                <div
+                  className="text-sm font-medium"
+                  dangerouslySetInnerHTML={{ __html: step.instruction }}
+                />
+                <div className="text-xs text-muted-foreground">
+                  Distance: {step.distance} | Duration: {step.duration}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+              </div>
+            ))}
+          </div>
+        )}
+</div>
 
       {/* Map Section */}
       <div className="w-full lg:w-[70%] flex flex-col relative">
@@ -1072,7 +1261,7 @@ export default function RoutePlanner() {
 
         {/* Driver Selection Tabs */}
         {driverRoutes.length > 0 && (
-          <div className="absolute bottom-16 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
+          <div className="absolute bottom-24 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
             {driverRoutes.map((route) => (
               <Button
                 key={route.driverId}
@@ -1097,6 +1286,16 @@ export default function RoutePlanner() {
           </div>
         )}
 
+          <div >
+            <h1>Google Maps Routes</h1>
+            <div id="urlContainer">
+              {mapsUrls.map((url, index) => (
+                <p key={index} style={{ marginBottom: '10px' }}>
+                  <a href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}  >{url}</a>
+                </p>
+              ))}
+            </div>
+          </div>
         {/* Clear Route Dialog */}
         <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
           <AlertDialogContent>
@@ -1210,5 +1409,6 @@ export default function RoutePlanner() {
         </Dialog>
       </div>
     </div>
+              
   );
 }

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { signIn } from "next-auth/react";
+import Image from "next/image"
 
 // Login Page Component
 export default function LoginPage() {
@@ -72,7 +73,8 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2">
           <div className="flex items-center space-x-2">
-            <img src="/logo.svg" alt="Logo" className="h-8 w-8" />
+            
+            <Image src="/logo.png" width="64" height="64" alt={'Logo'} />
             <CardTitle className="text-2xl">Welcome back</CardTitle>
           </div>
           <CardDescription>
@@ -127,15 +129,10 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleGoogleLogin}
-            disabled={isLoading}
-          >
-            <img src="/google.svg" alt="Google" className="h-5 w-5 mr-2" />
-            Sign in with Google
-          </Button>
+            
+            <Image id="img1" onClick={handleGoogleLogin}
+            src="/signin-assets/signin-assets/Web (mobile + desktop)/png@4x/light/web_light_rd_SI@4x.png" width="200" height="200" alt={'Google'}/>
+        
         </CardContent>
         <CardFooter className="justify-center">
           <span className="text-sm text-muted-foreground">

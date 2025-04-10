@@ -112,3 +112,9 @@ body {
   padding: 0 !important; 
   overflow: auto !important;
 }
+
+
+#img1 {
+  display: block;
+  margin: 0 auto;
+  }

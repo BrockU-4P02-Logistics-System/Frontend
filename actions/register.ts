@@ -178,7 +178,7 @@ export const save_route = async(auth:any, input:any, name:any) =>{
 
     //var id = '67cb5d55570913c32d9e1550';
    // var query = { _id: new mongodb.ObjectId(id)};
-    var doc = await db.collection("routes").findOne(route); // Find route by id
+    //var doc = await db.collection("routes").findOne(route); // Find route by id
     //console.log(doc);
 
     
@@ -252,13 +252,18 @@ export const load_route = async (routeID: any) => {
         var query =  new mongodb.ObjectId(routeID);
 
         const data = await db.collection("routes").findOne(query, { projection: {_id: 0 } });
-        const config = await db.collection("routes").findOne(query, { projection: { config: 1, _id: 0 } });
         const markers = await db.collection("routes").findOne(query, { projection: { markers: 1, _id: 0 } });
+        const config = await db.collection("routes").findOne(query, { projection: { config: 1, _id: 0 } });
+        const driverRoutes = await db.collection("routes").findOne(query, { projection: { driverRoutes: 1, _id: 0 } });
+        const numDrivers = await db.collection("routes").findOne(query, { projection: { numDrivers: 1, _id: 0 } });
+        const timestamp = await db.collection("routes").findOne(query, { projection: { timestamp: 1, _id: 0 } });
+
+         /* Single TSP
         const routePath = await db.collection("routes").findOne(query, { projection: { routePath: 1, _id: 0 } });
         const routeDirections = await db.collection("routes").findOne(query, { projection: { routeDirections: 1, _id: 0 } });
         const totalRouteDistance = await db.collection("routes").findOne(query, { projection: { totalRouteDistance: 1, _id: 0 } });
         const totalRouteDuration = await db.collection("routes").findOne(query, { projection: { totalRouteDuration: 1, _id: 0 } });
-        const timestamp = await db.collection("routes").findOne(query, { projection: { timestamp: 1, _id: 0 } });
+        */
 /*
         sessionStorage.setItem('savedConfig', JSON.stringify(config));
         sessionStorage.setItem('savedMarkers', JSON.stringify(markers));
@@ -272,13 +277,17 @@ export const load_route = async (routeID: any) => {
         const route_arr = [
 
             JSON.stringify(data), 
+            JSON.stringify(markers),
             JSON.stringify(config), 
-            JSON.stringify(markers), 
-            JSON.stringify(routePath), 
+            JSON.stringify(driverRoutes), 
+            JSON.stringify(numDrivers), 
+            JSON.stringify(timestamp)
+
+            /*JSON.stringify(routePath), 
             JSON.stringify(routeDirections), 
             JSON.stringify(totalRouteDistance), 
             JSON.stringify(totalRouteDuration), 
-            JSON.stringify(timestamp)
+            */
 
         ];
 
