@@ -721,7 +721,7 @@ export default function RoutePlanner() {
         await processDriverRoutes(uniqueMarkers);
 
         // Check how many unique driver IDs are in the response
-        const uniqueDriverIds = new Set(optimizedMarkers.map((m) => m.driverId))
+        const uniqueDriverIds = new Set(optimizedMarkers.map((m: { driverId: any; }) => m.driverId))
           .size;
         if (uniqueDriverIds < originalDriverCount) {
           toast.info(
