@@ -961,10 +961,10 @@ export default function RoutePlanner() {
             required
           />
           <div className="flex gap-2 mt-4">
-            <button onClick={handlePopupClose} className="btn-secondary">
+            <button onClick={handlePopupClose} className="btn-secondary border border-gray-400 rounded">
               Close
             </button>
-            <button onClick={handleSaveRoute} className="btn-primary">
+            <button onClick={handleSaveRoute} className="btn-primary border border-gray-400 rounded">
               Save
             </button>
           </div>
