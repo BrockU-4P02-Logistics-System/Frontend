@@ -257,7 +257,7 @@ export default function RoutePlanner() {
         setTotalRouteDuration("");
         setDriverRoutes([]);
         setSelectedDriverId(null);
-	setMapKey(Date.now());
+        setMapKey(Date.now());
         toast.success("Location added successfully");
       }
     } else {
@@ -446,7 +446,32 @@ export default function RoutePlanner() {
     }
   };
 
-  // In the processDriverRoutes function:
+  // Remove duplicate markers based on location and driver ID
+  const removeDuplicateMarkers = (
+    markers: MarkerLocation[]
+  ): MarkerLocation[] => {
+    // Use a Map with location coordinates as keys to identify duplicates
+    const uniqueMarkers = new Map<string, MarkerLocation>();
+
+    markers.forEach((marker) => {
+      const locationKey = `${marker.latitude.toFixed(
+        6
+      )},${marker.longitude.toFixed(6)}`;
+
+      // If this location doesn't exist yet, or if this marker has a driver ID and the existing one doesn't
+      if (
+        !uniqueMarkers.has(locationKey) ||
+        (marker.driverId !== undefined &&
+          uniqueMarkers.get(locationKey)?.driverId === undefined)
+      ) {
+        uniqueMarkers.set(locationKey, marker);
+      }
+    });
+
+    return Array.from(uniqueMarkers.values());
+  };
+
+  // ProcessDriverRoutes function
   const processDriverRoutes = async (optimizedMarkers: MarkerLocation[]) => {
     const driverRoutesMap = new Map<number, MarkerLocation[]>();
 
@@ -460,16 +485,23 @@ export default function RoutePlanner() {
       if (!driverRoutesMap.has(driverId)) {
         driverRoutesMap.set(driverId, []);
         // Add the start location as the first stop for each driver
-        driverRoutesMap
-          .get(driverId)
-          ?.push({ ...startLocation, driverId: driverId });
+        // Don't add a note for the original start location
+        const isOriginalStart = marker === optimizedMarkers[0];
+        driverRoutesMap.get(driverId)?.push({
+          ...startLocation,
+          driverId: driverId,
+          note: isOriginalStart
+            ? startLocation.note
+            : startLocation.note || "Start point",
+        });
       }
 
-      // Only add the marker if it's not the start location (to avoid duplicates)
-      if (
-        marker.latitude !== startLocation.latitude ||
-        marker.longitude !== startLocation.longitude
-      ) {
+      // Only add the marker if it's not duplicating the start location
+      const isSameAsStart =
+        Math.abs(marker.latitude - startLocation.latitude) < 0.000001 &&
+        Math.abs(marker.longitude - startLocation.longitude) < 0.000001;
+
+      if (!isSameAsStart || marker.driverId !== driverId) {
         driverRoutesMap.get(driverId)?.push(marker);
       }
     });
@@ -482,16 +514,20 @@ export default function RoutePlanner() {
       if (driverMarkers.length >= 2) {
         // Handle "return home" option by adding the first stop as the last stop if needed
         let routeMarkers = [...driverMarkers];
-        if (
+        const firstMarker = routeMarkers[0];
+        const lastMarker = routeMarkers[routeMarkers.length - 1];
+
+        // Check if we need to add the start location as the end point
+        const needToAddReturnStop =
           config.returnToStart &&
-          !routeMarkers.some(
-            (m) =>
-              m !== routeMarkers[0] &&
-              m.latitude === routeMarkers[0].latitude &&
-              m.longitude === routeMarkers[0].longitude
-          )
-        ) {
-          routeMarkers.push({ ...routeMarkers[0] });
+          (Math.abs(lastMarker.latitude - firstMarker.latitude) >= 0.000001 ||
+            Math.abs(lastMarker.longitude - firstMarker.longitude) >= 0.000001);
+
+        if (needToAddReturnStop) {
+          routeMarkers.push({
+            ...firstMarker,
+            note: "Return to start",
+          });
         }
 
         const routePath = await getRoutePathFromDirections(routeMarkers);
@@ -553,9 +589,9 @@ export default function RoutePlanner() {
       }
 
       const data = await response.json();
+      const originalDriverCount = numDrivers; // Store original count for comparison
 
       if (data.routes && Array.isArray(data.routes)) {
-        // New format with explicit driver routes
         let allMarkers: MarkerLocation[] = [];
 
         // Process each driver's route from the response
@@ -570,10 +606,23 @@ export default function RoutePlanner() {
           }
         );
 
-        setMarkers(allMarkers);
+        // Remove duplicates before updating state
+        const uniqueMarkers = removeDuplicateMarkers(allMarkers);
+        setMarkers(uniqueMarkers);
 
         // Process each driver's route
-        await processDriverRoutes(allMarkers);
+        await processDriverRoutes(uniqueMarkers);
+
+        // Check if the actual number of drivers is different from what was requested
+        const actualDriverCount = data.totalDrivers || data.routes.length;
+        if (actualDriverCount < originalDriverCount) {
+          setDriverCountMessage(
+            `The route has been optimized with ${actualDriverCount} driver${
+              actualDriverCount !== 1 ? "s" : ""
+            } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
+          );
+          setShowDriverCountAlert(true);
+        }
 
         toast.success("Route optimized successfully!");
       } else if (data.route) {
@@ -583,10 +632,22 @@ export default function RoutePlanner() {
           driverId: marker.driverId !== undefined ? marker.driverId : 0,
         }));
 
-        setMarkers(optimizedMarkers);
+        const uniqueMarkers = removeDuplicateMarkers(optimizedMarkers);
+        setMarkers(uniqueMarkers);
 
         // Process each driver's route
-        await processDriverRoutes(optimizedMarkers);
+        await processDriverRoutes(uniqueMarkers);
+
+        // Check how many unique driver IDs are in the response
+        const uniqueDriverIds = new Set(optimizedMarkers.map((m) => m.driverId))
+          .size;
+        if (uniqueDriverIds < originalDriverCount) {
+          toast.info(
+            `The route has been optimized with ${uniqueDriverIds} driver${
+              uniqueDriverIds !== 1 ? "s" : ""
+            } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
+          );
+        }
 
         toast.success("Route optimized successfully!");
       } else {
@@ -647,10 +708,10 @@ export default function RoutePlanner() {
     setDriverRoutes([]);
     setSelectedDriverId(null);
     setNumDrivers(1);
-    
+
     // Force map to refresh by generating a new key
     setMapKey(Date.now());
-    
+
     setShowClearDialog(false);
     toast.success("Route cleared");
   };
@@ -682,6 +743,9 @@ export default function RoutePlanner() {
       setNumDrivers(count);
     }
   };
+
+  const [showDriverCountAlert, setShowDriverCountAlert] = useState(false);
+  const [driverCountMessage, setDriverCountMessage] = useState("");
 
   if (!isLoaded) {
     return (
@@ -864,19 +928,52 @@ export default function RoutePlanner() {
                       <p className="truncate text-sm font-medium">
                         {marker.address}
                       </p>
+                      {/* Replace this driver ID display with our new logic */}
                       {marker.driverId !== undefined &&
                         driverRoutes.length > 0 && (
-                          <p
-                            className="text-xs font-medium"
-                            style={{
-                              color:
-                                ROUTE_COLORS[
-                                  marker.driverId % ROUTE_COLORS.length
-                                ],
-                            }}
-                          >
-                            Driver {marker.driverId + 1}
-                          </p>
+                          <div className="flex gap-1 items-center">
+                            {/* Determine if this is a start location */}
+                            {index === 0 ||
+                            driverRoutes.some(
+                              (route) =>
+                                route.markers[0].latitude === marker.latitude &&
+                                route.markers[0].longitude === marker.longitude
+                            ) ? (
+                              <span className="text-xs font-semibold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
+                                Start Location
+                              </span>
+                            ) : /* Determine if this is a return location */
+                            config.returnToStart &&
+                              driverRoutes.some(
+                                (route) =>
+                                  route.markers.length > 1 &&
+                                  route.markers[route.markers.length - 1]
+                                    .latitude === marker.latitude &&
+                                  route.markers[route.markers.length - 1]
+                                    .longitude === marker.longitude &&
+                                  route.markers[0].latitude ===
+                                    marker.latitude &&
+                                  route.markers[0].longitude ===
+                                    marker.longitude
+                              ) ? (
+                              <span className="text-xs font-semibold px-1.5 py-0.5 bg-green-100 text-green-800 rounded">
+                                Return Location
+                              </span>
+                            ) : (
+                              /* Otherwise show the driver assignment */
+                              <p
+                                className="text-xs font-medium"
+                                style={{
+                                  color:
+                                    ROUTE_COLORS[
+                                      marker.driverId % ROUTE_COLORS.length
+                                    ],
+                                }}
+                              >
+                                Driver {marker.driverId + 1}
+                              </p>
+                            )}
+                          </div>
                         )}
                       {marker.note && (
                         <p className="text-xs text-muted-foreground truncate">
@@ -962,15 +1059,15 @@ export default function RoutePlanner() {
       {/* Map Section */}
       <div className="w-full lg:w-[70%] flex flex-col relative">
         <div className="flex-grow relative">
-        <MapComponent
-          key={mapResetKey} // Add this key prop
-          markers={markers}
-          isLoaded={isLoaded}
-          routePath={routePath}
-          driverRoutes={driverRoutes}
-          selectedDriverId={selectedDriverId}
-          resetKey={mapResetKey} // Add this prop
-        />
+          <MapComponent
+            key={mapResetKey} // Add this key prop
+            markers={markers}
+            isLoaded={isLoaded}
+            routePath={routePath}
+            driverRoutes={driverRoutes}
+            selectedDriverId={selectedDriverId}
+            resetKey={mapResetKey} // Add this prop
+          />
         </div>
 
         {/* Driver Selection Tabs */}
@@ -1019,6 +1116,26 @@ export default function RoutePlanner() {
               </Button>
               <Button variant="destructive" onClick={handleClearRoute}>
                 Clear Route
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Driver Count Alert Dialog */}
+        <AlertDialog
+          open={showDriverCountAlert}
+          onOpenChange={setShowDriverCountAlert}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Driver Count Adjusted</AlertDialogTitle>
+              <AlertDialogDescription>
+                {driverCountMessage}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <Button onClick={() => setShowDriverCountAlert(false)}>
+                Understood
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
