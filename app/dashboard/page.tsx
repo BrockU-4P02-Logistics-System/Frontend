@@ -907,6 +907,7 @@ export default function RoutePlanner() {
 
   const [showDriverCountAlert, setShowDriverCountAlert] = useState(false);
   const [driverCountMessage, setDriverCountMessage] = useState("");
+  const [showExport, setExport] = useState(false);
 
   const loadCredits = async() => {
 
@@ -915,9 +916,6 @@ export default function RoutePlanner() {
    // console.log(credits);
    
   }
-
-  
-  
 
   if (!isLoaded) {
     return (
@@ -1265,7 +1263,7 @@ export default function RoutePlanner() {
 
         {/* Driver Selection Tabs */}
         {driverRoutes.length > 0 && (
-          <div className="absolute bottom-24 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
+          <div className="absolute bottom-16 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
             {driverRoutes.map((route) => (
               <Button
                 key={route.driverId}
@@ -1290,16 +1288,59 @@ export default function RoutePlanner() {
           </div>
         )}
 
-          <div >
-            <h1>Google Maps Routes</h1>
-            <div id="urlContainer">
+<div className="bottom-0 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
+{driverRoutes.map((route) => (
+              <Button
+                key={route.driverId}
+                variant={
+                  selectedDriverId === route.driverId ? "default" : "outline"
+                }
+                size="sm"
+                onClick={() => setExport(true)}
+                style={{
+                  backgroundColor:
+                    selectedDriverId === route.driverId
+                      ? route.color
+                      : undefined,
+                  borderColor: route.color,
+                  color:
+                    selectedDriverId === route.driverId ? "white" : route.color,
+                }}
+              >
+                Export Routes for Driver {route.driverId + 1}
+              </Button>
+            ))}
+            
+          </div>
+          
+          
+            <Dialog
+            open={showExport}
+          
+          >
+            <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Exported Routes</DialogTitle>
+              <DialogDescription>
+              <div id="urlContainer" style={{width: "20vw", height: "40vw", overflowWrap: "break-word"}}>
               {mapsUrls.map((url, index) => (
-                <p key={index} style={{ marginBottom: '10px' }}>
-                  <a href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}  >{url}</a>
-                </p>
+              <p key={index} style={{ marginBottom: '10px' }}>
+                <a href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}  >{url}</a>
+              </p>
               ))}
             </div>
-          </div>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant = "outline" onClick={() => setExport(false)}>
+              Close
+              </Button>
+            </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
+
+
         {/* Clear Route Dialog */}
         <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
           <AlertDialogContent>
