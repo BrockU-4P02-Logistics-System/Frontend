@@ -114,33 +114,35 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const { data: session, status } = useSession();
-  const log: any = session?.user?.email;
-  const [credit, setCredits] = useState(0);
+  if (session?.user) {
+    data.user.name = session.user.name ?? "";
+    data.user.email = session.user.email ?? "";
+    data.user.avatar = session.user.image ?? ""; // assuming image is in session.user.image
+  }
+    const [credits, setCredits] = useState(0);
+  /*
+    const loadCredits = async() => {
 
-  data.user.email = log;
-/*
-  const loadCredits = async() => {
-  
-      const credits = await check_credits(log);
-      setCredits(credits ?? 0);
-     // console.log(credits);
-     
-    }
+        const credits = await check_credits(log);
+        setCredits(credits ?? 0);
+       // console.log(credits);
 
-    if (credit <= 0){
+      }
 
-      setTimeout(() => {
-  
-         loadCredits();
-  
-        
-  
-  
-    }, 0);
-  
-    }
+      if (credit <= 0){
 
-  */
+        setTimeout(() => {
+
+           loadCredits();
+
+
+
+
+      }, 0);
+
+      }
+
+    */
 
   return (
     <Sidebar collapsible="icon" {...props}>
