@@ -19,7 +19,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
   const onLoad = (autocomplete: google.maps.places.Autocomplete) => {
     autocompleteRef.current = autocomplete;
-    autocomplete.setComponentRestrictions({ country: 'ca' });
+    autocomplete.setComponentRestrictions({ country: ['ca', 'us', 'mx'] })
   };
 
   const onPlaceChanged = () => {

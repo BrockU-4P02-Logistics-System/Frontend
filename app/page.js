@@ -12,7 +12,14 @@ export default function LandingPage() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className="min-h-screen bg-white selection:bg-purple-500/10 selection:text-purple-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white selection:bg-purple-500/10 selection:text-purple-900 flex items-center justify-center flex-col relative">
+        {/* Logo and Title in Top Left */}
+        <div className="absolute top-4 left-8 z-10">
+          <h1 className="text-4xl font-bold text-purple-900">
+            REROUTE
+          </h1>
+        </div>
+
         {/* Hero Section */}
         <section className="relative pt-12 overflow-hidden bg-white flex items-center justify-center w-full">
           <div className="relative container mx-auto px-8 py-16 md:py-24 flex flex-col items-center justify-center text-center">
@@ -40,6 +47,141 @@ export default function LandingPage() {
                 </button>
               </Link>
             </div>
+          </div>
+        </section>
+
+        {/* About the Product Section */}
+        <section className="mt-24 px-8 py-16">
+          <h2 className="text-4xl font-semibold text-center text-purple-900 mb-12">About the Product</h2>
+
+          {/* Route One Driver Section */}
+          <div className="mb-24">
+            <h3 className="text-3xl font-semibold text-center text-purple-900 mb-8">Route One Driver</h3>
+
+            {/* Image 1 */}
+            <div className="flex mb-12 justify-center items-center gap-8">
+              <div className="w-[490px] h-[420px]">
+                <img
+                  src="/SingleDriverLocations.png"
+                  alt="Single Driver Locations"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
+                <h4 className="text-2xl font-semibold text-purple-900 mb-4">Add Destinations</h4>
+                <p className="text-gray-700">{`Just like regular mapping software, REROUTE offers optimal directions for a single driver to stop at multiple locations.`}</p>
+              </div>
+            </div>
+
+            {/* Image 2 */}
+            <div className="flex mb-12 justify-center items-center gap-8">
+              <div className="w-[490px] h-[420px]">
+                <img
+                  src="/SingleDriverMap.png"
+                  alt="Single Driver Map"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
+                <h4 className="text-2xl font-semibold text-purple-900 mb-4">View Optimal Route</h4>
+                <p className="text-gray-700">{`After computing the optimal route, it is shown geographically on the map.`}</p>
+              </div>
+            </div>
+
+            {/* Image 3 */}
+            <div className="flex justify-center items-center gap-8">
+              <div className="w-[490px] h-[420px]">
+                <img
+                  src="/SingleDriverDirections.png"
+                  alt="Single Driver Directions"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
+                <h4 className="text-2xl font-semibold text-purple-900 mb-4">View Directions</h4>
+                <p className="text-gray-700">{`Take a look at the step-by-step directions and get driving!`}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Route Multiple Drivers Section */}
+          <div>
+            <h3 className="text-3xl font-semibold text-center text-purple-900 mb-8">Route Multiple Drivers</h3>
+
+            {/* Image 1 */}
+            <div className="flex mb-12 justify-center items-center gap-8">
+              <div className="w-[490px] h-[420px]">
+                <img
+                  src="/MultiTSP_Map.png"
+                  alt="Multiple Drivers Map"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
+                <h4 className="text-2xl font-semibold text-purple-900 mb-4">Viewing Routes with Multiple Drivers</h4>
+                <p className="text-gray-700">{`Once you've specified how many drivers you want to route, upon calculation the driver routes are uploaded directly to the map.`}</p>
+              </div>
+            </div>
+
+            {/* Image 2 */}
+            <div className="flex mb-12 justify-center items-center gap-8">
+              <div className="w-[490px] h-[420px]">
+                <img
+                  src="/Driver1Route.png"
+                  alt="Driver 1 Route"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
+                <h4 className="text-2xl font-semibold text-purple-900 mb-4">View Directions for the First Driver</h4>
+                <p className="text-gray-700">{`Easily view the route the first driver has been assigned.`}</p>
+              </div>
+            </div>
+
+            {/* Image 3 */}
+            <div className="flex mb-12 justify-center items-center gap-8">
+              <div className="w-[490px] h-[420px]">
+                <img
+                  src="/Driver2Route.png"
+                  alt="Driver 2 Route"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
+                <h4 className="text-2xl font-semibold text-purple-900 mb-4">View Directions for the Second Driver</h4>
+                <p className="text-gray-700">{`Switch to the second driver to view their assigned route!`}</p>
+              </div>
+            </div>
+
+            {/* Image 4 */}
+            <div className="flex justify-center items-center gap-8">
+              <div className="w-[490px] h-[420px]">
+                <img
+                  src="/Driver3Route.png"
+                  alt="Driver 3 Route"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
+                <h4 className="text-2xl font-semibold text-purple-900 mb-4">The Nth Driver</h4>
+                <p className="text-gray-700">{`Switch to any additional driver to view their specific route.`}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* About the Creators Section */}
+        <section className="mt-24 px-8 py-16 bg-gray-100">
+          <h2 className="text-4xl font-semibold text-center text-purple-900 mb-12">About the Creators</h2>
+          <div className="flex flex-col items-center space-y-6">
+            <img
+              src="/Brock.jpeg"
+              alt="Creators image"
+              className="w-48 h-48 rounded-full object-contain"
+            />
+            <p className="text-xl text-center text-purple-900">
+              Andrew, Cole, Cam, Travis, Jordan, and Tristan are a team of upper year students at Brock University, ON, Canada. As part of an upper year Software Engineering Project, we have put together this application to expand the capabilities of mapping software. Over the course of a semester, we have built REROUTE into a full-fledged mapping product that permits users to route multiple drivers to multiple stops in a near optimal way. We express gratitude to our supervisors who helped us along the way.
+            </p>
           </div>
         </section>
       </div>

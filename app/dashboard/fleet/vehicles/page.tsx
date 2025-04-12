@@ -30,8 +30,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { register_vehicle, get_fleet, remove_vehicle, save_route } from "@/actions/register";
+import { register_vehicle, get_fleet, remove_vehicle, add_credits } from "@/actions/register";
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 let vehiclesList: any = [];
 
@@ -48,12 +49,17 @@ export default function VehiclesPage() {
   const [data, setData] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string>();
+  const log = session?.user?.email;
+  const router = useRouter();
 
-  if (status === "authenticated"){
- 
+  if (status === "unauthenticated"){
+
+    router.push("/auth/login");
+
+  }
+
   const refresh = async () => {
 
-    const log = session?.user?.email;
 
     //console.log("AUTH:" + log);
 
@@ -84,7 +90,7 @@ export default function VehiclesPage() {
           
           const r = await register_vehicle({
 
-            auth: session?.user.email,
+            auth: log,
             name: formData.name,
             email: formData.email,
             driver: formData.driver
@@ -112,7 +118,7 @@ export default function VehiclesPage() {
     }, 0);
 
     }
-    
+   
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -196,7 +202,11 @@ export default function VehiclesPage() {
               <TableHead>Vehicle</TableHead>
               <TableHead>Driver</TableHead>
               <TableHead>Email</TableHead>
-              
+              <TableHead>
+                  <Button variant="outline" onClick={() => add_credits(log, 10)}>
+                    Add 10 Credits 
+                  </Button>
+                </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -217,8 +227,5 @@ export default function VehiclesPage() {
       </div>
     </div>
   );
-}
- else {
 
-}
 }

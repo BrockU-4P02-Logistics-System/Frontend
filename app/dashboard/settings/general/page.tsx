@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 interface CompanySettings {
   name: string;
@@ -60,6 +62,15 @@ export default function GeneralSettings() {
   const handleSave = () => {
     toast.success("Settings saved successfully");
   };
+
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  
+  if (status === "unauthenticated"){
+
+    router.push("/auth/login");
+
+  }
 
   return (
     <div className="p-6 space-y-6">

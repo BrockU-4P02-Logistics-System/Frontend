@@ -22,12 +22,15 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { useSession } from "next-auth/react"
+import { useState } from "react"
+import { check_credits } from "@/actions/register"
 
 const data = {
   user: {
-    name: "Cameron Carvalho",
-    email: "cam@brocku.ca",
-    avatar: "/avatars/shadcn.jpg",
+    name: "",
+    email: "",
+    avatar: "",
   },
   teams: [
     {
@@ -76,26 +79,16 @@ const data = {
       ],
     },
     {
-      title: "Settings",
+      title: "Billing",
       url: "/settings",
       icon: Settings2,
       items: [
+       
         {
-          title: "General",
-          url: "/dashboard/settings/general",
-        },
-        {
-          title: "Team Management",
-          url: "/dashboard/settings/team",
-        },
-        {
-          title: "Billing",
+          title: "Stripe Payments",
           url: "/dashboard/settings/billing",
         },
-        {
-          title: "API Integration",
-          url: "/dashboard/settings/api",
-        }
+        
       ],
     },
   ],
@@ -119,16 +112,55 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+
+  const { data: session, status } = useSession();
+  const log: any = session?.user?.email;
+  const [credit, setCredits] = useState(0);
+
+  data.user.email = log;
+/*
+  const loadCredits = async() => {
+  
+      const credits = await check_credits(log);
+      setCredits(credits ?? 0);
+     // console.log(credits);
+     
+    }
+
+    if (credit <= 0){
+
+      setTimeout(() => {
+  
+         loadCredits();
+  
+        
+  
+  
+    }, 0);
+  
+    }
+
+  */
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+      <div className="mb-8">
+              {/* Logo centered just below the top */}
+              <img
+                src="/logo.png"  // Logo path
+                alt="Reroute Logo"
+                className="h-32 mb-6"  // Logo size doubled (h-64) and moved closer to the top
+              />
+             
+            </div>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
+        
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
