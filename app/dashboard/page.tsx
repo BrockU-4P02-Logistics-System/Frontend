@@ -612,8 +612,16 @@ export default function RoutePlanner() {
         }
 
         const routePath = await getRoutePathFromDirections(routeMarkers);
-        const { directions, totalDistance, totalDuration } =
+        console.log("RoutePath: ", routePath);
+	const { directions, totalDistance, totalDuration } =
           await getDetailedDirections(routeMarkers);
+        console.log("Directions: ", directions);
+	console.log("TotalDistance: ", totalDistance);
+	console.log("TotalDuration: ", totalDuration);
+
+	if (directions.length ===0) {
+		alert("ALERT: Problematic Route. \nThere is at least one location that is unreachable in your request. \nPlease re-assess the locations in your request and remove the most remote one. \nThank you");
+	}
 
         routes.push({
           driverId,
@@ -641,6 +649,7 @@ export default function RoutePlanner() {
     }
   };
 
+ 
   // Update calculateRoute function to better handle the backend response:
   const calculateRoute = async () => {
     if (markers.length < 2) {
