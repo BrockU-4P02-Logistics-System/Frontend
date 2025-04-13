@@ -1,5 +1,5 @@
 'use client'
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import Image from "next/image"
 
 const { SITE_URL } = process.env;
@@ -29,6 +29,15 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+
+  const { status } = useSession();
+  
+
+   useEffect(() => {
+      if (status === "authenticated") {
+        router.push("/dashboard");
+      }
+    }, [status, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
