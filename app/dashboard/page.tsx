@@ -1016,20 +1016,6 @@ export default function RoutePlanner() {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
-  const removeCredits = async() => {
-
-    await remove_credits(log, -10);
-    loadCredits();
-
-  }
-
-  const handlePopupClose = () => {
-    setShowPopup(false);
-  };
-
-  const handlePopupOpen = () => {
-    setShowPopup(true);
-  };
 
   const handleSaveRoute = async () => {
     if (!log) {
