@@ -1,5 +1,5 @@
 'use client'
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -21,11 +21,11 @@ export default function SavedRoutes() {
 
     const log = session?.user?.email;
 
-    if (status === "unauthenticated"){
-
-      router.push("/auth/login");
-  
-    }
+     useEffect(() => {
+        if (status === "unauthenticated") {
+          router.push("/auth/login");
+        }
+      }, [status, router]);
     
  const remove = async (route: any) => {
  
