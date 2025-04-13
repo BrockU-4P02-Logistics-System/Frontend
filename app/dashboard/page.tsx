@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import MapComponent from "@/components/map/google";
 import AddressAutocomplete from "@/components/map/autocomplete";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   AlertDialog,
@@ -50,6 +50,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+
 
 interface MarkerLocation {
   address: string;
@@ -172,7 +173,7 @@ export default function RoutePlanner() {
   const [credit, setCredits] = useState(0);
   const log = session?.user?.email ?? '';
   const [mapsUrls, setMapURLs] = useState<string[]>([]);
-
+  const search = useSearchParams().get('load');
   const [formData, setFormData] = useState({
     name: "",
   });
@@ -1155,7 +1156,9 @@ export default function RoutePlanner() {
   useEffect(() => {
     if (status === "authenticated" && log) {
       loadCredits();
-      
+      if (search === "true"){
+        setShouldLoadRoute(true);
+      }
       if (shouldLoadRoute) {
         loadRoute();
       }

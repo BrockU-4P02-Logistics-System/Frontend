@@ -18,6 +18,9 @@ import { toast } from "sonner";
 import { signIn } from "next-auth/react";
 import Image from "next/image"
 
+const { SITE_URL } = process.env;
+
+
 // Login Page Component
 export default function LoginPage() {
 
@@ -59,7 +62,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      signIn("google", { callbackUrl: 'http://localhost:3000/auth/verify-tp'});
+      signIn("google", { callbackUrl: `${SITE_URL}/auth/verify-tp` });
       toast.success('Successfully logged in with Google');
     } catch {
       toast.error('Failed to log in with Google');

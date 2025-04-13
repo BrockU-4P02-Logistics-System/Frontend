@@ -51,7 +51,6 @@ const data = {
       title: "Routes",
       url: "/routes",
       icon: Route,
-      isActive: true,
       items: [
         {
           title: "Create Route",
