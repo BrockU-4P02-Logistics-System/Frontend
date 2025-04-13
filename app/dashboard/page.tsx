@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback, useEffect } from "react";
+import React, { Suspense, useState, useCallback, useEffect } from "react";
 import { useJsApiLoader } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,18 +12,14 @@ import {
   Share2,
   Undo2,
   GripVertical,
-  LogOut,
   Plus,
   Minus,
   Settings,
-  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import MapComponent from "@/components/map/google";
 import AddressAutocomplete from "@/components/map/autocomplete";
-import Link from "next/link";
-import { signOut } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   AlertDialog,
@@ -39,18 +35,21 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { check_credits, num_routes, remove_credits, save_route } from '@/actions/register';
-import { DialogFooter, DialogHeader } from '@/components/ui/dialog';
-import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+  check_credits,
+  num_routes,
+  remove_credits,
+  save_route,
+} from "@/actions/register";
+import { DialogFooter, DialogHeader } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { error } from 'console';
 
 interface MarkerLocation {
   address: string;
@@ -59,7 +58,7 @@ interface MarkerLocation {
   note?: string;
   arrivalTime?: string;
   departureTime?: string;
-  driverId?: number; // Add driver ID to associate markers with drivers
+  driverId?: number; 
 }
 
 interface RouteConfiguration {
@@ -88,10 +87,14 @@ interface DriverRoute {
   driverId: number;
   markers: MarkerLocation[];
   routePath: google.maps.LatLngLiteral[];
+  straightLinePaths?: {
+    origin: { lat: number; lng: number };
+    destination: { lat: number; lng: number };
+  }[];
   directions: RouteStep[];
   totalDistance: string;
   totalDuration: string;
-  color: string; // Color for the route on the map
+  color: string;
 }
 
 const DEFAULT_CONFIG: RouteConfiguration = {
@@ -122,6 +125,13 @@ const ROUTE_COLORS = [
   "#FF5722", // Deep Orange
 ];
 
+// Separate component that uses useSearchParams
+function RouteLoader({}: { onLoad: (shouldLoad: boolean) => void }) {
+ 
+  
+  return null;
+}
+
 export default function RoutePlanner() {
   const [mapResetKey, setMapKey] = useState<number>(Date.now());
 
@@ -133,6 +143,7 @@ export default function RoutePlanner() {
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   const [showRouteOptions, setShowRouteOptions] = useState(false);
+  const [shouldLoadRoute, setShouldLoadRoute] = useState(false);
 
   // Multi-driver state
   const [numDrivers, setNumDrivers] = useState<number>(1);
@@ -145,30 +156,29 @@ export default function RoutePlanner() {
   const [totalRouteDistance, setTotalRouteDistance] = useState<string>("");
   const [totalRouteDuration, setTotalRouteDuration] = useState<string>("");
 
-  const exposedProcessDriverRoutes = async (
-    optimizedMarkers: MarkerLocation[]
-  ) => {
-    await processDriverRoutes(optimizedMarkers);
-  };
+  // Add new state for straight line paths
+  const [straightLinePaths, setStraightLinePaths] = useState<
+    {
+      origin: { lat: number; lng: number };
+      destination: { lat: number; lng: number };
+    }[]
+  >([]);
 
-  
+  const [showUnreachableAlert, setShowUnreachableAlert] = useState(false);
+  const [unreachableAlertMessage, setUnreachableAlertMessage] = useState("");
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+
   const { data: session, status } = useSession();
   const [credit, setCredits] = useState(0);
-  const log = session?.user?.email;
-  const [error, setError] = React.useState<string>();
-  const [isLoading, setIsLoading] = React.useState(false);
-  const search = useSearchParams().get('load');
-  const [mapsUrls, setMapURLs] = React.useState<string[]>([]);
+  const log = session?.user?.email ?? '';
+  const [mapsUrls, setMapURLs] = useState<string[]>([]);
 
-  const [showPopup, setShowPopup] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+  });
 
-  const [formData, setFormData] = React.useState({
-      name: '',
-     });
-  
   const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey:
-      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "ERR",
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "ERR",
     libraries: ["places"],
   });
 
@@ -183,7 +193,14 @@ export default function RoutePlanner() {
     if (numDrivers > maxDrivers) {
       setNumDrivers(maxDrivers);
     }
-  }, [markers.length, maxDrivers]);
+  }, [markers.length, maxDrivers, numDrivers]);
+
+  // Effect to redirect if unauthenticated
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
+    }
+  }, [status, router]);
 
   // Effect to select first driver when routes are calculated
   useEffect(() => {
@@ -193,93 +210,95 @@ export default function RoutePlanner() {
       // Set the view to the first driver's route
       updateRouteView(driverRoutes[0]);
     }
-  }, [driverRoutes]);
+  }, [driverRoutes, selectedDriverId]);
+
+  const handleSearchParamsLoad = useCallback((shouldLoad: boolean) => {
+    setShouldLoadRoute(shouldLoad);
+  }, []);
+
+  const handleSaveDialogOpen = () => {
+    setShowSaveDialog(true);
+  };
+
+  const handleSaveDialogClose = () => {
+    setShowSaveDialog(false);
+  };
 
   // Update the displayed route based on selected driver
-  const updateRouteView = (driverRoute: DriverRoute) => {
-    setRoutePath(driverRoute.routePath);
+  // Enhanced updateRouteView function with better logging
+  const updateRouteView = useCallback((driverRoute: DriverRoute) => {
+    console.log("Updating route view with:", {
+      routePathLength: driverRoute.routePath?.length || 0,
+      straightLinePathsLength: driverRoute.straightLinePaths?.length || 0,
+      directionsLength: driverRoute.directions.length,
+    });
+
+    if (
+      driverRoute.straightLinePaths &&
+      driverRoute.straightLinePaths.length > 0
+    ) {
+      console.log(
+        "Setting straight line paths:",
+        driverRoute.straightLinePaths
+      );
+    }
+
+    // Set all the route data
+    setRoutePath(driverRoute.routePath || []);
+    setStraightLinePaths(driverRoute.straightLinePaths || []);
     setRouteDirections(driverRoute.directions);
     setTotalRouteDistance(driverRoute.totalDistance);
     setTotalRouteDuration(driverRoute.totalDuration);
 
-    const urls = generateGoogleMapsRouteUrls(driverRoute.markers);
-    setMapURLs(urls);
+    // Double-check what was actually set
+    setTimeout(() => {
+      console.log(
+        "After update, straight line paths length:",
+        straightLinePaths.length
+      );
+    }, 0);
+  }, []);
 
-  };
+  const loadRoute = useCallback(async () => {
+    try {
+      const savedRouteJson = sessionStorage.getItem("savedLoadedRoute");
+      if (!savedRouteJson) {
+        console.log("No saved route found in sessionStorage.");
+        return;
+      }
 
-  console.log(status);
+      const savedMarkersJson = sessionStorage.getItem("savedMarkers");
+      const savedConfigJson = sessionStorage.getItem("savedConfig");
+      const savedDriverRoutesJson = sessionStorage.getItem("savedDriverRoutes");
+      const savedNumDriversJson = sessionStorage.getItem("savedNumDrivers");
 
-  if (status === "unauthenticated"){
-
-    router.push("/auth/login");
-
-  }
-  
-  /*
-  sessionStorage.setItem('savedLoadedRoute', '');
-    sessionStorage.setItem('savedConfig', '');
-    sessionStorage.setItem('savedMarkers', '');
-    sessionStorage.setItem('savedRoutePath', '');
-    sessionStorage.setItem('savedRouteDirections', '');
-    sessionStorage.setItem('savedRouteDistance', '');
-    sessionStorage.setItem('savedRouteDuration', '');
-    sessionStorage.setItem('savedTimestamp', '');
-*/
-  const loadRoute = async () => {
-	  
-    const savedRoute: any = sessionStorage.getItem('savedLoadedRoute');
-    const savedMarkers: any = sessionStorage.getItem('savedMarkers') 
-      ? JSON.parse(sessionStorage.getItem('savedMarkers') as string) 
-      : null;
-    const savedConfig: any = sessionStorage.getItem('savedConfig');
-    const savedDriverRoutes: any = sessionStorage.getItem('savedDriverRoutes') 
-    ? JSON.parse(sessionStorage.getItem('savedDriverRoutes') as string) 
-    : null;
-    const savedNumDrivers: any = sessionStorage.getItem('savedNumDrivers')
-    const savedTimestamp: any = sessionStorage.getItem('savedTimestamp');
-
-
-     /*
-    const savedRoutePath: any = sessionStorage.getItem('savedRoutePath') 
-      ? JSON.parse(sessionStorage.getItem('savedRoutePath') as string) 
-      : null;
-    const savedRouteDirections: any = sessionStorage.getItem('savedRouteDirections') 
-      ? JSON.parse(sessionStorage.getItem('savedRouteDirections') as string) 
-      : null;
-    const savedRouteDistance: any = sessionStorage.getItem('savedRouteDistance');
-    const savedRouteDuration: any = sessionStorage.getItem('savedRouteDuration');
-    */
-
-    if (savedRoute) {
-
-    
-     setMarkers(savedMarkers);
-     setConfig(savedConfig);
-     setDriverRoutes(savedDriverRoutes);
-     setNumDrivers(savedNumDrivers);
-     handleDriverSelect(0);
-
-     /*
-     setRoutePath(savedRoutePath);
-     setRouteDirections(savedRouteDirections);
-     setTotalRouteDistance(savedRouteDistance);
-     setTotalRouteDuration(savedRouteDuration);
-     */
-
-
-    } else {
-
-      console.log("No saved timestamp found in sessionStorage.");
-
+      if (savedRouteJson) {
+        if (savedMarkersJson) {
+          const parsedMarkers = JSON.parse(savedMarkersJson) as MarkerLocation[];
+          setMarkers(parsedMarkers);
+        }
+        
+        if (savedConfigJson) {
+          const parsedConfig = JSON.parse(savedConfigJson) as RouteConfiguration;
+          setConfig(parsedConfig);
+        }
+        
+        if (savedDriverRoutesJson) {
+          const parsedDriverRoutes = JSON.parse(savedDriverRoutesJson) as DriverRoute[];
+          setDriverRoutes(parsedDriverRoutes);
+        }
+        
+        if (savedNumDriversJson) {
+          const parsedNumDrivers = JSON.parse(savedNumDriversJson) as number;
+          setNumDrivers(parsedNumDrivers);
+        }
+        
+        handleDriverSelect(0);
+      }
+    } catch (err) {
+      console.error("Error loading route:", err);
     }
-
-    //setIsLoading(true);
-
-};
-
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: "/" });
-  };
+  }, []);
 
   const saveToHistory = useCallback(() => {
     setRouteHistory((prev) => [...prev, [...markers]]);
@@ -319,8 +338,8 @@ export default function RoutePlanner() {
           departureTime: "",
         };
       }
-    } catch (error) {
-      console.error("Geocoding error:", error);
+    } catch (err) {
+      console.error("Geocoding error:", err);
       toast.error("Failed to geocode address");
     }
     return null;
@@ -397,12 +416,14 @@ export default function RoutePlanner() {
     directions: RouteStep[];
     totalDistance: string;
     totalDuration: string;
+    unreachableSegments?: { origin: string; destination: string }[];
   }> => {
     if (!isLoaded || markers.length < 2) {
       return {
         directions: [],
         totalDistance: "0 km",
         totalDuration: "0 min",
+        unreachableSegments: [],
       };
     }
 
@@ -410,6 +431,7 @@ export default function RoutePlanner() {
     let completeDirections: RouteStep[] = [];
     let totalDistance = 0;
     let totalDuration = 0;
+    const unreachableSegments: { origin: string; destination: string }[] = [];
 
     try {
       // Process routes in chunks to handle multiple waypoints
@@ -420,35 +442,59 @@ export default function RoutePlanner() {
           lng: markers[i + 1].longitude,
         };
 
-        const result = await directionsService.route({
-          origin,
-          destination,
-          travelMode: google.maps.TravelMode.DRIVING,
-          avoidHighways: config.avoidHighways,
-          avoidFerries: config.avoidFerries,
-          avoidTolls: config.avoidTolls,
-        });
+        try {
+          const result = await directionsService.route({
+            origin,
+            destination,
+            travelMode: google.maps.TravelMode.DRIVING,
+            avoidHighways: config.avoidHighways,
+            avoidFerries: config.avoidFerries,
+            avoidTolls: config.avoidTolls,
+          });
 
-        if (result.routes && result.routes.length > 0) {
-          const route = result.routes[0];
+          if (result.routes && result.routes.length > 0) {
+            const route = result.routes[0];
 
-          if (route.legs && route.legs.length > 0) {
-            // Accumulate total route metrics
-            totalDistance += route.legs[0].distance?.value
-              ? route.legs[0].distance.value / 1000
-              : 0; // Convert to kilometers
-            totalDuration += route.legs[0].duration?.value || 0; // In seconds
+            if (route.legs && route.legs.length > 0) {
+              // Accumulate total route metrics
+              totalDistance += route.legs[0].distance?.value
+                ? route.legs[0].distance.value / 1000
+                : 0; // Convert to kilometers
+              totalDuration += route.legs[0].duration?.value || 0; // In seconds
 
-            // Extract step-by-step directions
-            const steps =
-              route.legs[0].steps?.map((step) => ({
-                instruction: step.instructions || "",
-                distance: step.distance?.text || "",
-                duration: step.duration?.text || "",
-              })) || [];
+              // Extract step-by-step directions
+              const steps =
+                route.legs[0].steps?.map((step) => ({
+                  instruction: step.instructions || "",
+                  distance: step.distance?.text || "",
+                  duration: step.duration?.text || "",
+                })) || [];
 
-            completeDirections = [...completeDirections, ...steps];
+              completeDirections = [...completeDirections, ...steps];
+            }
           }
+        } catch (err) {
+          console.error(
+            `Error getting directions from ${markers[i].address} to ${
+              markers[i + 1].address
+            }:`,
+            err
+          );
+
+          // Record this as an unreachable segment
+          unreachableSegments.push({
+            origin: markers[i].address,
+            destination: markers[i + 1].address,
+          });
+
+          // Add a placeholder step to indicate the problematic segment
+          completeDirections.push({
+            instruction: `<span style="color: red;">Cannot route from ${
+              markers[i].address
+            } to ${markers[i + 1].address} - showing direct line</span>`,
+            distance: "N/A",
+            duration: "N/A",
+          });
         }
       }
 
@@ -463,35 +509,49 @@ export default function RoutePlanner() {
         directions: completeDirections,
         totalDistance: formattedDistance,
         totalDuration: formattedDuration,
+        unreachableSegments:
+          unreachableSegments.length > 0 ? unreachableSegments : undefined,
       };
-    } catch (error) {
-      console.error("Error getting detailed directions:", error);
+    } catch (err) {
+      console.error("Error getting detailed directions:", err);
       toast.error("Failed to get route directions");
       return {
         directions: [],
         totalDistance: "0 km",
         totalDuration: "0 min",
+        unreachableSegments: [],
       };
     }
   };
 
   const getRoutePathFromDirections = async (
     markers: MarkerLocation[]
-  ): Promise<google.maps.LatLngLiteral[]> => {
-    if (!isLoaded || markers.length < 2) return [];
+  ): Promise<{
+    roadPath: google.maps.LatLngLiteral[];
+    unreachablePaths: {
+      origin: { lat: number; lng: number };
+      destination: { lat: number; lng: number };
+    }[];
+  }> => {
+    if (!isLoaded || markers.length < 2) {
+      return { roadPath: [], unreachablePaths: [] };
+    }
 
     const directionsService = new google.maps.DirectionsService();
-    let completePath: google.maps.LatLngLiteral[] = [];
+    let roadPath: google.maps.LatLngLiteral[] = [];
+    const unreachablePaths: {
+      origin: { lat: number; lng: number };
+      destination: { lat: number; lng: number };
+    }[] = [];
 
-    try {
-      // Process routes in chunks to avoid exceeding waypoint limits
-      for (let i = 0; i < markers.length - 1; i++) {
-        const origin = { lat: markers[i].latitude, lng: markers[i].longitude };
-        const destination = {
-          lat: markers[i + 1].latitude,
-          lng: markers[i + 1].longitude,
-        };
+    for (let i = 0; i < markers.length - 1; i++) {
+      const origin = { lat: markers[i].latitude, lng: markers[i].longitude };
+      const destination = {
+        lat: markers[i + 1].latitude,
+        lng: markers[i + 1].longitude,
+      };
 
+      try {
         const result = await directionsService.route({
           origin,
           destination,
@@ -501,34 +561,44 @@ export default function RoutePlanner() {
           avoidTolls: config.avoidTolls,
         });
 
-        // Check if we got a valid result
         if (result.routes.length > 0) {
-          // Extract path points from each leg
           const legPath = result.routes[0].overview_path.map((point) => ({
             lat: point.lat(),
             lng: point.lng(),
           }));
 
-          // Append to complete path (avoid duplicating the connecting points)
-          if (i === 0) {
-            completePath = [...legPath];
+          if (i === 0 || roadPath.length === 0) {
+            roadPath = [...legPath];
           } else {
-            completePath = [...completePath, ...legPath.slice(1)];
+            roadPath = [...roadPath, ...legPath.slice(1)];
           }
         }
+      } catch {
+        console.log(
+          `Adding straight line for unreachable segment: ${
+            markers[i].address
+          } to ${markers[i + 1].address}`
+        );
+
+        // Add this segment to unreachablePaths
+        unreachablePaths.push({
+          origin: { lat: markers[i].latitude, lng: markers[i].longitude },
+          destination: {
+            lat: markers[i + 1].latitude,
+            lng: markers[i + 1].longitude,
+          },
+        });
       }
-
-      return completePath;
-    } catch (error) {
-      console.error("Error getting directions:", error);
-      toast.error("Failed to get route directions");
-
-      // Fallback to simple point-to-point route
-      return markers.map((marker) => ({
-        lat: marker.latitude,
-        lng: marker.longitude,
-      }));
     }
+
+    console.log(
+      `Found ${roadPath.length} road path points and ${unreachablePaths.length} unreachable segments`
+    );
+    if (unreachablePaths.length > 0) {
+      console.log("Unreachable paths:", unreachablePaths);
+    }
+
+    return { roadPath, unreachablePaths };
   };
 
   // Remove duplicate markers based on location and driver ID
@@ -557,7 +627,65 @@ export default function RoutePlanner() {
   };
 
   // ProcessDriverRoutes function
+  // Function to detect unreachable locations
+  const detectUnreachableLocations = async (
+    markers: MarkerLocation[],
+    directionsService: google.maps.DirectionsService,
+    config: RouteConfiguration
+  ): Promise<{
+    unreachableRoutes: { origin: string; destination: string }[];
+    allRoutesChecked: boolean;
+  }> => {
+    if (markers.length < 2) {
+      return { unreachableRoutes: [], allRoutesChecked: true };
+    }
+
+    const unreachableRoutes: { origin: string; destination: string }[] = [];
+    let allRoutesChecked = true;
+
+    // Check each segment of the route
+    for (let i = 0; i < markers.length - 1; i++) {
+      const origin = { lat: markers[i].latitude, lng: markers[i].longitude };
+      const destination = {
+        lat: markers[i + 1].latitude,
+        lng: markers[i + 1].longitude,
+      };
+
+      try {
+        const result = await directionsService.route({
+          origin,
+          destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+          avoidHighways: config.avoidHighways,
+          avoidFerries: config.avoidFerries,
+          avoidTolls: config.avoidTolls,
+        });
+
+        // If no routes, this segment is problematic
+        if (!result.routes || result.routes.length === 0) {
+          unreachableRoutes.push({
+            origin: markers[i].address,
+            destination: markers[i + 1].address,
+          });
+        }
+      } catch {
+        // If there's an error, this segment is problematic
+        unreachableRoutes.push({
+          origin: markers[i].address,
+          destination: markers[i + 1].address,
+        });
+
+        // If we hit a Google Maps API error, we might not have checked all routes
+        allRoutesChecked = false;
+      }
+    }
+
+    return { unreachableRoutes, allRoutesChecked };
+  };
+
+  // Enhanced version of processDriverRoutes that identifies problematic routes
   const processDriverRoutes = async (optimizedMarkers: MarkerLocation[]) => {
+    const directionsService = new google.maps.DirectionsService();
     const driverRoutesMap = new Map<number, MarkerLocation[]>();
 
     // Get the starting location (first marker entered by user)
@@ -570,14 +698,13 @@ export default function RoutePlanner() {
       if (!driverRoutesMap.has(driverId)) {
         driverRoutesMap.set(driverId, []);
         // Add the start location as the first stop for each driver
-        // Don't add a note for the original start location
-        const isOriginalStart = marker === optimizedMarkers[0];
         driverRoutesMap.get(driverId)?.push({
           ...startLocation,
           driverId: driverId,
-          note: isOriginalStart
-            ? startLocation.note
-            : startLocation.note || "Start point",
+          note:
+            marker === optimizedMarkers[0]
+              ? startLocation.note
+              : startLocation.note || "Start point",
         });
       }
 
@@ -592,13 +719,17 @@ export default function RoutePlanner() {
     });
 
     const routes: DriverRoute[] = [];
+    const problematicDrivers: {
+      driverId: number;
+      unreachableRoutes: { origin: string; destination: string }[];
+    }[] = [];
 
     // Process each driver's route
     for (const [driverId, driverMarkers] of driverRoutesMap.entries()) {
       // Only process if driver has at least 2 markers (start and end)
       if (driverMarkers.length >= 2) {
         // Handle "return home" option by adding the first stop as the last stop if needed
-        let routeMarkers = [...driverMarkers];
+        const routeMarkers = [...driverMarkers];
         const firstMarker = routeMarkers[0];
         const lastMarker = routeMarkers[routeMarkers.length - 1];
 
@@ -615,14 +746,35 @@ export default function RoutePlanner() {
           });
         }
 
-        const routePath = await getRoutePathFromDirections(routeMarkers);
+        // Check for unreachable locations
+        const { unreachableRoutes } =
+          await detectUnreachableLocations(
+            routeMarkers,
+            directionsService,
+            config
+          );
+
+        if (unreachableRoutes.length > 0) {
+          problematicDrivers.push({ driverId, unreachableRoutes });
+        }
+
+        // Get both road paths and straight lines for unreachable segments - ONLY ONCE
+        console.log("Getting route paths for driver:", driverId);
+        const { roadPath, unreachablePaths } = await getRoutePathFromDirections(
+          routeMarkers
+        );
+        console.log("Road path length:", roadPath.length);
+        console.log("Unreachable paths:", unreachablePaths);
+
+        // Get directions info - ONLY ONCE
         const { directions, totalDistance, totalDuration } =
           await getDetailedDirections(routeMarkers);
 
         routes.push({
           driverId,
           markers: routeMarkers,
-          routePath,
+          routePath: roadPath,
+          straightLinePaths: unreachablePaths,
           directions,
           totalDistance,
           totalDuration,
@@ -630,6 +782,36 @@ export default function RoutePlanner() {
         });
       }
     }
+
+    // Handle problematic routes - alert but still show route
+    if (problematicDrivers.length > 0) {
+      let detailedMessage = "ALERT: Problematic Route(s) Detected\n\n";
+
+      problematicDrivers.forEach(({ driverId, unreachableRoutes }) => {
+        detailedMessage += `Issues with Driver ${driverId + 1}:\n`;
+
+        unreachableRoutes.forEach(({ origin, destination }) => {
+          detailedMessage += `- Cannot find road route from "${origin}" to "${destination}" - showing direct line instead\n`;
+        });
+
+        detailedMessage += "\n";
+      });
+
+      detailedMessage +=
+        "For unreachable locations, a straight line will be shown. Road routes will be shown where available.";
+      setUnreachableAlertMessage(detailedMessage);
+      setShowUnreachableAlert(true);
+    }
+
+    // Debug the routes that will be set
+    console.log("Setting driver routes:", routes);
+    routes.forEach((route, idx) => {
+      console.log(
+        `Route ${idx} - roadPath: ${
+          route.routePath.length
+        }, straightLinePaths: ${route.straightLinePaths?.length || 0}`
+      );
+    });
 
     setDriverRoutes(routes);
 
@@ -651,22 +833,67 @@ export default function RoutePlanner() {
       toast.error("Please add at least two locations");
       return;
     }
-
-    if (credit <= 0){
-
-      toast.error("Not enough credits!");
-      return;
-
-    } else {
-
-      removeCredits();
-
-    }
-
+  
     setIsCalculating(true);
     saveToHistory();
-
+  
     try {
+      // First, check if any locations are unreachable before sending to the backend
+      const directionsService = new google.maps.DirectionsService();
+      const unreachableLocations: {
+        index: number;
+        origin: string;
+        destination: string;
+      }[] = [];
+  
+      for (let i = 0; i < markers.length - 1; i++) {
+        const origin = { lat: markers[i].latitude, lng: markers[i].longitude };
+        const destination = {
+          lat: markers[i + 1].latitude,
+          lng: markers[i + 1].longitude,
+        };
+  
+        try {
+          await directionsService.route({
+            origin,
+            destination,
+            travelMode: google.maps.TravelMode.DRIVING,
+            avoidHighways: config.avoidHighways,
+            avoidFerries: config.avoidFerries,
+            avoidTolls: config.avoidTolls,
+          });
+        } catch {
+          unreachableLocations.push({
+            index: i,
+            origin: markers[i].address,
+            destination: markers[i + 1].address,
+          });
+        }
+        }
+  
+      // If there are unreachable locations, alert the user
+      if (unreachableLocations.length > 0) {
+        let alertMessage = "The following route segments are unreachable:\n\n";
+        unreachableLocations.forEach((loc) => {
+          alertMessage += `• From "${loc.origin}" to "${loc.destination}"\n`;
+        });
+        
+        alertMessage += "\nWe'll show direct lines for these segments and road routes where possible.";
+  
+        setUnreachableAlertMessage(alertMessage);
+        setShowUnreachableAlert(true);
+  
+        // IMPORTANT: We continue processing instead of returning early
+        // This allows us to still process the route even with unreachable segments
+      }
+  
+      // Extract route options into an array for the backend
+      const options = [
+        config.avoidHighways || false,
+        config.avoidTolls || false,
+        config.avoidFerries || false,
+      ];
+  
       const response = await fetch("/api/process", {
         method: "POST",
         headers: {
@@ -677,19 +904,20 @@ export default function RoutePlanner() {
           config,
           numberDrivers: numDrivers,
           returnToStart: config.returnToStart,
+          options: options // Include the options array in the request
         }),
       });
-
+  
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
+  
       const data = await response.json();
       const originalDriverCount = numDrivers; // Store original count for comparison
-
+  
       if (data.routes && Array.isArray(data.routes)) {
         let allMarkers: MarkerLocation[] = [];
-
+  
         // Process each driver's route from the response
         data.routes.forEach(
           (driverRoute: { driverId: number; stops: MarkerLocation[] }) => {
@@ -697,18 +925,18 @@ export default function RoutePlanner() {
               ...marker,
               driverId: driverRoute.driverId,
             }));
-
+  
             allMarkers = [...allMarkers, ...driverMarkers];
           }
         );
-
+  
         // Remove duplicates before updating state
         const uniqueMarkers = removeDuplicateMarkers(allMarkers);
         setMarkers(uniqueMarkers);
-
+  
         // Process each driver's route
         await processDriverRoutes(uniqueMarkers);
-
+  
         // Check if the actual number of drivers is different from what was requested
         const actualDriverCount = data.totalDrivers || data.routes.length;
         if (actualDriverCount < originalDriverCount) {
@@ -719,7 +947,8 @@ export default function RoutePlanner() {
           );
           setShowDriverCountAlert(true);
         }
-
+  
+        handleDriverSelect(0);
         toast.success("Route optimized successfully!");
       } else if (data.route) {
         // Backward compatibility with old format
@@ -727,16 +956,17 @@ export default function RoutePlanner() {
           ...marker,
           driverId: marker.driverId !== undefined ? marker.driverId : 0,
         }));
-
+  
         const uniqueMarkers = removeDuplicateMarkers(optimizedMarkers);
         setMarkers(uniqueMarkers);
-
+  
         // Process each driver's route
         await processDriverRoutes(uniqueMarkers);
-
+  
         // Check how many unique driver IDs are in the response
-        const uniqueDriverIds = new Set(optimizedMarkers.map((m: { driverId: any; }) => m.driverId))
-          .size;
+        const uniqueDriverIds = new Set(
+          optimizedMarkers.map((m : { driverId: string}) => m.driverId)
+        ).size;
         if (uniqueDriverIds < originalDriverCount) {
           toast.info(
             `The route has been optimized with ${uniqueDriverIds} driver${
@@ -744,35 +974,40 @@ export default function RoutePlanner() {
             } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
           );
         }
-
+  
         toast.success("Route optimized successfully!");
       } else {
         toast.error("Invalid route data received");
       }
-    } catch (error) {
-      console.error("Error calculating route:", error);
-      toast.error("Failed to calculate route: " + (error instanceof Error ? error.message : "Unknown error"));
+    } catch (err) {
+      console.error("Error calculating route:", err);
+      toast.error(
+        "Failed to calculate route: " +
+          (err instanceof Error ? err.message : "Unknown error")
+      );
     } finally {
       setIsCalculating(false);
     }
   };
 
-  function generateGoogleMapsRouteUrls(markers: any) {
+  function generateGoogleMapsRouteUrls(markers: MarkerLocation[]): string[] {
     if (!Array.isArray(markers) || markers.length === 0) {
-        throw new Error("Invalid markers array");
+      throw new Error("Invalid markers array");
     }
-    
+
     const baseUrl = "https://www.google.com/maps/dir/";
-    const urls = [];
-    
+    const urls: string[] = [];
+
     for (let i = 0; i < markers.length; i += 10) {
-        const chunk = markers.slice(i, i + 10);
-        const waypoints = chunk.map(marker => encodeURIComponent(marker.address)).join("/");
-        urls.push(`${baseUrl}${waypoints}?dirflg=d`);
+      const chunk = markers.slice(i, i + 10);
+      const waypoints = chunk
+        .map((marker) => encodeURIComponent(marker.address))
+        .join("/");
+      urls.push(`${baseUrl}${waypoints}?dirflg=d`);
     }
-    
+
     return urls;
-}
+  }
 
   const handleConfigChange = <K extends keyof RouteConfiguration>(
     key: K,
@@ -797,6 +1032,11 @@ export default function RoutePlanner() {
   };
 
   const handleSaveRoute = async () => {
+    if (!log) {
+      toast.error("You must be logged in to save routes");
+      return;
+    }
+    
     const routeData = {
       markers,
       config,
@@ -805,33 +1045,37 @@ export default function RoutePlanner() {
       timestamp: new Date().toISOString(),
     };
 
-    setShowPopup(true);
-
     const num = await num_routes(log);
 
-    if (!formData.name){
-
-      toast.error("No name for route!");
-
-    } else if (!totalRouteDistance) {
-
-      toast.error("No route calculated!");
-
-    } else if (num == false) {
-
-      toast.error("Too many routes already saved.");
-
-    } else {
-
-      sessionStorage.setItem('savedRoute', JSON.stringify(routeData));
-      save_route(log, sessionStorage.getItem('savedRoute'), formData.name);
-      handlePopupClose();
-      toast.success("Route saved successfully");
-    
+    if (credit <= 0) {
+      toast.error("Not enough credits!");
+      handleSaveDialogClose();
+      return;
     }
 
+    if (!formData.name) {
+      toast.error("Please enter a name for your route!");
+      return;
+    }
 
-    
+    if (!totalRouteDistance) {
+      toast.error("No route calculated!");
+      handleSaveDialogClose();
+      return;
+    }
+
+    if (num === false) {
+      toast.error("Too many routes already saved.");
+      handleSaveDialogClose();
+      return;
+    }
+
+    // All checks passed, save the route
+    sessionStorage.setItem("savedRoute", JSON.stringify(routeData));
+    await save_route(log, sessionStorage.getItem("savedRoute"), formData.name);
+    await removeCredits();
+    toast.success("Route saved successfully");
+    handleSaveDialogClose();
   };
 
   const handleShareRoute = async () => {
@@ -845,7 +1089,8 @@ export default function RoutePlanner() {
 
       await navigator.clipboard.writeText(JSON.stringify(routeData));
       toast.success("Route copied to clipboard");
-    } catch {
+    } catch (err) {
+      console.error("Error sharing route:", err);
       toast.error("Failed to share route");
     }
   };
@@ -866,7 +1111,7 @@ export default function RoutePlanner() {
     setMapKey(Date.now());
 
     setShowClearDialog(false);
-    
+
     toast.success("Route cleared");
   };
 
@@ -880,7 +1125,6 @@ export default function RoutePlanner() {
   };
 
   const handleDriverSelect = (driverId: number) => {
-
     setSelectedDriverId(driverId);
 
     // Update the displayed route information
@@ -889,12 +1133,10 @@ export default function RoutePlanner() {
     );
 
     if (driverRoute) {
-
       updateRouteView(driverRoute);
 
       const urls = generateGoogleMapsRouteUrls(driverRoute.markers);
       setMapURLs(urls);
-
     }
   };
 
@@ -909,13 +1151,30 @@ export default function RoutePlanner() {
   const [driverCountMessage, setDriverCountMessage] = useState("");
   const [showExport, setExport] = useState(false);
 
-  const loadCredits = async() => {
+  const loadCredits = async () => {
+    if (log) {
+      const credits = await check_credits(log);
+      setCredits(credits ?? 0);
+    }
+  };
 
-    const credits = await check_credits(log);
-    setCredits(credits ?? 0);
-   // console.log(credits);
-   
-  }
+  const removeCredits = async () => {
+    if (log) {
+      await remove_credits(log, -10);
+      await loadCredits();
+    }
+  };
+
+  // Effect to load credits and route when needed
+  useEffect(() => {
+    if (status === "authenticated" && log) {
+      loadCredits();
+      
+      if (shouldLoadRoute) {
+        loadRoute();
+      }
+    }
+  }, [status, log, shouldLoadRoute, loadRoute]);
 
   if (!isLoaded) {
     return (
@@ -925,312 +1184,306 @@ export default function RoutePlanner() {
     );
   }
 
-  if (credit <= 0){
-
-    setTimeout(() => {
-
-       loadCredits();
-
-       if (search === "true"){
-
-        loadRoute();
-
-       }
-
-
-  }, 0);
-
-  }
-
   return (
-          <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
-            <div className="w-full lg:w-[30%] flex flex-col gap-4 p-4 overflow-y-auto">
-              {/* Add Location Section */}
-              <div className="rounded-xl bg-muted/50 p-4">
-                <div className="flex items-center justify-between mb-4">
-                  
-                <h1 className="text-xl font-bold">Route Planner</h1>
-          {error && <div className="">{error}</div>}
-          
-    {showPopup && (
-      <div className="popup-overlay">
-        <div className="popup-content">
-          <h2>Enter Route Name</h2>
-          <Input
-            id="popup-name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-          />
-          <div className="flex gap-2 mt-4">
-            <button onClick={handlePopupClose} className="btn-secondary">
-              Close
-            </button>
-            <button onClick={handleSaveRoute} className="btn-primary">
-              Save
-            </button>
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
+      {/* Suspense boundary around the component that uses useSearchParams */}
+      <Suspense fallback={<div>Loading route data...</div>}>
+        <RouteLoader onLoad={handleSearchParamsLoad} />
+      </Suspense>
+      
+      <div className="w-full lg:w-[30%] flex flex-col gap-4 p-4 overflow-y-auto">
+        {/* Add Location Section */}
+        <div className="rounded-xl bg-muted/50 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-xl font-bold">Route Planner</h1>
+
+            <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Save Route</DialogTitle>
+                  <DialogDescription>
+                    Give your route a name so you can find it later.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="route-name">Route Name</Label>
+                      <Input
+                        id="route-name"
+                        placeholder="My Route"
+                        value={formData.name}
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={handleSaveDialogClose}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveRoute}>Save Route</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <h1 className="text-xl font-bold">Credits: {credit} </h1>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleUndo}
+                    disabled={routeHistory.length === 0}
+                  >
+                    <Undo2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Undo last change</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleSaveDialogOpen}
+                  >
+                    <Save className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Save Route</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleShareRoute}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Share route</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
-      </div>
-    )}
-                  <h1 className="text-xl font-bold">Credits: {credit} </h1>
-                 
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={handleUndo}
-                            disabled={routeHistory.length === 0}
-                          >
-                            <Undo2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Undo last change</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                        <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={handlePopupOpen}
-                          >
-                            <Save className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Save Route</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                   
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={handleShareRoute}
-                          >
-                            <Share2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Share route</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    </div>
-                    </div>
-          <div className="flex flex-col gap-2">
-            <AddressAutocomplete
-              value={newAddress}
-              onChange={(e) => setNewAddress(e.target.value)}
-              onAddressSelect={(address) => setNewAddress(address)}
-              isLoaded={isLoaded}
-            />
-            <Button
-              className="w-full"
-              onClick={handleAddAddress}
-              disabled={!newAddress.trim()}
-            >
-              Add Location
-            </Button>
-          </div>
- {/* Driver Count Selection */}
- {markers.length >= 2 && (
-            <div className="rounded-xl bg-muted/50 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="font-bold text-lg">Driver Assignment</h2>
-                <span className="text-sm text-muted-foreground">
-                  {numDrivers} driver{numDrivers !== 1 ? "s" : ""}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-center space-x-4">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    handleDriverCountChange((numDrivers - 1).toString())
-                  }
-                  disabled={numDrivers <= 1}
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <span className="text-lg font-semibold">{numDrivers}</span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    handleDriverCountChange((numDrivers + 1).toString())
-                  }
-                  disabled={numDrivers >= maxDrivers}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="text-sm text-muted-foreground text-center mt-2">
-                {maxDrivers < 10
-                  ? `Limited to ${maxDrivers} driver${
-                      maxDrivers !== 1 ? "s" : ""
-                    } based on number of stops`
-                  : "Maximum 10 drivers allowed"}
-              </div>
+        <div className="flex flex-col gap-2">
+          <AddressAutocomplete
+            value={newAddress}
+            onChange={(e) => setNewAddress(e.target.value)}
+            onAddressSelect={(address) => setNewAddress(address)}
+            isLoaded={isLoaded}
+          />
+          <Button
+            className="w-full"
+            onClick={handleAddAddress}
+            disabled={!newAddress.trim()}
+          >
+            Add Location
+          </Button>
+        </div>
+        {/* Driver Count Selection */}
+        {markers.length >= 2 && (
+          <div className="rounded-xl bg-muted/50 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-bold text-lg">Driver Assignment</h2>
+              <span className="text-sm text-muted-foreground">
+                {numDrivers} driver{numDrivers !== 1 ? "s" : ""}
+              </span>
             </div>
-          )}
 
-          {/* Route Options Button */}
-          {markers.length >= 2 && (
-            <div className="flex justify-center">
+            <div className="flex items-center justify-center space-x-4">
               <Button
                 variant="outline"
-                onClick={() => setShowRouteOptions(true)}
-                className="w-full"
+                size="icon"
+                onClick={() =>
+                  handleDriverCountChange((numDrivers - 1).toString())
+                }
+                disabled={numDrivers <= 1}
               >
-                <Settings className="mr-2 h-4 w-4" />
-                Route Options
+                <Minus className="h-4 w-4" />
+              </Button>
+              <span className="text-lg font-semibold">{numDrivers}</span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  handleDriverCountChange((numDrivers + 1).toString())
+                }
+                disabled={numDrivers >= maxDrivers}
+              >
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
-          )}
 
-          {/* Destinations List */}
-          {markers.length > 0 && (
-            <div className="rounded-xl bg-muted/50 p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold text-lg">Destinations</h2>
-                <span className="text-sm text-muted-foreground">
-                  {markers.length} location{markers.length !== 1 ? "s" : ""}
-                </span>
-              </div>
+            <div className="text-sm text-muted-foreground text-center mt-2">
+              {maxDrivers < 10
+                ? `Limited to ${maxDrivers} driver${
+                    maxDrivers !== 1 ? "s" : ""
+                  } based on number of stops`
+                : "Maximum 10 drivers allowed"}
+            </div>
+          </div>
+        )}
 
-              <div className="space-y-2">
-                {markers.map((marker, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
-                    draggable
-                    onDragStart={() => handleDragStart(index)}
-                    onDragOver={() => handleDragOver(index)}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {marker.address}
-                      </p>
-                      {/* Replace this driver ID display with our new logic */}
-                      {marker.driverId !== undefined &&
-                        driverRoutes.length > 0 && (
-                          <div className="flex gap-1 items-center">
-                            {/* Determine if this is a start location */}
-                            {index === 0 ||
+        {/* Route Options Button */}
+        {markers.length >= 2 && (
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              onClick={() => setShowRouteOptions(true)}
+              className="w-full"
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              Route Options
+            </Button>
+          </div>
+        )}
+
+        {/* Destinations List */}
+        {markers.length > 0 && (
+          <div className="rounded-xl bg-muted/50 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-lg">Destinations</h2>
+              <span className="text-sm text-muted-foreground">
+                {markers.length} location{markers.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {markers.map((marker, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={() => handleDragOver(index)}
+                  onDragEnd={handleDragEnd}
+                >
+                  <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {marker.address}
+                    </p>
+                    {/* Replace this driver ID display with our new logic */}
+                    {marker.driverId !== undefined &&
+                      driverRoutes.length > 0 && (
+                        <div className="flex gap-1 items-center">
+                          {/* Determine if this is a start location */}
+                          {index === 0 ||
+                          driverRoutes.some(
+                            (route) =>
+                              route.markers[0].latitude === marker.latitude &&
+                              route.markers[0].longitude === marker.longitude
+                          ) ? (
+                            <span className="text-xs font-semibold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
+                              Start Location
+                            </span>
+                          ) : /* Determine if this is a return location */
+                          config.returnToStart &&
                             driverRoutes.some(
                               (route) =>
+                                route.markers.length > 1 &&
+                                route.markers[route.markers.length - 1]
+                                  .latitude === marker.latitude &&
+                                route.markers[route.markers.length - 1]
+                                  .longitude === marker.longitude &&
                                 route.markers[0].latitude === marker.latitude &&
                                 route.markers[0].longitude === marker.longitude
                             ) ? (
-                              <span className="text-xs font-semibold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
-                                Start Location
-                              </span>
-                            ) : /* Determine if this is a return location */
-                            config.returnToStart &&
-                              driverRoutes.some(
-                                (route) =>
-                                  route.markers.length > 1 &&
-                                  route.markers[route.markers.length - 1]
-                                    .latitude === marker.latitude &&
-                                  route.markers[route.markers.length - 1]
-                                    .longitude === marker.longitude &&
-                                  route.markers[0].latitude ===
-                                    marker.latitude &&
-                                  route.markers[0].longitude ===
-                                    marker.longitude
-                              ) ? (
-                              <span className="text-xs font-semibold px-1.5 py-0.5 bg-green-100 text-green-800 rounded">
-                                Return Location
-                              </span>
-                            ) : (
-                              /* Otherwise show the driver assignment */
-                              <p
-                                className="text-xs font-medium"
-                                style={{
-                                  color:
-                                    ROUTE_COLORS[
-                                      marker.driverId % ROUTE_COLORS.length
-                                    ],
-                                }}
-                              >
-                                Driver {marker.driverId + 1}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      {marker.note && (
-                        <p className="text-xs text-muted-foreground truncate">
-                          {marker.note}
-                        </p>
+                            <span className="text-xs font-semibold px-1.5 py-0.5 bg-green-100 text-green-800 rounded">
+                              Return Location
+                            </span>
+                          ) : (
+                            /* Otherwise show the driver assignment */
+                            <p
+                              className="text-xs font-medium"
+                              style={{
+                                color:
+                                  ROUTE_COLORS[
+                                    (marker.driverId || 0) % ROUTE_COLORS.length
+                                  ],
+                              }}
+                            >
+                              Driver {(marker.driverId || 0) + 1}
+                            </p>
+                          )}
+                        </div>
                       )}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveAddress(index)}
-                    >
-                      <Trash className="h-4 w-4 text-red-500" />
-                    </Button>
+                    {marker.note && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {marker.note}
+                      </p>
+                    )}
                   </div>
-                ))}
-              </div>
-
-              <div className="flex justify-between items-center mt-4">
-                <div className="flex gap-2">
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowClearDialog(true)}
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveAddress(index)}
                   >
-                    Clear All
+                    <Trash className="h-4 w-4 text-red-500" />
                   </Button>
                 </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex gap-2">
                 <Button
-                  onClick={calculateRoute}
-                  disabled={isCalculating || markers.length < 2}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowClearDialog(true)}
                 >
-                  {isCalculating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Calculating...
-                    </>
-                  ) : (
-                    <>
-                      <Bolt className="mr-2 h-4 w-4" />
-                      Optimize Route
-                    </>
-                  )}
+                  Clear All
                 </Button>
               </div>
+              <Button
+                onClick={calculateRoute}
+                disabled={isCalculating || markers.length < 2}
+              >
+                {isCalculating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Calculating...
+                  </>
+                ) : (
+                  <>
+                    <Bolt className="mr-2 h-4 w-4" />
+                    Optimize Route
+                  </>
+                )}
+              </Button>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Directions Panel */}
-          {selectedDriverId !== null && routeDirections.length > 0 && (
-            <div className="rounded-xl bg-muted/50 p-4">
-              <div className="mb-4">
-                <h2
-                  className="text-lg font-semibold"
-                  style={{
-                    color: ROUTE_COLORS[selectedDriverId % ROUTE_COLORS.length],
-                  }}
-                >
-                  Driver {selectedDriverId + 1} Route
-                </h2>
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Total Distance: {totalRouteDistance}</span>
-                  <span>Total Duration: {totalRouteDuration}</span>
-                </div>
+        {/* Directions Panel */}
+        {selectedDriverId !== null && routeDirections.length > 0 && (
+          <div className="rounded-xl bg-muted/50 p-4">
+            <div className="mb-4">
+              <h2
+                className="text-lg font-semibold"
+                style={{
+                  color: ROUTE_COLORS[selectedDriverId % ROUTE_COLORS.length],
+                }}
+              >
+                Driver {selectedDriverId + 1} Route
+              </h2>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Total Distance: {totalRouteDistance}</span>
+                <span>Total Duration: {totalRouteDuration}</span>
               </div>
+            </div>
 
             {routeDirections.map((step, index) => (
               <div key={index} className="mb-2 pb-2 border-b">
@@ -1245,19 +1498,20 @@ export default function RoutePlanner() {
             ))}
           </div>
         )}
-</div>
+      </div>
 
       {/* Map Section */}
       <div className="w-full lg:w-[70%] flex flex-col relative">
         <div className="flex-grow relative">
           <MapComponent
-            key={mapResetKey} // Add this key prop
+            key={mapResetKey}
             markers={markers}
             isLoaded={isLoaded}
             routePath={routePath}
+            straightLinePaths={straightLinePaths}
             driverRoutes={driverRoutes}
             selectedDriverId={selectedDriverId}
-            resetKey={mapResetKey} // Add this prop
+            resetKey={mapResetKey}
           />
         </div>
 
@@ -1453,7 +1707,24 @@ export default function RoutePlanner() {
           </DialogContent>
         </Dialog>
       </div>
+      <AlertDialog
+        open={showUnreachableAlert}
+        onOpenChange={setShowUnreachableAlert}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unreachable Route Segments</AlertDialogTitle>
+            <AlertDialogDescription className="whitespace-pre-line">
+              {unreachableAlertMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button onClick={() => setShowUnreachableAlert(false)}>
+              Understood
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
-              
   );
 }

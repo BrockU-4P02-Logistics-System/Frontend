@@ -1,10 +1,8 @@
-import { formatAmountForDisplay } from "@/utils/stripe-helpers";
 
 export default function CustomDonationInput({
   name,
   min,
   max,
-  currency,
   step,
   onChange,
   value,

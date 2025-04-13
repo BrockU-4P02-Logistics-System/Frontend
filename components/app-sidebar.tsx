@@ -14,7 +14,6 @@ import {
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
 import {
   Sidebar,
   SidebarContent,
@@ -23,8 +22,6 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { useSession } from "next-auth/react"
-import { useState } from "react"
-import { check_credits } from "@/actions/register"
 
 const data = {
   user: {
@@ -113,11 +110,9 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
-  const { data: session, status } = useSession();
-  const log: any = session?.user?.email;
-  const [credit, setCredits] = useState(0);
+  const { data: session } = useSession();
+  data.user.email = session?.user?.email as string;
 
-  data.user.email = log;
 /*
   const loadCredits = async() => {
   
@@ -127,20 +122,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
      
     }
 
-    if (credit <= 0){
+      if (credit <= 0){
 
-      setTimeout(() => {
-  
-         loadCredits();
-  
-        
-  
-  
-    }, 0);
-  
-    }
+        setTimeout(() => {
 
-  */
+           loadCredits();
+
+
+
+
+      }, 0);
+
+      }
+
+    */
 
   return (
     <Sidebar collapsible="icon" {...props}>

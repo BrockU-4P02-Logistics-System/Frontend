@@ -64,7 +64,7 @@ export default function GeneralSettings() {
   };
 
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   
   if (status === "unauthenticated"){
 

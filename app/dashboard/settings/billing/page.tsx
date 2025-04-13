@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { 
   CreditCard, 
   Download,
-  CheckCircle2,
   BarChart3,
   History
 } from "lucide-react";
@@ -189,7 +188,6 @@ function StripeCheckout({ selectedPackage, onClose }: StripeCheckoutProps): JSX.
 }
 
 export default function BillingPage() {
-  const [availableCredits, setAvailableCredits] = useState<number>(750);
   const [selectedPackageIndex, setSelectedPackageIndex] = useState<number | null>(null);
   const [showCheckout, setShowCheckout] = useState<boolean>(false);
 
@@ -230,7 +228,7 @@ export default function BillingPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-baseline space-x-2">
-                <span className="text-4xl font-bold">{availableCredits}</span>
+                <span className="text-4xl font-bold">399</span>
                 <span className="text-muted-foreground">credits available</span>
               </div>
               <div className="mt-6">

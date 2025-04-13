@@ -1,10 +1,8 @@
 'use client'
-import React from 'react';
+import React, { useEffect, useState, FormEvent } from 'react';
 import { 
   Plus,
   Truck,
-
-  MoreVertical
 } from "lucide-react";
 import {
   Table,
@@ -15,16 +13,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ChevronLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -34,90 +28,130 @@ import { register_vehicle, get_fleet, remove_vehicle, add_credits } from "@/acti
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
-let vehiclesList: any = [];
+// Define a proper type for vehicle data
+type VehicleData = [string, string, string]; // [name, driver, email]
+
+// Type for the fleet response
+interface FleetResponse {
+  fleet: VehicleData[];
+}
+
+// Type for registration response
+interface RegistrationResponse {
+  error?: string;
+  success?: boolean;
+}
+
+// Initialize with the correct type
+let vehiclesList: VehicleData[] = [];
 
 export default function VehiclesPage() {
-
   const { data: session, status } = useSession();
+  const router = useRouter();
 
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = useState({
     name: '',
     email: '',
     driver: ''
-   });
+  });
 
-  const [data, setData] = React.useState([]);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string>();
-  const log = session?.user?.email;
-  const router = useRouter();
+  const [data, setData] = useState<VehicleData[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+  const log = session?.user?.email ?? '';
 
-  if (status === "unauthenticated"){
-
-    router.push("/auth/login");
-
-  }
-
-  const refresh = async () => {
-
-
-    //console.log("AUTH:" + log);
-
-    const list: any = await get_fleet(log);
-
-    vehiclesList = Array.from((JSON.parse(list).fleet));
-
-    //console.log(vehiclesList);
-    
-    setData(vehiclesList);
-
-  };
-
-  const remove = async (vehicle: any) => {
-
-    await remove_vehicle(vehicle);
-    refresh();
-    //console.log(data);
-
-  };
-  
-      const handleVehicle = async (e: React.FormEvent) => {
-        e.preventDefault();
-       
-    
-        setIsLoading(true);
-        try {
-          
-          const r = await register_vehicle({
-
-            auth: log,
-            name: formData.name,
-            email: formData.email,
-            driver: formData.driver
-
-        });
-        if (r?.error) {
-  
-          setError(r.error);
-          
-      } 
-        
-        
-        } finally {
-          refresh();
-          setIsLoading(false);
-        }
-      };
-
-    if (data.length <= 0){
-
-      setTimeout(() => {
-
-          refresh();
-          
-    }, 0);
-
+  // Use useEffect for navigation instead of conditional render
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
     }
+  }, [status, router]);
+
+  const refresh = async (): Promise<void> => {
+    if (!log) return;
+
+    try {
+      const response = await get_fleet(log);
+      
+      if (response) {
+        const parsedData = JSON.parse(response) as FleetResponse;
+        if (parsedData && parsedData.fleet) {
+          vehiclesList = parsedData.fleet;
+          setData(vehiclesList);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching fleet data:", error);
+      setError("Failed to fetch fleet data");
+    }
+  };
+
+  const remove = async (vehicle: VehicleData): Promise<void> => {
+    if (!log) return;
+    try {
+      await remove_vehicle(vehicle);
+      await refresh();
+    } catch (error) {
+      console.error("Error removing vehicle:", error);
+      setError("Failed to remove vehicle");
+    }
+  };
+  
+  const handleVehicle = async (e: FormEvent): Promise<void> => {
+    e.preventDefault();
+    
+    if (!log) {
+      setError("You must be logged in");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const r = await register_vehicle({
+        auth: log,
+        name: formData.name,
+        email: formData.email,
+        driver: formData.driver
+      }) as RegistrationResponse;
+      
+      if (r?.error) {
+        setError(r.error);
+      } else {
+        // Reset form on success
+        setFormData({
+          name: '',
+          email: '',
+          driver: ''
+        });
+      }
+    } catch (error) {
+      console.error("Error registering vehicle:", error);
+      setError("Failed to register vehicle");
+    } finally {
+      refresh().finally(() => {
+        setIsLoading(false);
+      });
+    }
+  };
+
+  // Handle adding credits with proper type safety
+  const handleAddCredits = (): void => {
+    if (!log) {
+      setError("You must be logged in to add credits");
+      return;
+    }
+    add_credits(log, 10).catch((error) => {
+      console.error("Error adding credits:", error);
+      setError("Failed to add credits");
+    });
+  };
+
+  // Load data on initial mount if authenticated
+  useEffect(() => {
+    if (status === "authenticated" && log) {
+      refresh();
+    }
+  }, [status, log]);
    
   return (
     <div className="p-6 space-y-6">
@@ -141,9 +175,9 @@ export default function VehiclesPage() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleVehicle} className="space-y-4">
-            {error && <div className="">{error}</div>}
-            <div className="space-y-2">
-                <Label htmlFor="username">Vehicle</Label>
+              {error && <div className="text-red-500">{error}</div>}
+              <div className="space-y-2">
+                <Label htmlFor="name">Vehicle</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -152,7 +186,7 @@ export default function VehiclesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="username">Driver</Label>
+                <Label htmlFor="driver">Driver</Label>
                 <Input
                   id="driver"
                   value={formData.driver}
@@ -161,7 +195,7 @@ export default function VehiclesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="username">Email</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   value={formData.email}
@@ -169,15 +203,11 @@ export default function VehiclesPage() {
                   required
                 />
               </div>
-            {/* Add form fields here */}
-            
-
-            <Button  type="submit" className="w-full" disabled={isLoading}>
-
+              
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Adding Vehicle..." : "Add Vehicle"}
-
               </Button>
-                        </form>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -203,10 +233,10 @@ export default function VehiclesPage() {
               <TableHead>Driver</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>
-                  <Button variant="outline" onClick={() => add_credits(log, 10)}>
-                    Add 10 Credits 
-                  </Button>
-                </TableHead>
+                <Button variant="outline" onClick={handleAddCredits}>
+                  Add 10 Credits 
+                </Button>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -227,5 +257,4 @@ export default function VehiclesPage() {
       </div>
     </div>
   );
-
 }
