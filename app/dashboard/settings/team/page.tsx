@@ -73,7 +73,7 @@ const roleStats: RoleCount[] = [
 export default function TeamManagement() {
 
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   
   if (status === "unauthenticated"){
 

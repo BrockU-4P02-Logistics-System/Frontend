@@ -26,7 +26,7 @@ export default async function ResultPage({
    // Simulate adding credits after successful payment
    if (paymentIntent.status === "succeeded") { // Replace "succeeded" with the correct status value from Stripe's type definition
     const userEmail = checkoutSession.customer_details?.email;// Assuming email is passed in the FormData
-    const creditsToAdd: any = (checkoutSession.amount_total ?? 0); // Assuming credits are passed in the FormData
+    const creditsToAdd = (checkoutSession.amount_total ?? 0); // Assuming credits are passed in the FormData
     await add_credits(userEmail, creditsToAdd);
   }
 

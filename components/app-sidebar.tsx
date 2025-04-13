@@ -14,7 +14,6 @@ import {
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
 import {
   Sidebar,
   SidebarContent,
@@ -23,8 +22,6 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { useSession } from "next-auth/react"
-import { useState } from "react"
-import { check_credits } from "@/actions/register"
 
 const data = {
   user: {
@@ -113,11 +110,8 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
-  const { data: session, status } = useSession();
-  const log: any = session?.user?.email;
-  const [credit, setCredits] = useState(0);
-
-  data.user.email = log;
+  const { data: session } = useSession();
+  data.user.email = session?.user?.email as string;
 /*
   const loadCredits = async() => {
   

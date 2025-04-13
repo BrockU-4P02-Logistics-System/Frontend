@@ -5,7 +5,6 @@ import type Stripe from "stripe";
 import React, { useState } from "react";
 
 import CustomDonationInput from "@/components/CustomDonationInput";
-import StripeTestCards from "@/components/StripeTestCards";
 
 import { formatAmountForDisplay } from "@/utils/stripe-helpers";
 import * as config from "@/config";

@@ -1,15 +1,11 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { signOut, useSession } from "next-auth/react";
-import Link from "next/link";
+import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { verify } from "@/actions/verify";
 import { register } from "@/actions/register";
-import { ChevronLeft} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -22,7 +18,7 @@ import {
 export default function Main() {
 
     const [error, setError] = useState("");
-    const { data: session, status } = useSession();
+    const { data: session } = useSession();
     const router = useRouter();
 
     const checkDB = async () => {

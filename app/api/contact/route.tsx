@@ -1,15 +1,21 @@
-import { NextResponse, NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
 // Handles POST requests to /api
-
-export async function POST(request: { formData: () => any }) {
+export async function POST(request: NextRequest) {
   const username = process.env.NEXT_PUBLIC_EMAIL_USERNAME;
   const password = process.env.NEXT_PUBLIC_EMAIL_PASSWORD;
 
   const formData = await request.formData();
 
-  const email = formData.get("email");
+  const email = formData.get("email") as string;
+  if (!email) {
+    return NextResponse.json(
+      { message: "Email is required" },
+      { status: 400 }
+    );
+  }
+
   const encrypt = Buffer.from(email).toString("base64");
 
   // create transporter object
@@ -20,7 +26,6 @@ export async function POST(request: { formData: () => any }) {
       ciphers: "SSLv3",
       rejectUnauthorized: false,
     },
-
     auth: {
       user: username,
       pass: password,
@@ -28,7 +33,7 @@ export async function POST(request: { formData: () => any }) {
   });
 
   try {
-    const mail = await transporter.sendMail({
+    await transporter.sendMail({
       from: username,
       to: email,
       replyTo: username,
@@ -42,8 +47,10 @@ export async function POST(request: { formData: () => any }) {
 
     return NextResponse.json({ message: "Success: email was sent" });
   } catch (error) {
-    console.log(error);
-
-    return NextResponse.json({ message: "COULD NOT SEND MESSAGE" });
+    console.error("Error sending email:", error);
+    return NextResponse.json(
+      { message: "COULD NOT SEND MESSAGE" },
+      { status: 500 }
+    );
   }
 }

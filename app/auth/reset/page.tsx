@@ -1,10 +1,9 @@
 "use client";
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import { checkmail } from "@/actions/resetpw";
 import { useRouter } from "next/navigation";
 import { ChevronLeft} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -13,7 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { toast } from "sonner";
 import Link from 'next/link';
 
 
@@ -51,7 +49,6 @@ export default function Login() {
                 
             }
 
-            const responseData = await response.json();
             //console.log(responseData['message'])
     
             alert('Message successfully sent');

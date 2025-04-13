@@ -8,6 +8,8 @@ interface MarkerLocation {
     note?: string;
     arrivalTime?: string;
     departureTime?: string;
+    driverId?: number;
+    order?: number;
 }
 
 interface RouteConfiguration {
@@ -16,11 +18,11 @@ interface RouteConfiguration {
     length: number;
     height: number;
     avoidHighways: boolean;
+    avoidTolls: boolean;
     avoidUnpaved: boolean;
     avoidFerries: boolean;
     avoidTunnels: boolean;
     avoidUTurns: boolean;
-    numberDrivers: number;
     returnToStart: boolean;
 }
 
@@ -29,6 +31,7 @@ interface RequestBody {
     config: RouteConfiguration;
     numberDrivers: number;
     returnToStart: boolean;
+    options?: boolean[];
 }
 
 interface GeoJsonGeometry {
@@ -56,6 +59,28 @@ interface DriverRoute {
     stops: MarkerLocation[];
 }
 
+interface MessagePayload {
+    features: GeoJsonFeature[];
+    numberDrivers: number;
+    returnToStart: boolean;
+    options: boolean[];
+}
+
+interface ResponseFeature {
+    geometry: {
+        coordinates: number[];
+    };
+    properties: {
+        address?: string;
+        order?: number;
+        driverId?: number;
+    };
+}
+
+type RabbitMQResponse = {
+    route: ResponseFeature[][];
+} | ResponseFeature[][] | ResponseFeature[];
+
 const RABBITMQ_URL = 'amqp://cole:corbett@132.145.102.107:5672';
 const QUEUE_NAME = 'logistic-request';
 
@@ -72,18 +97,18 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        console.log("Converting features")
+        console.log("Converting features");
 
         // Convert markers to GeoJSON features
-        const features = body.features.map((marker, index) => ({
+        const features: GeoJsonFeature[] = body.features.map((marker, index) => ({
             type: "Feature",
             geometry: {
                 type: "Point",
                 coordinates: [marker.longitude, marker.latitude]
             },
             properties: {
-                address: marker.address+1,
-                order: index+1,
+                address: marker.address,
+                order: index + 1,
                 note: marker.note,
                 arrivalTime: marker.arrivalTime,
                 departureTime: marker.departureTime
@@ -110,18 +135,36 @@ export async function POST(req: NextRequest) {
 
         // Ensure there's at least 1 driver
         const numberDrivers = body.numberDrivers || 1;
+        
+        // Extract route options into an array for the Java backend
+        const options = body.options || [
+            body.config?.avoidHighways || false,
+            body.config?.avoidTolls || false,
+            body.config?.avoidUnpaved || false,
+            body.config?.avoidFerries || false,
+            body.config?.avoidTunnels || false,
+            body.config?.avoidUTurns || false
+        ];
 
         // Include the parameters in the message
-        const message = {
-            features: features,
-            numberDrivers: numberDrivers,
-            returnToStart: body.returnToStart || false
+        const message: MessagePayload = {
+            features,
+            numberDrivers,
+            returnToStart: body.returnToStart || false,
+            options
         };
-        console.log("Sending message to queue:", message.features[0].properties);
-        for (const feature of message.features) {
-            console.log("Address:", feature.properties.address);
-            console.log("Order:", feature.properties.order);
+        
+        console.log("Sending message to queue with options:", options);
+        
+        if (message.features.length > 0) {
+            console.log("First feature:", message.features[0].properties);
+            
+            for (const feature of message.features) {
+                console.log("Address:", feature.properties.address);
+                console.log("Order:", feature.properties.order);
+            }
         }
+        
         // Send message to queue
         channel.sendToQueue(
             QUEUE_NAME,
@@ -133,16 +176,14 @@ export async function POST(req: NextRequest) {
             }
         );
 
-        const response = await new Promise((resolve, reject) => {
-            let timeout: NodeJS.Timeout;
-
+        const response: RabbitMQResponse = await new Promise((resolve, reject) => {
             const cleanup = () => {
                 clearTimeout(timeout);
                 channel.close().catch(console.error);
                 connection.close().catch(console.error);
             };
 
-            timeout = setTimeout(() => {
+            const timeout = setTimeout(() => {
                 cleanup();
                 reject(new Error('Processing timeout'));
             }, 30000);
@@ -151,7 +192,7 @@ export async function POST(req: NextRequest) {
                 if (!msg) return;
 
                 if (msg.properties.correlationId !== correlationId) {
-                    // For messages that don’t belong to this request,
+                    // For messages that don't belong to this request,
                     // simply acknowledge them to clear them out.
                     channel.ack(msg);
                     return;
@@ -168,13 +209,12 @@ export async function POST(req: NextRequest) {
                     resolve(content);
                 } catch (err) {
                     console.error("Error parsing backend response:", err);
-                    // Acknowledge even on error so the message isn’t requeued.
+                    // Acknowledge even on error so the message isn't requeued.
                     channel.ack(msg);
                     cleanup();
                     reject(err);
                 }
             });
-
         });
 
         // Create lookup map for original addresses
@@ -185,68 +225,81 @@ export async function POST(req: NextRequest) {
         });
 
         // Process the response
-        let driverRoutes: DriverRoute[] = [];
+        const driverRoutes: DriverRoute[] = [];
 
         // Handle different response formats
-        if (response.route && Array.isArray(response.route)) {
+        if (response && typeof response === 'object' && 'route' in response && Array.isArray(response.route)) {
             // Format: { route: [ [features], [features] ] }
             const routesArray = response.route;
-
+        
             for (let i = 0; i < routesArray.length; i++) {
-                const driverFeatures = routesArray[i];
-                console.log("Route locations:", driverFeatures);
-
-                const driverStops = driverFeatures.map(feature => {
-                    const [lon, lat] = feature.geometry.coordinates;
-                    const key = `${lon},${lat}`;
-                    const originalMarker = addressMap.get(key);
-
-                    return {
-                        address: originalMarker?.address ?? feature.properties.address ?? 'Unknown',
-                        latitude: lat,
-                        longitude: lon,
-                        note: originalMarker?.note,
-                        arrivalTime: originalMarker?.arrivalTime,
-                        departureTime: originalMarker?.departureTime,
-                        driverId: feature.properties.driverId ?? i,
-                        order: feature.properties.order
-                    };
-                });
-
-                driverRoutes.push({
-                    driverId: i,
-                    stops: driverStops
-                });
+                // Ensure driverFeatures is treated as an array of ResponseFeature
+                if (Array.isArray(routesArray[i])) {
+                    const driverFeatures = routesArray[i] as ResponseFeature[];
+                    console.log("Route locations:", driverFeatures);
+        
+                    const driverStops = driverFeatures.map(feature => {
+                        const [lon, lat] = feature.geometry.coordinates;
+                        const key = `${lon},${lat}`;
+                        const originalMarker = addressMap.get(key);
+        
+                        return {
+                            address: originalMarker?.address ?? feature.properties.address ?? 'Unknown',
+                            latitude: lat,
+                            longitude: lon,
+                            note: originalMarker?.note,
+                            arrivalTime: originalMarker?.arrivalTime,
+                            departureTime: originalMarker?.departureTime,
+                            driverId: feature.properties.driverId ?? i,
+                            order: feature.properties.order
+                        };
+                    });
+        
+                    driverRoutes.push({
+                        driverId: i,
+                        stops: driverStops
+                    });
+                }
             }
         } else if (Array.isArray(response)) {
             // Format: [ [features], [features] ] or [ features ]
-            const routesArray = Array.isArray(response[0]) ? response : [response];
-
-            for (let i = 0; i < routesArray.length; i++) {
-                const driverFeatures = routesArray[i];
-                console.log("Route locations:", driverFeatures);
-
-                const driverStops = driverFeatures.map(feature => {
-                    const [lon, lat] = feature.geometry.coordinates;
-                    const key = `${lon},${lat}`;
-                    const originalMarker = addressMap.get(key);
-
-                    return {
-                        address: originalMarker?.address ?? feature.properties.address ?? 'Unknown',
-                        latitude: lat,
-                        longitude: lon,
-                        note: originalMarker?.note,
-                        arrivalTime: originalMarker?.arrivalTime,
-                        departureTime: originalMarker?.departureTime,
-                        driverId: feature.properties.driverId ?? i,
-                        order: feature.properties.order
-                    };
-                });
-
-                driverRoutes.push({
-                    driverId: i,
-                    stops: driverStops
-                });
+            // We need to determine if it's a nested array or a flat array
+            
+            if (response.length > 0) {
+                // Check if the first item is an array to determine the structure
+                const isNestedArray = Array.isArray(response[0]);
+                
+                // Convert to a common format: an array of arrays of features
+                const routesArray: ResponseFeature[][] = isNestedArray 
+                    ? response as ResponseFeature[][] 
+                    : [response as ResponseFeature[]];
+        
+                for (let i = 0; i < routesArray.length; i++) {
+                    const driverFeatures = routesArray[i];
+                    console.log("Route locations:", driverFeatures);
+        
+                    const driverStops = driverFeatures.map(feature => {
+                        const [lon, lat] = feature.geometry.coordinates;
+                        const key = `${lon},${lat}`;
+                        const originalMarker = addressMap.get(key);
+        
+                        return {
+                            address: originalMarker?.address ?? feature.properties.address ?? 'Unknown',
+                            latitude: lat,
+                            longitude: lon,
+                            note: originalMarker?.note,
+                            arrivalTime: originalMarker?.arrivalTime,
+                            departureTime: originalMarker?.departureTime,
+                            driverId: feature.properties.driverId ?? i,
+                            order: feature.properties.order
+                        };
+                    });
+        
+                    driverRoutes.push({
+                        driverId: i,
+                        stops: driverStops
+                    });
+                }
             }
         } else {
             throw new Error("Unexpected response format from backend");
@@ -256,11 +309,11 @@ export async function POST(req: NextRequest) {
         const allStops = driverRoutes.flatMap(route => route.stops);
         const sortedStops = allStops.sort((a, b) => {
             // First sort by driver ID
-            if (a.driverId !== b.driverId) {
-                return a.driverId - b.driverId;
+            if ((a.driverId ?? 0) !== (b.driverId ?? 0)) {
+                return (a.driverId ?? 0) - (b.driverId ?? 0);
             }
             // Then by order within each driver's route
-            return (a.order || 0) - (b.order || 0);
+            return (a.order ?? 0) - (b.order ?? 0);
         });
 
         return NextResponse.json({
