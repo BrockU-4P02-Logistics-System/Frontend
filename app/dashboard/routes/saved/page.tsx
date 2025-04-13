@@ -1,240 +1,114 @@
 'use client'
 import React from 'react';
-import { 
-  Plus,
-  Truck,
-} from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { register_vehicle, get_fleet, remove_vehicle, add_credits } from "@/actions/register";
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { get_routes, remove_route, load_route} from "@/actions/register";
+import  { useRouter } from 'next/navigation';
 
-// Define a type for the vehicle data
-type VehicleData = [string, string, string]; // [name, driver, email]
 
-// Initialize with proper type
-let vehiclesList: VehicleData[] = [];
+let routesList: any = [];
+let got_route: any;
 
-export default function VehiclesPage() {
+export default function SavedRoutes() {
 
-  const { data: session, status } = useSession();
+    const { data: session, status } = useSession();
+    const router = useRouter();
 
-  const [formData, setFormData] = React.useState({
-    name: '',
-    email: '',
-    driver: ''
-   });
+    const [data, setData] = React.useState([]);
 
-  const [data, setData] = React.useState<VehicleData[]>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string>();
-  const log = session?.user?.email || '';
-  const router = useRouter();
+    const log = session?.user?.email;
 
-  React.useEffect(() => {
-    if (status === "unauthenticated") {
+    if (status === "unauthenticated"){
+
       router.push("/auth/login");
+  
     }
-  }, [status, router]);
+    
+ const remove = async (route: any) => {
+ 
+     await remove_route(log, route[0], route[1]);
+     refresh();
+     //console.log(data);
+ 
+   };
+
+  const load = async (routeId: string) => {
+
+    got_route = await load_route(routeId);
+
+    sessionStorage.setItem('savedLoadedRoute', JSON.stringify(got_route[0]));
+    sessionStorage.setItem('savedConfig', JSON.stringify(JSON.parse(got_route[0]).config));
+    sessionStorage.setItem('savedMarkers', JSON.stringify(Array.from(JSON.parse(got_route[0]).markers)));
+    sessionStorage.setItem('savedDriverRoutes', JSON.stringify(Array.from(JSON.parse(got_route[0]).driverRoutes)));
+    sessionStorage.setItem('savedNumDrivers', JSON.stringify(JSON.parse(got_route[0]).numDrivers));
+
+    sessionStorage.setItem('savedTimestamp', JSON.stringify(JSON.parse(got_route[0]).timestamp));
+
+    /*
+    sessionStorage.setItem('savedRoutePath', JSON.stringify(Array.from(JSON.parse(got_route[0]).routePath)));
+    sessionStorage.setItem('savedRouteDirections', JSON.stringify(Array.from(JSON.parse(got_route[0]).routeDirections)));
+    sessionStorage.setItem('savedRouteDistance', JSON.stringify(JSON.parse(got_route[0]).totalRouteDistance));
+    sessionStorage.setItem('savedRouteDuration', JSON.stringify(JSON.parse(got_route[0]).totalRouteDuration));
+    */
+
+  //console.log("GOT:" + JSON.stringify(Array.from(JSON.parse(got_route[0]).driverRoutes)));
+
+   return router.push("/dashboard?load=true")
+
+  };
 
   const refresh = async () => {
-    if (!log) return;
-    
-    try {
-      const listResponse = await get_fleet(log);
-      
-      // Handle possible undefined response
-      if (!listResponse) {
-        console.error("No response from get_fleet");
-        return;
-      }
-      
-      const parsedData = JSON.parse(listResponse);
-      
-      if (parsedData && parsedData.fleet) {
-        vehiclesList = parsedData.fleet as VehicleData[];
-        setData(vehiclesList);
-      }
-    } catch (err) {
-      console.error("Error fetching fleet data:", err);
-    }
-  };
-
-  const remove = async (vehicle: VehicleData) => {
-    await remove_vehicle(vehicle);
-    refresh();
-  };
   
-  const handleVehicle = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!log) {
-      setError("You must be logged in");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const r = await register_vehicle({
-        auth: log,
-        name: formData.name,
-        email: formData.email,
-        driver: formData.driver
-      });
+      //console.log("AUTH:" + log);
+  
+      const list: any = await get_routes(log);
+  
+      routesList = Array.from((JSON.parse(list).routes));
+  
+      //console.log(routesList);
       
-      if (r?.error) {
-        setError(r.error);
-      } else {
-        // Reset form on success
-        setFormData({
-          name: '',
-          email: '',
-          driver: ''
-        });
-      }
-    } catch (err) {
-      setError("An error occurred while registering the vehicle");
-      console.error(err);
-    } finally {
-      refresh();
-      setIsLoading(false);
-    }
-  };
+      setData(routesList);
+  
+    };
 
-  React.useEffect(() => {
-    if (status === "authenticated" && log) {
-      refresh();
+    if (data.length <= 0){
+
+      setTimeout(() => {
+
+          refresh();
+          
+    }, 0);
+
     }
-  }, [status, log]);
-   
-  const handleAddCredits = () => {
-    if (!log) {
-      setError("You must be logged in to add credits");
-      return;
-    }
-    add_credits(log, 10);
-  };
+
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Fleet Management</h1>
-          <p className="text-muted-foreground">Manage your vehicles and driver information</p>
-        </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Vehicle
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Vehicle</DialogTitle>
-              <DialogDescription>
-                Enter the details of the new vehicle to add it to your fleet.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleVehicle} className="space-y-4">
-            {error && <div className="text-red-500">{error}</div>}
-            <div className="space-y-2">
-                <Label htmlFor="name">Vehicle</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="driver">Driver</Label>
-                <Input
-                  id="driver"
-                  value={formData.driver}
-                  onChange={(e) => setFormData({...formData, driver: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  required
-                />
-              </div>
-            
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Adding Vehicle..." : "Add Vehicle"}
-            </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <h1 className="text-2xl font-bold">Saved Routes</h1>
+        
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Vehicles</CardTitle>
-            <Truck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.length}</div>
-          </CardContent>
-        </Card>
-        {/* Add more stat cards */}
-      </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Vehicle</TableHead>
-              <TableHead>Driver</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>
-                <Button variant="outline" onClick={handleAddCredits}>
-                  Add 10 Credits 
-                </Button>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((v) => (
-              <TableRow key={v[0]}>
-                <TableCell>{v[0]}</TableCell>
-                <TableCell>{v[1]}</TableCell>
-                <TableCell>{v[2]}</TableCell>
-                <TableCell>
-                  <Button variant="outline" onClick={() => remove(v)}>
-                    Delete
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {data.map((route) => (
+          <Card key={route[0]} className="relative">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-lg font-medium">{route[0]}</CardTitle>
+              
+            </CardHeader>
+            <CardContent>
+               <Button variant="outline" onClick={() => load(route[1])}>
+                                  Load Route
+                                </Button>
+              <Button variant="outline" onClick={() => remove(route)}>
+                Delete Route
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );
