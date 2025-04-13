@@ -120,9 +120,7 @@ export default function DashboardLayout({
               <Separator orientation="vertical" className="mr-2 h-4" />
               <Breadcrumb>
                 <BreadcrumbList>
-                  <BreadcrumbItem>
-                    <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
-                  </BreadcrumbItem>
+                 
                   {breadcrumbs.map((crumb, index) => (
                     <BreadcrumbItem key={index}>
                       {crumb.href ? (

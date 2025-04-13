@@ -146,9 +146,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 alt="Reroute Logo"
                 className="h-32 mb-6"  // Logo size doubled (h-64) and moved closer to the top
               />
-             <h1 className="text-4xl font-bold text-purple-900">
-            REROUTE
-          </h1>
+            
             </div>
             
       </SidebarHeader>
