@@ -110,11 +110,9 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
-  const { data: session, status } = useSession();
-  const log: any = session?.user?.email;
-  const [credit, setCredits] = useState(0);
+  const { data: session } = useSession();
+  data.user.email = session?.user?.email as string;
 
-  data.user.email = log;
 /*
   const loadCredits = async() => {
   
