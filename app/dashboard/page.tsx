@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import MapComponent from "@/components/map/google";
 import AddressAutocomplete from "@/components/map/autocomplete";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   AlertDialog,
@@ -50,6 +50,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+
 
 interface MarkerLocation {
   address: string;
@@ -172,7 +173,7 @@ export default function RoutePlanner() {
   const [credit, setCredits] = useState(0);
   const log = session?.user?.email ?? '';
   const [mapsUrls, setMapURLs] = useState<string[]>([]);
-
+  const search = useSearchParams().get('load');
   const [formData, setFormData] = useState({
     name: "",
   });
@@ -1016,6 +1017,7 @@ export default function RoutePlanner() {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
+
   const handleSaveRoute = async () => {
     if (!log) {
       toast.error("You must be logged in to save routes");
@@ -1134,6 +1136,7 @@ export default function RoutePlanner() {
 
   const [showDriverCountAlert, setShowDriverCountAlert] = useState(false);
   const [driverCountMessage, setDriverCountMessage] = useState("");
+  const [showExport, setExport] = useState(false);
 
   const loadCredits = async () => {
     if (log) {
@@ -1153,7 +1156,9 @@ export default function RoutePlanner() {
   useEffect(() => {
     if (status === "authenticated" && log) {
       loadCredits();
-      
+      if (search === "true"){
+        setShouldLoadRoute(true);
+      }
       if (shouldLoadRoute) {
         loadRoute();
       }
@@ -1501,7 +1506,7 @@ export default function RoutePlanner() {
 
         {/* Driver Selection Tabs */}
         {driverRoutes.length > 0 && (
-          <div className="absolute bottom-24 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
+          <div className="absolute bottom-16 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
             {driverRoutes.map((route) => (
               <Button
                 key={route.driverId}
@@ -1526,23 +1531,59 @@ export default function RoutePlanner() {
           </div>
         )}
 
-        <div>
-          <h1>Google Maps Routes</h1>
-          <div id="urlContainer">
-            {mapsUrls.map((url, index) => (
-              <p key={index} style={{ marginBottom: "10px" }}>
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ textDecoration: "underline" }}
-                >
-                  {url}
-                </a>
-              </p>
+<div className="bottom-0 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
+{driverRoutes.map((route) => (
+              <Button
+                key={route.driverId}
+                variant={
+                  selectedDriverId === route.driverId ? "default" : "outline"
+                }
+                size="sm"
+                onClick={() => setExport(true)}
+                style={{
+                  backgroundColor:
+                    selectedDriverId === route.driverId
+                      ? route.color
+                      : undefined,
+                  borderColor: route.color,
+                  color:
+                    selectedDriverId === route.driverId ? "white" : route.color,
+                }}
+              >
+                Export Routes for Driver {route.driverId + 1}
+              </Button>
             ))}
+            
           </div>
-        </div>
+          
+          
+            <Dialog
+            open={showExport}
+          
+          >
+            <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Exported Routes</DialogTitle>
+              <DialogDescription>
+              <div id="urlContainer" style={{width: "20vw", height: "40vw", overflowWrap: "break-word"}}>
+              {mapsUrls.map((url, index) => (
+              <p key={index} style={{ marginBottom: '10px' }}>
+                <a href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}  >{url}</a>
+              </p>
+              ))}
+            </div>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant = "outline" onClick={() => setExport(false)}>
+              Close
+              </Button>
+            </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
+
+
         {/* Clear Route Dialog */}
         <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
           <AlertDialogContent>

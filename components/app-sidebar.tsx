@@ -51,7 +51,6 @@ const data = {
       title: "Routes",
       url: "/routes",
       icon: Route,
-      isActive: true,
       items: [
         {
           title: "Create Route",
@@ -147,8 +146,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 alt="Reroute Logo"
                 className="h-32 mb-6"  // Logo size doubled (h-64) and moved closer to the top
               />
-             
+            
             </div>
+            
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />

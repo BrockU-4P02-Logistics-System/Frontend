@@ -175,22 +175,10 @@ export default function SignupPage() {
               <div className="absolute inset-0 flex items-center">
                 <Separator />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
+              
             </div>
   
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {}}
-              disabled={isLoading}
-            >
-              <img src="/google.svg" alt="Google" className="h-5 w-5 mr-2" />
-              Sign up with Google
-            </Button>
+           
           </CardContent>
         </Card>
       </div>

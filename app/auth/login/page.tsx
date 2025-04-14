@@ -1,5 +1,5 @@
 'use client'
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import Image from "next/image"
+
+const { SITE_URL } = process.env;
+
 
 // Login Page Component
 export default function LoginPage() {
@@ -26,6 +29,15 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+
+  const { status } = useSession();
+  
+
+   useEffect(() => {
+      if (status === "authenticated") {
+        router.push("/dashboard");
+      }
+    }, [status, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +71,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      signIn("google", { callbackUrl: 'http://localhost:3000/auth/verify-tp'});
+      signIn("google", { callbackUrl: `${SITE_URL}/auth/verify-tp` });
       toast.success('Successfully logged in with Google');
     } catch {
       toast.error('Failed to log in with Google');

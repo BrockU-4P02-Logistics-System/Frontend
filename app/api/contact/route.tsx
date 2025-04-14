@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
 // Handles POST requests to /api
+
+const { SITE_URL } = process.env;
+
 export async function POST(request: NextRequest) {
   const username = process.env.NEXT_PUBLIC_EMAIL_USERNAME;
   const password = process.env.NEXT_PUBLIC_EMAIL_PASSWORD;
@@ -41,7 +44,7 @@ export async function POST(request: NextRequest) {
       html: `
             <p>Message: If you see this, you have received an email from Reroute
             to reset your password </p>
-                <a href="http://localhost:3000/auth/reset-password/?id=${encrypt}">Reset password here</a>
+                <a href="${SITE_URL}/auth/reset-password/?id=${encrypt}">Reset password here</a>
             `,
     });
 

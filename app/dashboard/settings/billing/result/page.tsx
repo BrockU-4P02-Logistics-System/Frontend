@@ -5,8 +5,6 @@ import PrintObject from "@/components/PrintObject";
 import { stripe } from "@/lib/stripe";
 import { add_credits } from "@/actions/register";
 
-
-
 export default async function ResultPage({
   searchParams,
 }: {
@@ -26,15 +24,14 @@ export default async function ResultPage({
    // Simulate adding credits after successful payment
    if (paymentIntent.status === "succeeded") { // Replace "succeeded" with the correct status value from Stripe's type definition
     const userEmail = checkoutSession.customer_details?.email;// Assuming email is passed in the FormData
-    const creditsToAdd = (checkoutSession.amount_total ?? 0); // Assuming credits are passed in the FormData
-    await add_credits(userEmail, creditsToAdd);
+    const creditsToAdd: any = (checkoutSession.amount_total ?? 0); // Assuming credits are passed in the FormData
+    await add_credits(userEmail, creditsToAdd / 10);
   }
 
   return (
     <>
       <h2>Status: {paymentIntent.status}</h2>
-      <h3>Checkout Session response:</h3>
-      <PrintObject content={checkoutSession} />
+      <h3>{(checkoutSession.amount_total ?? 0) / 10} credits were added to your account </h3>
     </>
   );
 }

@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   CreditCard, 
   Download,
@@ -20,6 +20,8 @@ import {
   EmbeddedCheckout,
   EmbeddedCheckoutProvider,
 } from "@stripe/react-stripe-js";
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 interface CreditPurchase {
   id: string;
@@ -122,6 +124,7 @@ interface StripeCheckoutProps {
   onClose: () => void;
 }
 
+
 function StripeCheckout({ selectedPackage, onClose }: StripeCheckoutProps): JSX.Element {
   const [loading, setLoading] = useState<boolean>(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -199,6 +202,15 @@ export default function BillingPage() {
   const handleCloseCheckout = () => {
     setShowCheckout(false);
   };
+
+  const {status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
+    }
+  }, [status, router]);
 
   return (
     <div className="p-6 space-y-6">
