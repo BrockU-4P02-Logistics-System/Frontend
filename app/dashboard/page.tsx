@@ -126,12 +126,6 @@ const ROUTE_COLORS = [
   "#FF5722", // Deep Orange
 ];
 
-// Separate component that uses useSearchParams
-function RouteLoader({}: { onLoad: (shouldLoad: boolean) => void }) {
- 
-  
-  return null;
-}
 
 export default function RoutePlanner() {
   const [mapResetKey, setMapKey] = useState<number>(Date.now());
@@ -173,7 +167,15 @@ export default function RoutePlanner() {
   const [credit, setCredits] = useState(0);
   const log = session?.user?.email ?? '';
   const [mapsUrls, setMapURLs] = useState<string[]>([]);
-  const search = useSearchParams().get('load');
+  function SearchParamLoader({ onLoad }: { onLoad: (shouldLoad: boolean) => void }) {
+    const search = useSearchParams().get('load');
+    useEffect(() => {
+      if (search === "true") {
+        onLoad(true);
+      }
+    }, [search, onLoad]);
+    return null;
+  }
   const [formData, setFormData] = useState({
     name: "",
   });
@@ -1152,18 +1154,18 @@ export default function RoutePlanner() {
     }
   };
 
-  // Effect to load credits and route when needed
   useEffect(() => {
     if (status === "authenticated" && log) {
       loadCredits();
-      if (search === "true"){
-        setShouldLoadRoute(true);
-      }
-      if (shouldLoadRoute) {
-        loadRoute();
-      }
     }
-  }, [status, log, shouldLoadRoute, loadRoute]);
+  }, [status, log]);
+
+  useEffect(() => {
+    if (status === "authenticated" && shouldLoadRoute) {
+      loadRoute();
+    }
+  }, [status, shouldLoadRoute, loadRoute]);
+
 
   if (!isLoaded) {
     return (
@@ -1177,7 +1179,7 @@ export default function RoutePlanner() {
     <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
       {/* Suspense boundary around the component that uses useSearchParams */}
       <Suspense fallback={<div>Loading route data...</div>}>
-        <RouteLoader onLoad={handleSearchParamsLoad} />
+        <SearchParamLoader onLoad={handleSearchParamsLoad} />
       </Suspense>
       
       <div className="w-full lg:w-[30%] flex flex-col gap-4 p-4 overflow-y-auto">
