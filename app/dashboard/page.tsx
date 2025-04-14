@@ -1113,17 +1113,18 @@ export default function RoutePlanner() {
 
   const handleDriverSelect = (driverId: number) => {
     setSelectedDriverId(driverId);
-
+  
     // Update the displayed route information
     const driverRoute = driverRoutes.find(
       (route) => route.driverId === driverId
     );
-
+   
     if (driverRoute) {
       updateRouteView(driverRoute);
 
       const urls = generateGoogleMapsRouteUrls(driverRoute.markers);
       setMapURLs(urls);
+     
     }
   };
 
@@ -1151,6 +1152,13 @@ export default function RoutePlanner() {
       await loadCredits();
     }
   };
+
+  const displayExport = () =>{
+
+    handleDriverSelect(0);
+    setExport(true);
+
+  }
 
   // Effect to load credits and route when needed
   useEffect(() => {
@@ -1530,7 +1538,7 @@ export default function RoutePlanner() {
             ))}
           </div>
         )}
-
+{driverRoutes.length > 0 && (
 <div className="bottom-0 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
 {driverRoutes.map((route) => (
               <Button
@@ -1539,7 +1547,7 @@ export default function RoutePlanner() {
                   selectedDriverId === route.driverId ? "default" : "outline"
                 }
                 size="sm"
-                onClick={() => setExport(true)}
+                onClick={() => displayExport()}
                 style={{
                   backgroundColor:
                     selectedDriverId === route.driverId
@@ -1555,7 +1563,7 @@ export default function RoutePlanner() {
             ))}
             
           </div>
-          
+)}
           
             <Dialog
             open={showExport}
