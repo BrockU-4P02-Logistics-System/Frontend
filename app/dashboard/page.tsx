@@ -1153,9 +1153,9 @@ export default function RoutePlanner() {
     }
   };
 
-  const displayExport = () =>{
+  const displayExport = (id: any) =>{
 
-    handleDriverSelect(0);
+    handleDriverSelect(id);
     setExport(true);
 
   }
@@ -1547,7 +1547,7 @@ export default function RoutePlanner() {
                   selectedDriverId === route.driverId ? "default" : "outline"
                 }
                 size="sm"
-                onClick={() => displayExport()}
+                onClick={() => displayExport(route.driverId)}
                 style={{
                   backgroundColor:
                     selectedDriverId === route.driverId
