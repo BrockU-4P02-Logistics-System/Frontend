@@ -1176,7 +1176,7 @@ export default function RoutePlanner() {
     );
   }
 
-  const displayExport = (id: any) => {
+  const displayExport = (id: number) => {
 
     handleDriverSelect(id);
     setExport(true);
