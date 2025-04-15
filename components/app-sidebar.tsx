@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   Route,
   Truck,
@@ -9,19 +9,19 @@ import {
   Map,
   Building2,
   Boxes,
-  Warehouse
-} from "lucide-react"
+  Warehouse,
+} from "lucide-react";
 
-import { NavMain } from "@/components/nav-main"
-import { NavUser } from "@/components/nav-user"
+import { NavMain } from "@/components/nav-main";
+import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-} from "@/components/ui/sidebar"
-import { useSession } from "next-auth/react"
+} from "@/components/ui/sidebar";
+import { useSession } from "next-auth/react";
 
 const data = {
   user: {
@@ -62,7 +62,7 @@ const data = {
         },
       ],
     },
-   
+
     {
       title: "Fleet",
       url: "/fleet",
@@ -71,7 +71,7 @@ const data = {
         {
           title: "Vehicles",
           url: "/dashboard/fleet/vehicles",
-        }
+        },
       ],
     },
     {
@@ -79,12 +79,10 @@ const data = {
       url: "/settings",
       icon: Settings2,
       items: [
-       
         {
           title: "Stripe Payments",
           url: "/dashboard/settings/billing",
         },
-        
       ],
     },
   ],
@@ -105,59 +103,35 @@ const data = {
       icon: Map,
     },
   ],
-}
+};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-
   const { data: session } = useSession();
   data.user.email = session?.user?.email as string;
-
-/*
-  const loadCredits = async() => {
-  
-      const credits = await check_credits(log);
-      setCredits(credits ?? 0);
-     // console.log(credits);
-     
-    }
-
-      if (credit <= 0){
-
-        setTimeout(() => {
-
-           loadCredits();
-
-
-
-
-      }, 0);
-
-      }
-
-    */
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-      <div className="mb-8">
-              {/* Logo centered just below the top */}
-              <img
-                src="/logo.png"  // Logo path
-                alt="Reroute Logo"
-                className="h-32 mb-6"  // Logo size doubled (h-64) and moved closer to the top
-              />
-            
-            </div>
-            
+        <div className="flex flex-col items-center mt-4 mb-2">
+          {/* Smaller logo, centered, with fixed size and preserved aspect ratio */}
+          <img
+            src="/logo.png"
+            alt="Reroute Logo"
+            className="w-24 h-auto object-contain"
+          />
+        </div>
       </SidebarHeader>
-      <SidebarContent>
+
+      {/* Move nav items up */}
+      <SidebarContent className="pt-0">
         <NavMain items={data.navMain} />
       </SidebarContent>
+
       <SidebarFooter>
         <NavUser user={data.user} />
-        
       </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

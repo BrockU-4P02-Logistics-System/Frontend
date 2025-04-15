@@ -17,6 +17,7 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import MapComponent from "@/components/map/google";
@@ -1231,10 +1232,9 @@ export default function RoutePlanner() {
 
       <div className="w-full lg:w-[30%] flex flex-col gap-4 p-4 overflow-y-auto">
         {/* Add Location Section */}
-        <div className="rounded-xl bg-muted/50 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-bold">Credits: {credit}</h1>
-
+        <div className="rounded-xl bg-muted/50 px-4 py-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Credits: {credit}</h2>
             <div className="flex items-center space-x-2">
               <TooltipProvider>
                 <Tooltip>
@@ -1291,9 +1291,7 @@ export default function RoutePlanner() {
                       onClick={() => handleExportRoute()}
                       disabled={!selectedDriverId && selectedDriverId !== 0}
                     >
-                      <span className="h-4 w-4 flex items-center justify-center font-bold">
-                        →|
-                      </span>
+                      <ExternalLink className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Export Route</TooltipContent>
@@ -1302,6 +1300,7 @@ export default function RoutePlanner() {
             </div>
           </div>
         </div>
+
         <div className="flex flex-col gap-2">
           <AddressAutocomplete
             value={newAddress}
@@ -1492,6 +1491,22 @@ export default function RoutePlanner() {
           </div>
         )}
 
+        {/* Mobile Map View */}
+        <div className="block lg:hidden w-full px-4">
+          <div className="relative w-full h-[300px] mt-4">
+            <MapComponent
+              key={`${mapResetKey}-mobile`}
+              markers={markers}
+              isLoaded={isLoaded}
+              routePath={routePath}
+              straightLinePaths={straightLinePaths}
+              driverRoutes={driverRoutes}
+              selectedDriverId={selectedDriverId}
+              resetKey={mapResetKey}
+            />
+          </div>
+        </div>
+
         {/* Directions Panel */}
         {selectedDriverId !== null && routeDirections.length > 0 && (
           <div className="rounded-xl bg-muted/50 p-4">
@@ -1551,10 +1566,10 @@ export default function RoutePlanner() {
       </div>
 
       {/* Map Section */}
-      <div className="w-full lg:w-[70%] flex flex-col relative">
+      <div className="hidden lg:flex w-full lg:w-[70%] flex-col relative">
         <div className="flex-grow relative">
           <MapComponent
-            key={mapResetKey}
+            key={`${mapResetKey}-desktop`}
             markers={markers}
             isLoaded={isLoaded}
             routePath={routePath}
@@ -1567,28 +1582,36 @@ export default function RoutePlanner() {
 
         {/* Driver Selection Tabs */}
         {driverRoutes.length > 0 && (
-          <div className="absolute bottom-4 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
-            {driverRoutes.map((route) => (
-              <Button
-                key={route.driverId}
-                variant={
-                  selectedDriverId === route.driverId ? "default" : "outline"
-                }
-                size="sm"
-                onClick={() => handleDriverSelect(route.driverId)}
-                style={{
-                  backgroundColor:
-                    selectedDriverId === route.driverId
-                      ? route.color
-                      : undefined,
-                  borderColor: route.color,
-                  color:
-                    selectedDriverId === route.driverId ? "white" : route.color,
-                }}
-              >
-                Driver {route.driverId + 1}
-              </Button>
-            ))}
+          <div className="fixed bottom-0 left-0 right-0 z-10 py-4 px-2 bg-white border-t shadow-md">
+            <div className="max-w-full mx-auto overflow-x-auto px-2">
+              <div className="flex justify-center gap-2 w-max min-w-full">
+                {driverRoutes.map((route) => (
+                  <Button
+                    key={route.driverId}
+                    variant={
+                      selectedDriverId === route.driverId
+                        ? "default"
+                        : "outline"
+                    }
+                    size="sm"
+                    onClick={() => handleDriverSelect(route.driverId)}
+                    style={{
+                      backgroundColor:
+                        selectedDriverId === route.driverId
+                          ? route.color
+                          : undefined,
+                      borderColor: route.color,
+                      color:
+                        selectedDriverId === route.driverId
+                          ? "white"
+                          : route.color,
+                    }}
+                  >
+                    Driver {route.driverId + 1}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
