@@ -136,15 +136,22 @@ export default function LoginPage() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
+          Or continue with
               </span>
             </div>
           </div>
 
-            
-            <Image id="img1" onClick={handleGoogleLogin}
-            src="/signin-assets/signin-assets/Web (mobile + desktop)/png@4x/light/web_light_rd_SI@4x.png" width="200" height="200" alt={'Google'}/>
-        
+            <div className="flex justify-center">
+            <Image
+              id="img1"
+              onClick={handleGoogleLogin}
+              src="/signin-assets/signin-assets/Web (mobile + desktop)/png@4x/light/web_light_rd_SI@4x.png"
+              width="200"
+              height="200"
+              alt="Google"
+              className="transition-transform duration-300 ease-in-out hover:scale-105 cursor-pointer"
+            />
+            </div>
         </CardContent>
         <CardFooter className="justify-center">
           <span className="text-sm text-muted-foreground">

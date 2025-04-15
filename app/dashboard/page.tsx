@@ -1234,6 +1234,98 @@ export default function RoutePlanner() {
         {/* Add Location Section */}
         <div className="rounded-xl bg-muted/50 px-4 py-2">
           <div className="flex items-center justify-between">
+          <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+
+ 
+
+<DialogContent>
+
+
+  <DialogHeader>
+
+
+    <DialogTitle>Save Route</DialogTitle>
+
+
+    <DialogDescription>
+
+
+      Give your route a name so you can find it later.
+
+
+    </DialogDescription>
+
+
+  </DialogHeader>
+
+
+  <div className="py-4">
+
+
+    <div className="space-y-4">
+
+
+      <div className="space-y-2">
+
+
+        <Label htmlFor="route-name">Route Name</Label>
+
+
+        <Input
+
+
+          id="route-name"
+
+
+          placeholder="My Route"
+
+
+          value={formData.name}
+
+
+          onChange={(e) =>
+
+
+            setFormData({ ...formData, name: e.target.value })
+
+
+          }
+
+
+        />
+
+
+      </div>
+
+
+    </div>
+
+
+  </div>
+
+
+  <DialogFooter>
+
+
+    <Button variant="outline" onClick={handleSaveDialogClose}>
+
+
+      Cancel
+
+
+    </Button>
+
+
+    <Button onClick={handleSaveRoute}>Save Route</Button>
+
+
+  </DialogFooter>
+
+
+</DialogContent>
+
+
+</Dialog>
             <h2 className="text-lg font-semibold">Credits: {credit}</h2>
             <div className="flex items-center space-x-2">
               <TooltipProvider>
