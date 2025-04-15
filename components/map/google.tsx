@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useCallback, useEffect } from "react";
 import { GoogleMap, MarkerF, Polyline } from "@react-google-maps/api";
+import { useTheme } from "next-themes";
 
 // Define MarkerLocation interface directly to avoid import issues
 interface MarkerLocation {
@@ -49,7 +50,8 @@ interface MapComponentProps {
   selectedDriverId?: number | null;
   resetKey?: number;
 }
-// Updated MapComponent render function to properly show straight lines
+
+// Updated MapComponent render function to properly show straight lines and support dark mode
 const MapComponent: React.FC<MapComponentProps> = ({
   markers,
   isLoaded,
@@ -61,8 +63,91 @@ const MapComponent: React.FC<MapComponentProps> = ({
   selectedDriverId = null,
   resetKey,
 }) => {
+  const { theme } = useTheme();
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const defaultCenter = { lat: 43.6532, lng: -79.3832 }; // Toronto's coordinates
+
+  // Dark mode styles for Google Maps
+  const darkModeStyle = [
+    { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+    {
+      featureType: "administrative.locality",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#d59563" }],
+    },
+    {
+      featureType: "poi",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#d59563" }],
+    },
+    {
+      featureType: "poi.park",
+      elementType: "geometry",
+      stylers: [{ color: "#263c3f" }],
+    },
+    {
+      featureType: "poi.park",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#6b9a76" }],
+    },
+    {
+      featureType: "road",
+      elementType: "geometry",
+      stylers: [{ color: "#38414e" }],
+    },
+    {
+      featureType: "road",
+      elementType: "geometry.stroke",
+      stylers: [{ color: "#212a37" }],
+    },
+    {
+      featureType: "road",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#9ca5b3" }],
+    },
+    {
+      featureType: "road.highway",
+      elementType: "geometry",
+      stylers: [{ color: "#746855" }],
+    },
+    {
+      featureType: "road.highway",
+      elementType: "geometry.stroke",
+      stylers: [{ color: "#1f2835" }],
+    },
+    {
+      featureType: "road.highway",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#f3d19c" }],
+    },
+    {
+      featureType: "transit",
+      elementType: "geometry",
+      stylers: [{ color: "#2f3948" }],
+    },
+    {
+      featureType: "transit.station",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#d59563" }],
+    },
+    {
+      featureType: "water",
+      elementType: "geometry",
+      stylers: [{ color: "#17263c" }],
+    },
+    {
+      featureType: "water",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#515c6d" }],
+    },
+    {
+      featureType: "water",
+      elementType: "labels.text.stroke",
+      stylers: [{ color: "#17263c" }],
+    },
+  ];
 
   // Log what's being received
   useEffect(() => {
@@ -72,6 +157,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
       straightLinePathsLength: straightLinePaths.length,
       driverRoutesCount: driverRoutes.length,
       selectedDriverId,
+      currentTheme: theme,
     });
 
     if (straightLinePaths.length > 0) {
@@ -87,7 +173,14 @@ const MapComponent: React.FC<MapComponentProps> = ({
         }
       });
     }
-  }, [markers, routePath, straightLinePaths, driverRoutes, selectedDriverId]);
+  }, [
+    markers,
+    routePath,
+    straightLinePaths,
+    driverRoutes,
+    selectedDriverId,
+    theme,
+  ]);
 
   // Center the map based on markers, or default to Toronto
   const center =
@@ -115,6 +208,17 @@ const MapComponent: React.FC<MapComponentProps> = ({
       map.setZoom(8); // A better default zoom for Canada
     }
   }, [map, markers.length, resetKey]);
+
+  // Apply dark mode styling when theme changes
+  useEffect(() => {
+    if (!map) return;
+
+    if (theme === "dark") {
+      map.setOptions({ styles: darkModeStyle });
+    } else {
+      map.setOptions({ styles: [] }); // Reset to default style
+    }
+  }, [map, theme]);
 
   // Fit map bounds to contain all markers whenever markers change
   useEffect(() => {
@@ -216,6 +320,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
         streetViewControl: false,
         mapTypeControl: false,
         zoomControl: true,
+        styles: theme === "dark" ? darkModeStyle : [],
       }}
     >
       {/* Only render markers if there are any */}

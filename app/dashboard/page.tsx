@@ -1582,7 +1582,7 @@ export default function RoutePlanner() {
 
         {/* Driver Selection Tabs */}
         {driverRoutes.length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 z-10 py-4 px-2 bg-white border-t shadow-md">
+          <div className="fixed bottom-0 left-0 right-0 z-10 py-4 px-2 bg-white text-black dark:bg-zinc-800 dark:text-white border-t shadow-md">
             <div className="max-w-full mx-auto overflow-x-auto px-2">
               <div className="flex justify-center gap-2 w-max min-w-full">
                 {driverRoutes.map((route) => (
