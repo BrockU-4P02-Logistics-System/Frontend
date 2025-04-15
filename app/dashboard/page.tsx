@@ -1084,6 +1084,8 @@ export default function RoutePlanner() {
     if (num === false) {
       toast.error("Too many routes already saved.");
       handleSaveDialogClose();
+      setUnreachableAlertMessage("");
+      setShowUnreachableAlert(true);      
       return;
     }
 
@@ -1236,95 +1238,35 @@ export default function RoutePlanner() {
           <div className="flex items-center justify-between">
           <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
 
- 
-
 <DialogContent>
-
-
   <DialogHeader>
-
-
     <DialogTitle>Save Route</DialogTitle>
-
-
     <DialogDescription>
-
-
       Give your route a name so you can find it later.
-
-
     </DialogDescription>
-
-
   </DialogHeader>
-
-
   <div className="py-4">
-
-
     <div className="space-y-4">
-
-
       <div className="space-y-2">
-
-
         <Label htmlFor="route-name">Route Name</Label>
-
-
         <Input
-
-
           id="route-name"
-
-
           placeholder="My Route"
-
-
           value={formData.name}
-
-
           onChange={(e) =>
-
-
             setFormData({ ...formData, name: e.target.value })
-
-
           }
-
-
         />
-
-
       </div>
-
-
     </div>
-
-
   </div>
-
-
   <DialogFooter>
-
-
     <Button variant="outline" onClick={handleSaveDialogClose}>
-
-
       Cancel
-
-
     </Button>
-
-
     <Button onClick={handleSaveRoute}>Save Route</Button>
-
-
   </DialogFooter>
-
-
 </DialogContent>
-
-
 </Dialog>
             <h2 className="text-lg font-semibold">Credits: {credit}</h2>
             <div className="flex items-center space-x-2">
@@ -1865,6 +1807,24 @@ export default function RoutePlanner() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Unreachable Route Segments</AlertDialogTitle>
+            <AlertDialogDescription className="whitespace-pre-line">
+              {unreachableAlertMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button onClick={() => setShowUnreachableAlert(false)}>
+              Understood
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={showUnreachableAlert}
+        onOpenChange={setShowUnreachableAlert}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Maximum limit of 6 saved routes reached. Delete routes before adding more</AlertDialogTitle>
             <AlertDialogDescription className="whitespace-pre-line">
               {unreachableAlertMessage}
             </AlertDialogDescription>
