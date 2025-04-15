@@ -15,6 +15,8 @@ import {
   Plus,
   Minus,
   Settings,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import MapComponent from "@/components/map/google";
@@ -51,7 +53,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
-
 interface MarkerLocation {
   address: string;
   latitude: number;
@@ -59,7 +60,7 @@ interface MarkerLocation {
   note?: string;
   arrivalTime?: string;
   departureTime?: string;
-  driverId?: number; 
+  driverId?: number;
 }
 
 interface RouteConfiguration {
@@ -126,8 +127,12 @@ const ROUTE_COLORS = [
   "#FF5722", // Deep Orange
 ];
 
-
 export default function RoutePlanner() {
+  // State for directions expanding/collapsing
+  const [expandedDrivers, setExpandedDrivers] = useState<Set<number>>(
+    new Set()
+  );
+
   const [mapResetKey, setMapKey] = useState<number>(Date.now());
 
   const [markers, setMarkers] = useState<MarkerLocation[]>([]);
@@ -165,10 +170,14 @@ export default function RoutePlanner() {
 
   const { data: session, status } = useSession();
   const [credit, setCredits] = useState(0);
-  const log = session?.user?.email ?? '';
+  const log = session?.user?.email ?? "";
   const [mapsUrls, setMapURLs] = useState<string[]>([]);
-  function SearchParamLoader({ onLoad }: { onLoad: (shouldLoad: boolean) => void }) {
-    const search = useSearchParams().get('load');
+  function SearchParamLoader({
+    onLoad,
+  }: {
+    onLoad: (shouldLoad: boolean) => void;
+  }) {
+    const search = useSearchParams().get("load");
     useEffect(() => {
       if (search === "true") {
         onLoad(true);
@@ -186,6 +195,19 @@ export default function RoutePlanner() {
   });
 
   const router = useRouter();
+
+  // TOggle the expanded menu for directions
+  const toggleDirectionsExpanded = (driverId: number) => {
+    setExpandedDrivers((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(driverId)) {
+        newSet.delete(driverId);
+      } else {
+        newSet.add(driverId);
+      }
+      return newSet;
+    });
+  };
 
   // Maximum number of drivers based on number of markers
   const maxDrivers = Math.min(10, Math.max(1, markers.length - 1));
@@ -277,25 +299,31 @@ export default function RoutePlanner() {
 
       if (savedRouteJson) {
         if (savedMarkersJson) {
-          const parsedMarkers = JSON.parse(savedMarkersJson) as MarkerLocation[];
+          const parsedMarkers = JSON.parse(
+            savedMarkersJson
+          ) as MarkerLocation[];
           setMarkers(parsedMarkers);
         }
-        
+
         if (savedConfigJson) {
-          const parsedConfig = JSON.parse(savedConfigJson) as RouteConfiguration;
+          const parsedConfig = JSON.parse(
+            savedConfigJson
+          ) as RouteConfiguration;
           setConfig(parsedConfig);
         }
-        
+
         if (savedDriverRoutesJson) {
-          const parsedDriverRoutes = JSON.parse(savedDriverRoutesJson) as DriverRoute[];
+          const parsedDriverRoutes = JSON.parse(
+            savedDriverRoutesJson
+          ) as DriverRoute[];
           setDriverRoutes(parsedDriverRoutes);
         }
-        
+
         if (savedNumDriversJson) {
           const parsedNumDrivers = JSON.parse(savedNumDriversJson) as number;
           setNumDrivers(parsedNumDrivers);
         }
-        
+
         handleDriverSelect(0);
       }
     } catch (err) {
@@ -750,12 +778,11 @@ export default function RoutePlanner() {
         }
 
         // Check for unreachable locations
-        const { unreachableRoutes } =
-          await detectUnreachableLocations(
-            routeMarkers,
-            directionsService,
-            config
-          );
+        const { unreachableRoutes } = await detectUnreachableLocations(
+          routeMarkers,
+          directionsService,
+          config
+        );
 
         if (unreachableRoutes.length > 0) {
           problematicDrivers.push({ driverId, unreachableRoutes });
@@ -836,10 +863,10 @@ export default function RoutePlanner() {
       toast.error("Please add at least two locations");
       return;
     }
-  
+
     setIsCalculating(true);
     saveToHistory();
-  
+
     try {
       // First, check if any locations are unreachable before sending to the backend
       const directionsService = new google.maps.DirectionsService();
@@ -848,14 +875,14 @@ export default function RoutePlanner() {
         origin: string;
         destination: string;
       }[] = [];
-  
+
       for (let i = 0; i < markers.length - 1; i++) {
         const origin = { lat: markers[i].latitude, lng: markers[i].longitude };
         const destination = {
           lat: markers[i + 1].latitude,
           lng: markers[i + 1].longitude,
         };
-  
+
         try {
           await directionsService.route({
             origin,
@@ -872,31 +899,32 @@ export default function RoutePlanner() {
             destination: markers[i + 1].address,
           });
         }
-        }
-  
+      }
+
       // If there are unreachable locations, alert the user
       if (unreachableLocations.length > 0) {
         let alertMessage = "The following route segments are unreachable:\n\n";
         unreachableLocations.forEach((loc) => {
           alertMessage += `• From "${loc.origin}" to "${loc.destination}"\n`;
         });
-        
-        alertMessage += "\nWe'll show direct lines for these segments and road routes where possible.";
-  
+
+        alertMessage +=
+          "\nWe'll show direct lines for these segments and road routes where possible.";
+
         setUnreachableAlertMessage(alertMessage);
         setShowUnreachableAlert(true);
-  
+
         // IMPORTANT: We continue processing instead of returning early
         // This allows us to still process the route even with unreachable segments
       }
-  
+
       // Extract route options into an array for the backend
       const options = [
         config.avoidHighways || false,
         config.avoidTolls || false,
         config.avoidFerries || false,
       ];
-  
+
       const response = await fetch("/api/process", {
         method: "POST",
         headers: {
@@ -907,20 +935,20 @@ export default function RoutePlanner() {
           config,
           numberDrivers: numDrivers,
           returnToStart: config.returnToStart,
-          options: options // Include the options array in the request
+          options: options, // Include the options array in the request
         }),
       });
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-  
+
       const data = await response.json();
       const originalDriverCount = numDrivers; // Store original count for comparison
-  
+
       if (data.routes && Array.isArray(data.routes)) {
         let allMarkers: MarkerLocation[] = [];
-  
+
         // Process each driver's route from the response
         data.routes.forEach(
           (driverRoute: { driverId: number; stops: MarkerLocation[] }) => {
@@ -928,18 +956,18 @@ export default function RoutePlanner() {
               ...marker,
               driverId: driverRoute.driverId,
             }));
-  
+
             allMarkers = [...allMarkers, ...driverMarkers];
           }
         );
-  
+
         // Remove duplicates before updating state
         const uniqueMarkers = removeDuplicateMarkers(allMarkers);
         setMarkers(uniqueMarkers);
-  
+
         // Process each driver's route
         await processDriverRoutes(uniqueMarkers);
-  
+
         // Check if the actual number of drivers is different from what was requested
         const actualDriverCount = data.totalDrivers || data.routes.length;
         if (actualDriverCount < originalDriverCount) {
@@ -950,7 +978,7 @@ export default function RoutePlanner() {
           );
           setShowDriverCountAlert(true);
         }
-  
+
         handleDriverSelect(0);
         toast.success("Route optimized successfully!");
       } else if (data.route) {
@@ -959,16 +987,16 @@ export default function RoutePlanner() {
           ...marker,
           driverId: marker.driverId !== undefined ? marker.driverId : 0,
         }));
-  
+
         const uniqueMarkers = removeDuplicateMarkers(optimizedMarkers);
         setMarkers(uniqueMarkers);
-  
+
         // Process each driver's route
         await processDriverRoutes(uniqueMarkers);
-  
+
         // Check how many unique driver IDs are in the response
         const uniqueDriverIds = new Set(
-          optimizedMarkers.map((m : { driverId: string}) => m.driverId)
+          optimizedMarkers.map((m: { driverId: string }) => m.driverId)
         ).size;
         if (uniqueDriverIds < originalDriverCount) {
           toast.info(
@@ -977,7 +1005,7 @@ export default function RoutePlanner() {
             } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
           );
         }
-  
+
         toast.success("Route optimized successfully!");
       } else {
         toast.error("Invalid route data received");
@@ -1019,13 +1047,12 @@ export default function RoutePlanner() {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
-
   const handleSaveRoute = async () => {
     if (!log) {
       toast.error("You must be logged in to save routes");
       return;
     }
-    
+
     const routeData = {
       markers,
       config,
@@ -1166,7 +1193,6 @@ export default function RoutePlanner() {
     }
   }, [status, shouldLoadRoute, loadRoute]);
 
-
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -1175,97 +1201,105 @@ export default function RoutePlanner() {
     );
   }
 
+  const handleExportRoute = () => {
+    // Only proceed if a driver is selected
+    if (selectedDriverId !== null) {
+      // Find the selected driver's route
+      const selectedRoute = driverRoutes.find(
+        (route) => route.driverId === selectedDriverId
+      );
+
+      if (selectedRoute) {
+        // Generate Google Maps URLs for the selected driver's markers
+        const urls = generateGoogleMapsRouteUrls(selectedRoute.markers);
+        setMapURLs(urls);
+        setExport(true);
+      } else {
+        toast.error("No route data available for the selected driver");
+      }
+    } else {
+      toast.error("Please select a driver first");
+    }
+  };
+
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
       {/* Suspense boundary around the component that uses useSearchParams */}
       <Suspense fallback={<div>Loading route data...</div>}>
         <SearchParamLoader onLoad={handleSearchParamsLoad} />
       </Suspense>
-      
+
       <div className="w-full lg:w-[30%] flex flex-col gap-4 p-4 overflow-y-auto">
         {/* Add Location Section */}
         <div className="rounded-xl bg-muted/50 p-4">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-bold">Route Planner</h1>
+            <h1 className="text-xl font-bold">Credits: {credit}</h1>
 
-            <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Save Route</DialogTitle>
-                  <DialogDescription>
-                    Give your route a name so you can find it later.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="route-name">Route Name</Label>
-                      <Input
-                        id="route-name"
-                        placeholder="My Route"
-                        value={formData.name}
-                        onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={handleSaveDialogClose}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSaveRoute}>Save Route</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            <h1 className="text-xl font-bold">Credits: {credit} </h1>
+            <div className="flex items-center space-x-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleUndo}
+                      disabled={routeHistory.length === 0}
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Undo last change</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleUndo}
-                    disabled={routeHistory.length === 0}
-                  >
-                    <Undo2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Undo last change</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleSaveDialogOpen}
+                    >
+                      <Save className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Save Route</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleSaveDialogOpen}
-                  >
-                    <Save className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Save Route</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleShareRoute}
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Share route</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleShareRoute}
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Share route</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleExportRoute()}
+                      disabled={!selectedDriverId && selectedDriverId !== 0}
+                    >
+                      <span className="h-4 w-4 flex items-center justify-center font-bold">
+                        →|
+                      </span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Export Route</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
         </div>
         <div className="flex flex-col gap-2">
@@ -1462,31 +1496,56 @@ export default function RoutePlanner() {
         {selectedDriverId !== null && routeDirections.length > 0 && (
           <div className="rounded-xl bg-muted/50 p-4">
             <div className="mb-4">
-              <h2
-                className="text-lg font-semibold"
-                style={{
-                  color: ROUTE_COLORS[selectedDriverId % ROUTE_COLORS.length],
-                }}
-              >
-                Driver {selectedDriverId + 1} Route
-              </h2>
-              <div className="flex justify-between text-sm text-muted-foreground">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => toggleDirectionsExpanded(selectedDriverId)}
+                    className="mr-2 p-1 rounded-full hover:bg-muted transition-colors"
+                    aria-expanded={expandedDrivers.has(selectedDriverId)}
+                    aria-label={
+                      expandedDrivers.has(selectedDriverId)
+                        ? "Collapse directions"
+                        : "Expand directions"
+                    }
+                  >
+                    {expandedDrivers.has(selectedDriverId) ? (
+                      <ChevronDown className="h-5 w-5" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5" />
+                    )}
+                  </button>
+                  <h2
+                    className="text-lg font-semibold"
+                    style={{
+                      color:
+                        ROUTE_COLORS[selectedDriverId % ROUTE_COLORS.length],
+                    }}
+                  >
+                    Driver {selectedDriverId + 1} Route
+                  </h2>
+                </div>
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground mt-1">
                 <span>Total Distance: {totalRouteDistance}</span>
                 <span>Total Duration: {totalRouteDuration}</span>
               </div>
             </div>
 
-            {routeDirections.map((step, index) => (
-              <div key={index} className="mb-2 pb-2 border-b">
-                <div
-                  className="text-sm font-medium"
-                  dangerouslySetInnerHTML={{ __html: step.instruction }}
-                />
-                <div className="text-xs text-muted-foreground">
-                  Distance: {step.distance} | Duration: {step.duration}
-                </div>
+            {expandedDrivers.has(selectedDriverId) && (
+              <div className="space-y-2 mt-2">
+                {routeDirections.map((step, index) => (
+                  <div key={index} className="mb-2 pb-2 border-b">
+                    <div
+                      className="text-sm font-medium"
+                      dangerouslySetInnerHTML={{ __html: step.instruction }}
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Distance: {step.distance} | Duration: {step.duration}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
@@ -1508,7 +1567,7 @@ export default function RoutePlanner() {
 
         {/* Driver Selection Tabs */}
         {driverRoutes.length > 0 && (
-          <div className="absolute bottom-16 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
+          <div className="absolute bottom-4 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
             {driverRoutes.map((route) => (
               <Button
                 key={route.driverId}
@@ -1533,58 +1592,44 @@ export default function RoutePlanner() {
           </div>
         )}
 
-<div className="bottom-0 left-0 right-0 z-10 p-2 bg-white/90 flex flex-wrap gap-2 justify-center">
-{driverRoutes.map((route) => (
-              <Button
-                key={route.driverId}
-                variant={
-                  selectedDriverId === route.driverId ? "default" : "outline"
-                }
-                size="sm"
-                onClick={() => setExport(true)}
-                style={{
-                  backgroundColor:
-                    selectedDriverId === route.driverId
-                      ? route.color
-                      : undefined,
-                  borderColor: route.color,
-                  color:
-                    selectedDriverId === route.driverId ? "white" : route.color,
-                }}
-              >
-                Export Routes for Driver {route.driverId + 1}
-              </Button>
-            ))}
-            
-          </div>
-          
-          
-            <Dialog
-            open={showExport}
-          
-          >
-            <DialogContent>
+        <Dialog open={showExport} onOpenChange={setExport}>
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle>Exported Routes</DialogTitle>
+              <DialogTitle>
+                {selectedDriverId !== null
+                  ? `Export Route for Driver ${selectedDriverId + 1}`
+                  : "Export Route"}
+              </DialogTitle>
               <DialogDescription>
-              <div id="urlContainer" style={{width: "20vw", height: "40vw", overflowWrap: "break-word"}}>
-              {mapsUrls.map((url, index) => (
-              <p key={index} style={{ marginBottom: '10px' }}>
-                <a href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}  >{url}</a>
-              </p>
-              ))}
-            </div>
+                {mapsUrls.length > 0
+                  ? "Click on the links below to open this route in Google Maps:"
+                  : "No route data available to export."}
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter>
-              <Button variant = "outline" onClick={() => setExport(false)}>
-              Close
+            <div className="max-h-[50vh] overflow-y-auto mt-2">
+              {mapsUrls.map((url, index) => (
+                <div key={index} className="mb-4 p-2 bg-muted/30 rounded-md">
+                  <p className="text-sm font-medium mb-1">
+                    Route Segment {index + 1}
+                  </p>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline break-all"
+                  >
+                    {url}
+                  </a>
+                </div>
+              ))}
+            </div>
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={() => setExport(false)}>
+                Close
               </Button>
             </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          
-
+          </DialogContent>
+        </Dialog>
 
         {/* Clear Route Dialog */}
         <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
