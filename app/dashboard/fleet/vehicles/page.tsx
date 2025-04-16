@@ -232,11 +232,6 @@ export default function VehiclesPage() {
               <TableHead>Vehicle</TableHead>
               <TableHead>Driver</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>
-                <Button variant="outline" onClick={handleAddCredits}>
-                  Add 10 Credits 
-                </Button>
-              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
