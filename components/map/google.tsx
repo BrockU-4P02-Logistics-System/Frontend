@@ -65,7 +65,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
 }) => {
   const { theme } = useTheme();
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const defaultCenter = { lat: 43.6532, lng: -79.3832 }; // Toronto's coordinates
+  const defaultCenter = { lat: 43.117470, lng: -79.242897 }; // Brock's coordinates
 
   // Dark mode styles for Google Maps
   const darkModeStyle = [
@@ -184,9 +184,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
   // Center the map based on markers, or default to Toronto
   const center =
-    markers.length > 0
-      ? { lat: markers[0].latitude, lng: markers[0].longitude }
-      : defaultCenter;
+      markers.length > 0 && markers[0].latitude && markers[0].longitude
+          ? { lat: markers[0].latitude, lng: markers[0].longitude }
+          : defaultCenter;
 
   const mapContainerStyle = {
     width: "95%",
@@ -195,7 +195,10 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
-  }, []);
+    // Always set initial center explicitly
+    map.setCenter(center);
+    map.setZoom(markers.length === 1 ? 15 : 8);
+  }, [center, markers.length]);
 
   const onUnmount = useCallback(() => {
     setMap(null);
@@ -225,49 +228,93 @@ const MapComponent: React.FC<MapComponentProps> = ({
     if (!map) return;
 
     const bounds = new google.maps.LatLngBounds();
+    let hasValidBounds = false;
 
     if (selectedDriverId !== null) {
       const selectedRoute = driverRoutes.find(
-        (route) => route.driverId === selectedDriverId
+          (route) => route.driverId === selectedDriverId
       );
 
       if (selectedRoute) {
-        selectedRoute.markers.forEach((marker) =>
-          bounds.extend({ lat: marker.latitude, lng: marker.longitude })
-        );
-        selectedRoute.routePath?.forEach((point) => bounds.extend(point));
-        selectedRoute.straightLinePaths?.forEach((path) => {
-          bounds.extend(path.origin);
-          bounds.extend(path.destination);
-        });
+        if (selectedRoute.markers && selectedRoute.markers.length > 0) {
+          selectedRoute.markers.forEach((marker) => {
+            bounds.extend({ lat: marker.latitude, lng: marker.longitude });
+            hasValidBounds = true;
+          });
+        }
 
-        map.fitBounds(bounds);
-        return;
+        if (selectedRoute.routePath && selectedRoute.routePath.length > 0) {
+          selectedRoute.routePath.forEach((point) => {
+            bounds.extend(point);
+            hasValidBounds = true;
+          });
+        }
+
+        if (selectedRoute.straightLinePaths && selectedRoute.straightLinePaths.length > 0) {
+          selectedRoute.straightLinePaths.forEach((path) => {
+            bounds.extend(path.origin);
+            bounds.extend(path.destination);
+            hasValidBounds = true;
+          });
+        }
+
+        if (hasValidBounds) {
+          map.fitBounds(bounds);
+          return;
+        }
       }
     }
 
     // Fallback: show all markers and routes
-    if (markers.length > 0) {
-      markers.forEach((marker) =>
-        bounds.extend({ lat: marker.latitude, lng: marker.longitude })
-      );
+    if (markers && markers.length > 0) {
+      markers.forEach((marker) => {
+        bounds.extend({ lat: marker.latitude, lng: marker.longitude });
+        hasValidBounds = true;
+      });
     }
 
-    routePath.forEach((point) => bounds.extend(point));
-    straightLinePaths.forEach((path) => {
-      bounds.extend(path.origin);
-      bounds.extend(path.destination);
-    });
+    if (routePath && routePath.length > 0) {
+      routePath.forEach((point) => {
+        bounds.extend(point);
+        hasValidBounds = true;
+      });
+    }
 
-    driverRoutes.forEach((route) => {
-      route.routePath?.forEach((point) => bounds.extend(point));
-      route.straightLinePaths?.forEach((path) => {
+    if (straightLinePaths && straightLinePaths.length > 0) {
+      straightLinePaths.forEach((path) => {
         bounds.extend(path.origin);
         bounds.extend(path.destination);
+        hasValidBounds = true;
       });
-    });
+    }
 
-    map.fitBounds(bounds);
+    if (driverRoutes && driverRoutes.length > 0) {
+      driverRoutes.forEach((route) => {
+        if (route.routePath && route.routePath.length > 0) {
+          route.routePath.forEach((point) => {
+            bounds.extend(point);
+            hasValidBounds = true;
+          });
+        }
+
+        if (route.straightLinePaths && route.straightLinePaths.length > 0) {
+          route.straightLinePaths.forEach((path) => {
+            bounds.extend(path.origin);
+            bounds.extend(path.destination);
+            hasValidBounds = true;
+          });
+        }
+      });
+    }
+
+    if (hasValidBounds) {
+      map.fitBounds(bounds);
+    } else {
+      // If no valid bounds were set, explicitly center on default location
+      console.log("No valid bounds found, centering on default location:", defaultCenter);
+      map.setCenter(defaultCenter);
+      map.setZoom(8);
+    }
   }, [
     map,
     markers,
