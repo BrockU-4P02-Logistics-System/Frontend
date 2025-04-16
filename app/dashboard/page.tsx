@@ -482,6 +482,10 @@ export default function RoutePlanner() {
             avoidHighways: config.avoidHighways,
             avoidFerries: config.avoidFerries,
             avoidTolls: config.avoidTolls,
+            drivingOptions: {// Current time for real-time traffic
+              departureTime: new Date(),
+              trafficModel: google.maps.TrafficModel.BEST_GUESS
+            }
           });
 
           if (result.routes && result.routes.length > 0) {
@@ -591,6 +595,10 @@ export default function RoutePlanner() {
           avoidHighways: config.avoidHighways,
           avoidFerries: config.avoidFerries,
           avoidTolls: config.avoidTolls,
+          drivingOptions: {// Current time for real-time traffic
+            departureTime: new Date(),
+            trafficModel: google.maps.TrafficModel.BEST_GUESS
+          }
         });
 
         if (result.routes.length > 0) {
@@ -691,6 +699,10 @@ export default function RoutePlanner() {
           avoidHighways: config.avoidHighways,
           avoidFerries: config.avoidFerries,
           avoidTolls: config.avoidTolls,
+          drivingOptions: {// Current time for real-time traffic
+            departureTime: new Date(),
+            trafficModel: google.maps.TrafficModel.BEST_GUESS
+          }
         });
 
         // If no routes, this segment is problematic
@@ -892,6 +904,10 @@ export default function RoutePlanner() {
             avoidHighways: config.avoidHighways,
             avoidFerries: config.avoidFerries,
             avoidTolls: config.avoidTolls,
+            drivingOptions: {// Current time for real-time traffic
+              departureTime: new Date(),
+              trafficModel: google.maps.TrafficModel.BEST_GUESS
+            }
           });
         } catch {
           unreachableLocations.push({
