@@ -52,6 +52,7 @@ async function processPayment(sessionId: string, userEmail: string) {
 
     // Add credits to the user account using the email from Stripe session
     try {
+      console.log("Adding credits to user account:", userEmail);
       await add_credits(userEmail, totalCredits);
       
       return {
@@ -82,8 +83,11 @@ export default async function ResultPage({
   searchParams,
 }: {
   searchParams: { session_id: string, userEmail: string };
-}) {
+})
+
+{
   // Process the payment on the server
+  console.log("code ran")
   const result = await processPayment(searchParams.session_id, searchParams.userEmail);
   
   // Pass the result to the client UI component

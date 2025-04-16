@@ -75,9 +75,13 @@ function StripeCheckout({ selectedPackage, onClose, userEmail }: StripeCheckoutP
     setLoading(true);
     try {
       if (userEmail) {
+        console.log(`User email: ${userEmail}`);
         data.append("userEmail", userEmail);
       }
-      
+      else{
+        console.log("User email is not available");
+      }
+
       const { url } = await createCheckoutSession(data);
       window.location.assign(url as string);
     } catch (error) {
@@ -211,9 +215,8 @@ export default function BillingPage() {
   }, [status, router]);
 
   useEffect(() => {
-    console.log(`Lookin for ${userEmail}`)
-
-  }, []);
+    console.log(`Lookin for ${session?.user?.email}`);
+  }, [session]);
 
   return (
     <div className="p-6 space-y-6">
