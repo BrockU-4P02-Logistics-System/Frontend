@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { 
-  CreditCard, 
+  //CreditCard,
   RefreshCw,
   BarChart3
 } from "lucide-react";
@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type Stripe from "stripe";
+//import type Stripe from "stripe";
 import { formatAmountForDisplay } from "@/utils/stripe-helpers";
 import * as config from "@/config";
 import { createCheckoutSession } from "@/actions/stripe";
@@ -20,11 +20,11 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { check_credits } from '@/actions/register';
 
-interface CreditUsage {
+/*interface CreditUsage {
   feature: string;
   creditsUsed: number;
   lastUsed: string;
-}
+}*/
 
 interface CreditPackage {
   credits: number;
@@ -136,13 +136,13 @@ function StripeCheckout({ selectedPackage, onClose, userEmail }: StripeCheckoutP
   );
 }
 
-async function getUserCredits(email: string | null | undefined) {
+/*async function getUserCredits(email: string | null | undefined) {
   if (!email) {
     throw new Error("User email is required to check credits");
   }
   console.log(`${email} where?`);
-  return await check_credits(email) as Number;
-}
+  return await check_credits(email) as number;
+}*/
 
 export default function BillingPage() {
   const [selectedPackageIndex, setSelectedPackageIndex] = useState<number | null>(null);
