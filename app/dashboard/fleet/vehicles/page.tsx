@@ -24,7 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { register_vehicle, get_fleet, remove_vehicle, add_credits } from "@/actions/register";
+import { register_vehicle, get_fleet, remove_vehicle} from "@/actions/register";
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
@@ -134,17 +134,6 @@ export default function VehiclesPage() {
     }
   };
 
-  // Handle adding credits with proper type safety
-  const handleAddCredits = (): void => {
-    if (!log) {
-      setError("You must be logged in to add credits");
-      return;
-    }
-    add_credits(log, 10).catch((error) => {
-      console.error("Error adding credits:", error);
-      setError("Failed to add credits");
-    });
-  };
 
   // Load data on initial mount if authenticated
   useEffect(() => {
