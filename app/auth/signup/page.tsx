@@ -47,7 +47,7 @@ export default function SignupPage() {
         
         const r = await register({
 
-          email: formData.email,
+          email: formData.email.toLowerCase(),
           password: formData.password,
           username: formData.username,
           org_name: formData.org_name,
@@ -55,7 +55,7 @@ export default function SignupPage() {
           org_phone: formData.org_phone,
           org_site: formData.org_site
 
-      });
+            });
       if (r?.error) {
 
         setError(r.error);

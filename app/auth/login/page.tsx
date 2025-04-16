@@ -46,7 +46,7 @@ export default function LoginPage() {
     try {
        const res = await signIn("credentials", {
       
-                      email: email,
+                      email: email.toLowerCase(),
                       password: password,
                                       
                       redirect: false

@@ -4,7 +4,8 @@ import User from "@/models/User";
 
 export const verify = async (values: any) => {
 
-    const { email} = values;
+    let { email } = values;
+    email = email.toLowerCase();
 
     try {
 
