@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { signIn, useSession } from "next-auth/react";
 import Image from "next/image"
 
-const { SITE_URL } = process.env;
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || '';
 
 
 // Login Page Component
@@ -46,7 +46,7 @@ export default function LoginPage() {
     try {
        const res = await signIn("credentials", {
       
-                      email: email,
+                      email: email.toLowerCase(),
                       password: password,
                                       
                       redirect: false
