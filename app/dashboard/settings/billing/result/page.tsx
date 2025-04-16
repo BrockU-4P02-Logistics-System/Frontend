@@ -2,6 +2,9 @@ import type { Stripe } from "stripe";
 import { stripe } from "@/lib/stripe";
 import { add_credits } from "@/actions/register";
 import ResultUI from "@/components/resultui";
+type CreditMapping = {
+  [key: number]: number;
+};
 
 // Process the payment on the server
 async function processPayment(sessionId: string, userEmail: string) {
@@ -35,10 +38,14 @@ async function processPayment(sessionId: string, userEmail: string) {
     const baseCredits = baseAmount * 10; // 1 USD = 10 Credits
     
     // Apply bonus if eligible (purchases over $10)
-    let bonusCredits = 0;
-    if (baseAmount > 10) {
-      bonusCredits = Math.round(baseCredits * 0.1); // 10% bonus
-    }
+    const creditMapping: CreditMapping = {
+      100: 0,
+      450: 50,
+      800: 200,
+      3500: 1500,
+    };
+
+    const bonusCredits = creditMapping[baseCredits] || 0;
     
     const totalCredits = baseCredits + bonusCredits;
 
