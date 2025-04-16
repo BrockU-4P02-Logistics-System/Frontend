@@ -1,36 +1,91 @@
-
 import type { Stripe } from "stripe";
-
 import { stripe } from "@/lib/stripe";
 import { add_credits } from "@/actions/register";
+import ResultUI from "@/components/resultui";
+
+// Process the payment on the server
+async function processPayment(sessionId: string, userEmail: string) {
+  if (!sessionId) {
+    return {
+      success: false,
+      error: "No session ID provided"
+    };
+  }
+
+  try {
+    const checkoutSession: Stripe.Checkout.Session =
+      await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ["line_items", "payment_intent", "customer_details"],
+      });
+
+    const paymentIntent = checkoutSession.payment_intent as Stripe.PaymentIntent;
+    
+    // Get the customer email from the Stripe session
+    const customerEmail = checkoutSession.customer_details?.email;
+    
+    if (!customerEmail) {
+      return {
+        success: false,
+        error: "Customer email not found in session"
+      };
+    }
+
+    // Calculate credits including the bonus
+    const baseAmount = (checkoutSession.amount_total ?? 0) / 100; // Convert from cents to dollars
+    const baseCredits = baseAmount * 10; // 1 USD = 10 Credits
+    
+    // Apply bonus if eligible (purchases over $10)
+    let bonusCredits = 0;
+    if (baseAmount > 10) {
+      bonusCredits = Math.round(baseCredits * 0.1); // 10% bonus
+    }
+    
+    const totalCredits = baseCredits + bonusCredits;
+
+    // Check payment status
+    if (paymentIntent.status !== "succeeded") {
+      return {
+        success: false,
+        error: `Payment not successful: ${paymentIntent.status}`
+      };
+    }
+
+    // Add credits to the user account using the email from Stripe session
+    try {
+      await add_credits(userEmail, totalCredits);
+      
+      return {
+        success: true,
+        email: userEmail,
+        creditsAdded: totalCredits,
+        baseCredits,
+        bonusCredits,
+        paymentAmount: baseAmount
+      };
+    } catch (error) {
+      console.error("Error adding credits:", error);
+      return {
+        success: false,
+        error: "Failed to add credits to account"
+      };
+    }
+  } catch (error) {
+    console.error("Error processing Stripe session:", error);
+    return {
+      success: false,
+      error: "Error processing payment"
+    };
+  }
+}
 
 export default async function ResultPage({
   searchParams,
 }: {
-  searchParams: { session_id: string };
-}): Promise<JSX.Element> {
-
-  if (!searchParams.session_id)
-    throw new Error("Please provide a valid session_id (`cs_test_...`)");
-
-  const checkoutSession: Stripe.Checkout.Session =
-    await stripe.checkout.sessions.retrieve(searchParams.session_id, {
-      expand: ["line_items", "payment_intent"],
-    });
-
-  const paymentIntent = checkoutSession.payment_intent as Stripe.PaymentIntent;
-
-   // Simulate adding credits after successful payment
-   if (paymentIntent.status === "succeeded") { // Replace "succeeded" with the correct status value from Stripe's type definition
-    const userEmail = checkoutSession.customer_details?.email;// Assuming email is passed in the FormData
-    const creditsToAdd: number = (checkoutSession.amount_total ?? 0); // Assuming credits are passed in the FormData
-    await add_credits(userEmail, creditsToAdd / 10);
-  }
-
-  return (
-    <>
-      <h2>Status: {paymentIntent.status}</h2>
-      <h3>{(checkoutSession.amount_total ?? 0) / 10} credits were added to your account </h3>
-    </>
-  );
+  searchParams: { session_id: string, userEmail: string };
+}) {
+  // Process the payment on the server
+  const result = await processPayment(searchParams.session_id, searchParams.userEmail);
+  
+  // Pass the result to the client UI component
+  return <ResultUI result={result} />;
 }

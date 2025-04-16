@@ -1,13 +1,13 @@
-'use client'
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import { 
   CreditCard, 
-  Download,
-  BarChart3,
-  History
+  RefreshCw,
+  BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,21 +15,10 @@ import type Stripe from "stripe";
 import { formatAmountForDisplay } from "@/utils/stripe-helpers";
 import * as config from "@/config";
 import { createCheckoutSession } from "@/actions/stripe";
-import getStripe from "@/utils/get-stripejs";
-import {
-  EmbeddedCheckout,
-  EmbeddedCheckoutProvider,
-} from "@stripe/react-stripe-js";
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-
-interface CreditPurchase {
-  id: string;
-  date: string;
-  amount: number;
-  credits: number;
-  status: 'completed' | 'pending' | 'failed';
-}
+import { useToast } from '@/hooks/use-toast';
+import { check_credits } from '@/actions/register';
 
 interface CreditUsage {
   feature: string;
@@ -37,112 +26,67 @@ interface CreditUsage {
   lastUsed: string;
 }
 
-interface UsageMetric {
-  name: string;
-  current: number;
-  limit: number;
-  unit: string;
-}
-
 interface CreditPackage {
   credits: number;
   price: number;
+  bonus: number;
+  totalCredits: number;
 }
 
-const creditPurchaseHistory: CreditPurchase[] = [
-  {
-    id: 'PUR-2024-001',
-    date: '2024-02-21',
-    amount: 50,
-    credits: 500,
-    status: 'completed'
-  },
-  {
-    id: 'PUR-2024-002',
-    date: '2024-01-15',
-    amount: 100,
-    credits: 1000,
-    status: 'completed'
-  },
-  {
-    id: 'PUR-2024-003',
-    date: '2023-12-05',
-    amount: 25,
-    credits: 250,
-    status: 'completed'
-  }
-];
-
-const creditUsageHistory: CreditUsage[] = [
-  {
-    feature: 'Route Optimization',
-    creditsUsed: 150,
-    lastUsed: '2024-02-28'
-  },
-  {
-    feature: 'Analytics Report',
-    creditsUsed: 75,
-    lastUsed: '2024-02-25'
-  },
-  {
-    feature: 'API Calls',
-    creditsUsed: 220,
-    lastUsed: '2024-03-01'
-  }
-];
-
-const usageMetrics: UsageMetric[] = [
-  {
-    name: 'Active Routes',
-    current: 85,
-    limit: 100,
-    unit: 'routes'
-  },
-  {
-    name: 'Team Members',
-    current: 8,
-    limit: 10,
-    unit: 'members'
-  },
-  {
-    name: 'API Calls',
-    current: 8500,
-    limit: 10000,
-    unit: 'calls'
-  }
-];
-
+// Calculate credit packages with bonuses
 const creditPackages: CreditPackage[] = [
-  { credits: 100, price: 10 },
-  { credits: 500, price: 45 },
-  { credits: 1000, price: 80 },
-  { credits: 5000, price: 350 }
+  { 
+    credits: 100, 
+    price: 10, 
+    bonus: 0,
+    totalCredits: 100
+  },
+  { 
+    credits: 500, 
+    price: 45, 
+    bonus: 50, // 10% bonus
+    totalCredits: 550
+  },
+  { 
+    credits: 1000, 
+    price: 80, 
+    bonus: 100, // 10% bonus
+    totalCredits: 1100
+  },
+  { 
+    credits: 5000, 
+    price: 350, 
+    bonus: 500, // 10% bonus
+    totalCredits: 5500
+  }
 ];
 
 interface StripeCheckoutProps {
   selectedPackage: CreditPackage;
   onClose: () => void;
+  userEmail: string | null | undefined;
 }
 
-
-function StripeCheckout({ selectedPackage, onClose }: StripeCheckoutProps): JSX.Element {
+function StripeCheckout({ selectedPackage, onClose, userEmail }: StripeCheckoutProps): JSX.Element {
   const [loading, setLoading] = useState<boolean>(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const formAction = async (data: FormData): Promise<void> => {
     setLoading(true);
-    const uiMode = data.get("uiMode") as Stripe.Checkout.SessionCreateParams.UiMode;
     try {
-      const { client_secret, url } = await createCheckoutSession(data);
-
-      if (uiMode === "embedded") {
-        setClientSecret(client_secret);
-      } else {
-        window.location.assign(url as string);
+      if (userEmail) {
+        data.append("userEmail", userEmail);
       }
+      
+      const { url } = await createCheckoutSession(data);
+      window.location.assign(url as string);
     } catch (error) {
       console.error("Error creating checkout session:", error);
-    } finally {
+      toast({
+        title: "Error",
+        description: "Could not create checkout session. Please try again.",
+        variant: "destructive",
+      });
       setLoading(false);
     }
   };
@@ -156,18 +100,29 @@ function StripeCheckout({ selectedPackage, onClose }: StripeCheckoutProps): JSX.
       
       <div className="mb-4 p-3 bg-primary/5 rounded-lg">
         <div className="flex justify-between mb-2">
-          <span>Credits:</span>
+          <span>Base Credits:</span>
           <span className="font-medium">{selectedPackage.credits}</span>
         </div>
+        {selectedPackage.bonus > 0 && (
+          <div className="flex justify-between mb-2">
+            <span>Bonus Credits (10%):</span>
+            <span className="font-medium text-green-600">+{selectedPackage.bonus}</span>
+          </div>
+        )}
+        <div className="flex justify-between mb-2">
+          <span>Total Credits:</span>
+          <span className="font-bold">{selectedPackage.totalCredits}</span>
+        </div>
         <div className="flex justify-between">
-          <span>Total:</span>
+          <span>Total Price:</span>
           <span className="font-bold">{formatAmountForDisplay(selectedPackage.price, config.CURRENCY)}</span>
         </div>
       </div>
 
       <form action={formAction} className="space-y-4">
-      <input type="hidden" name="uiMode" value="hosted" />
-      <input type="hidden" name="customDonation" value={selectedPackage.price} />
+        <input type="hidden" name="uiMode" value="hosted" />
+        <input type="hidden" name="customDonation" value={selectedPackage.price} />
+        <input type="hidden" name="credits" value={selectedPackage.totalCredits} />
         
         <Button 
           type="submit" 
@@ -177,22 +132,44 @@ function StripeCheckout({ selectedPackage, onClose }: StripeCheckoutProps): JSX.
           {loading ? "Processing..." : `Pay ${formatAmountForDisplay(selectedPackage.price, config.CURRENCY)}`}
         </Button>
       </form>
-
-      {clientSecret ? (
-        <EmbeddedCheckoutProvider
-          stripe={getStripe()}
-          options={{ clientSecret }}
-        >
-          <EmbeddedCheckout />
-        </EmbeddedCheckoutProvider>
-      ) : null}
     </div>
   );
+}
+
+async function getUserCredits(email: string | null | undefined) {
+  if (!email) {
+    throw new Error("User email is required to check credits");
+  }
+  console.log(`${email} where?`);
+  return await check_credits(email) as Number;
 }
 
 export default function BillingPage() {
   const [selectedPackageIndex, setSelectedPackageIndex] = useState<number | null>(null);
   const [showCheckout, setShowCheckout] = useState<boolean>(false);
+  const [creditBalance, setCreditBalance] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const userEmail = session?.user?.email as string
+
+
+    const loadCredits = async () => {
+      if (userEmail) {
+        const credits = await check_credits(userEmail);
+        setCreditBalance(credits ?? 0);
+      }
+    };
+  
+  
+    useEffect(() => {
+      if (status === "authenticated" && userEmail) {
+        loadCredits();
+      }
+    }, [status, userEmail]);
+  
 
   const handlePackageSelect = (index: number) => {
     setSelectedPackageIndex(index);
@@ -203,14 +180,40 @@ export default function BillingPage() {
     setShowCheckout(false);
   };
 
-  const {status } = useSession();
-  const router = useRouter();
+  const refreshCreditBalance = async () => {
+    try {
+      setLoading(true);
+      
+    } catch (error) {
+      console.error("Error fetching credit balance:", error);
+      toast({
+        title: "Error",
+        description: "Could not fetch your credit balance",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Fetch user's credit balance on component mount
+  useEffect(() => {
+    if (status === "authenticated" && userEmail) {
+      refreshCreditBalance();
+    }
+  }, [status, userEmail]);
+
+  // Check authentication
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
     }
   }, [status, router]);
+
+  useEffect(() => {
+    console.log(`Lookin for ${userEmail}`)
+
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
@@ -219,28 +222,39 @@ export default function BillingPage() {
           <h1 className="text-2xl font-bold">Credits & Billing</h1>
           <p className="text-muted-foreground">Manage your credits and payment information</p>
         </div>
-        <Button variant="outline">
-          <CreditCard className="mr-2 h-4 w-4" />
-          Update Payment Method
-        </Button>
       </div>
 
       <Tabs defaultValue="credits">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-1">
           <TabsTrigger value="credits">Credits</TabsTrigger>
-        
         </TabsList>
         
         <TabsContent value="credits" className="space-y-6">
           {/* Credit Balance */}
           <Card>
-            <CardHeader>
-              <CardTitle>Credit Balance</CardTitle>
-              <CardDescription>Your current available credits</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle>Credit Balance</CardTitle>
+                <CardDescription>Your current available credits</CardDescription>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={refreshCreditBalance}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="flex items-baseline space-x-2">
-                <span className="text-4xl font-bold">399</span>
+                <span className="text-4xl font-bold">
+                  {loading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : (
+                    creditBalance
+                  )}
+                </span>
                 <span className="text-muted-foreground">credits available</span>
               </div>
               <div className="mt-6">
@@ -255,7 +269,7 @@ export default function BillingPage() {
           <Card>
             <CardHeader>
               <CardTitle>Purchase Credits</CardTitle>
-              <CardDescription>1 USD = 10 Credits</CardDescription>
+              <CardDescription>1 USD = 10 Credits (10% bonus on packages over 100 credits)</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -267,10 +281,15 @@ export default function BillingPage() {
                   >
                     <CardContent className="p-6 text-center">
                       <div className="text-xl font-bold mb-2">{pkg.credits} Credits</div>
+                      {pkg.bonus > 0 && (
+                        <div className="text-sm text-green-600 font-medium mb-2">
+                          +{pkg.bonus} bonus
+                        </div>
+                      )}
                       <div className="text-2xl font-bold">${pkg.price}</div>
-                      {pkg.credits > 100 && (
+                      {pkg.bonus > 0 && (
                         <Badge variant="secondary" className="mt-2">
-                          {Math.round((pkg.credits / pkg.price - 10) * 10)}% bonus
+                          10% bonus
                         </Badge>
                       )}
                     </CardContent>
@@ -282,7 +301,8 @@ export default function BillingPage() {
                 <div className="mt-6">
                   <StripeCheckout 
                     selectedPackage={creditPackages[selectedPackageIndex]} 
-                    onClose={handleCloseCheckout} 
+                    onClose={handleCloseCheckout}
+                    userEmail={userEmail}
                   />
                 </div>
               )}
@@ -344,95 +364,6 @@ export default function BillingPage() {
                     <p className="text-sm text-muted-foreground">per call</p>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="usage" className="space-y-6">
-          {/* Usage Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Usage Overview</CardTitle>
-              <CardDescription>Your current usage metrics</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {usageMetrics.map((metric, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>{metric.name}</span>
-                    <span className="text-muted-foreground">
-                      {metric.current} / {metric.limit} {metric.unit}
-                    </span>
-                  </div>
-                  <Progress value={(metric.current / metric.limit) * 100} />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Credit Usage Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Credit Usage Breakdown</CardTitle>
-              <CardDescription>How your credits have been used</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {creditUsageHistory.map((usage, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{usage.feature}</p>
-                      <p className="text-sm text-muted-foreground">Last used: {usage.lastUsed}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold">{usage.creditsUsed} credits</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button variant="outline" className="w-full">
-                <History className="mr-2 h-4 w-4" />
-                View Detailed Usage History
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="history" className="space-y-6">
-          {/* Credit Purchase History */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Credit Purchase History</CardTitle>
-              <CardDescription>View your past credit purchases</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {creditPurchaseHistory.map((purchase) => (
-                  <div
-                    key={purchase.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="space-y-1">
-                      <p className="font-medium">{purchase.id}</p>
-                      <p className="text-sm text-muted-foreground">{purchase.date}</p>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <p className="font-bold">{purchase.credits} credits</p>
-                        <p className="text-sm text-muted-foreground">${purchase.amount}</p>
-                      </div>
-                      <Badge variant={purchase.status === 'completed' ? 'default' : 'outline'}>
-                        {purchase.status}
-                      </Badge>
-                      <Button variant="ghost" size="icon">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>

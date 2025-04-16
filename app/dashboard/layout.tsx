@@ -22,7 +22,7 @@ import {
   History,
   BarChart
 } from "lucide-react";
-
+import { Toaster } from '@/components/ui/toaster';
 // Navigation configuration
 export const navigationConfig = [
   {
@@ -142,6 +142,7 @@ export default function DashboardLayout({
           {/* Main Content */}
           <main className="flex-1 h-[calc(100vh-4rem)] overflow-y-auto">
             {children}
+            <Toaster/>
           </main>
         </SidebarInset>
       </SidebarProvider>
