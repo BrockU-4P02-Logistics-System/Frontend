@@ -30,6 +30,7 @@ interface CreditPackage {
   price: number;
   bonus: number;
   totalCredits: number;
+  percent: number;
 }
 
 // Calculate credit packages with bonuses
@@ -38,25 +39,29 @@ const creditPackages: CreditPackage[] = [
     credits: 100, 
     price: 10, 
     bonus: 0,
-    totalCredits: 100
+    totalCredits: 100,
+    percent: 0
   },
   { 
     credits: 500, 
     price: 45, 
     bonus: 50, // 10% bonus
-    totalCredits: 550
+    totalCredits: 500,
+    percent: 11
   },
   { 
     credits: 1000, 
     price: 80, 
-    bonus: 100, // 10% bonus
-    totalCredits: 1100
+    bonus: 200, // 10% bonus
+    totalCredits: 1000,
+    percent: 25
   },
   { 
     credits: 5000, 
     price: 350, 
-    bonus: 500, // 10% bonus
-    totalCredits: 5500
+    bonus: 1500, // 10% bonus
+    totalCredits: 5000,
+    percent: 43
   }
 ];
 
@@ -108,7 +113,7 @@ function StripeCheckout({ selectedPackage, onClose, userEmail }: StripeCheckoutP
         </div>
         {selectedPackage.bonus > 0 && (
           <div className="flex justify-between mb-2">
-            <span>Bonus Credits (10%):</span>
+            <span>Bonus Credits ({selectedPackage.percent}%):</span>
             <span className="font-medium text-green-600">+{selectedPackage.bonus}</span>
           </div>
         )}
@@ -213,10 +218,6 @@ export default function BillingPage() {
     }
   }, [status, router]);
 
-  useEffect(() => {
-    console.log(`Lookin for ${session?.user?.email}`);
-  }, [session]);
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -265,7 +266,7 @@ export default function BillingPage() {
           <Card>
             <CardHeader>
               <CardTitle>Purchase Credits</CardTitle>
-              <CardDescription>1 USD = 10 Credits (10% bonus on packages over 100 credits)</CardDescription>
+              <CardDescription>1 USD = 10 Credits (bonus&#39; on packages over 100 credits!)</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -285,7 +286,7 @@ export default function BillingPage() {
                       <div className="text-2xl font-bold">${pkg.price}</div>
                       {pkg.bonus > 0 && (
                         <Badge variant="secondary" className="mt-2">
-                          10% bonus
+                          {pkg.percent}% bonus
                         </Badge>
                       )}
                     </CardContent>
@@ -324,7 +325,7 @@ export default function BillingPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">5 credits</p>
+                    <p className="font-bold">10 credits</p>
                     <p className="text-sm text-muted-foreground">per route</p>
                   </div>
                 </div>
@@ -335,13 +336,13 @@ export default function BillingPage() {
                       <BarChart3 className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">Analytics Report</p>
-                      <p className="text-sm text-muted-foreground">Full data export</p>
+                      <p className="font-medium">Complex Routes</p>
+                      <p className="text-sm text-muted-foreground">Routes with more than 1 driver</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">25 credits</p>
-                    <p className="text-sm text-muted-foreground">per report</p>
+                    <p className="font-bold">10 credits</p>
+                    <p className="text-sm text-muted-foreground">per driver</p>
                   </div>
                 </div>
 
@@ -351,13 +352,13 @@ export default function BillingPage() {
                       <BarChart3 className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">API Calls</p>
-                      <p className="text-sm text-muted-foreground">Standard endpoints</p>
+                      <p className="font-medium">Route Saving</p>
+                      <p className="text-sm text-muted-foreground">Save a route of any complexity</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">0.1 credits</p>
-                    <p className="text-sm text-muted-foreground">per call</p>
+                    <p className="font-bold">10 credits</p>
+                    <p className="text-sm text-muted-foreground">per route</p>
                   </div>
                 </div>
               </div>
