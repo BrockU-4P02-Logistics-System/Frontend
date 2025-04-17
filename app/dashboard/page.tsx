@@ -9,7 +9,6 @@ import {
   Bolt,
   Loader2,
   Save,
-  Share2,
   Undo2,
   GripVertical,
   Plus,
@@ -1136,22 +1135,6 @@ export default function RoutePlanner() {
     handleSaveDialogClose();
   };
 
-  const handleShareRoute = async () => {
-    try {
-      const routeData = {
-        markers,
-        config,
-        driverRoutes,
-        numDrivers,
-      };
-
-      await navigator.clipboard.writeText(JSON.stringify(routeData));
-      toast.success("Route copied to clipboard");
-    } catch (err) {
-      console.error("Error sharing route:", err);
-      toast.error("Failed to share route");
-    }
-  };
 
   const handleClearRoute = () => {
     saveToHistory();
