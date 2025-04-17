@@ -61,6 +61,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { decompress } from 'lz-string';
 
 interface MarkerLocation {
   address: string;
@@ -288,7 +289,7 @@ export default function RoutePlanner() {
 
   const loadRoute = useCallback(async () => {
     try {
-      const savedRouteJson = sessionStorage.getItem("savedLoadedRoute");
+      const savedRouteJson = decompress(sessionStorage.getItem("savedLoadedRoute"));
       if (!savedRouteJson) {
         console.log("No saved route found in sessionStorage.");
         return;
@@ -296,7 +297,7 @@ export default function RoutePlanner() {
 
       const savedMarkersJson = sessionStorage.getItem("savedMarkers");
       const savedConfigJson = sessionStorage.getItem("savedConfig");
-      const savedDriverRoutesJson = sessionStorage.getItem("savedDriverRoutes");
+      const savedDriverRoutesJson = decompress(sessionStorage.getItem("savedDriverRoutes"));
       const savedNumDriversJson = sessionStorage.getItem("savedNumDrivers");
 
       if (savedRouteJson) {
@@ -1153,8 +1154,8 @@ export default function RoutePlanner() {
       timestamp: new Date().toISOString(),
     };
 
-    sessionStorage.setItem("savedRoute", JSON.stringify(routeData));
-    await save_route(log, sessionStorage.getItem("savedRoute"), formData.name);
+    //sessionStorage.setItem("savedRoute", JSON.stringify(routeData));
+    await save_route(log, JSON.stringify(routeData), formData.name);
     await removeCredits();
     toast.success("Route saved successfully");
     handleSaveDialogClose();

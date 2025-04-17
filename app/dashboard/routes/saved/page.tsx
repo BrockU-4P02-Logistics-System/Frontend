@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { compress } from 'lz-string';
 
 type RouteTuple = [string, string]; // [routeName, routeId]
 
@@ -92,10 +93,10 @@ export default function SavedRoutes() {
             }
 
             const parsed = JSON.parse(result[0]);
-            sessionStorage.setItem('savedLoadedRoute', result[0]);
+            sessionStorage.setItem('savedLoadedRoute', compress(result[0]));
             sessionStorage.setItem('savedConfig', JSON.stringify(parsed.config));
             sessionStorage.setItem('savedMarkers', JSON.stringify(parsed.markers));
-            sessionStorage.setItem('savedDriverRoutes', JSON.stringify(parsed.driverRoutes));
+            sessionStorage.setItem('savedDriverRoutes', compress(JSON.stringify(parsed.driverRoutes)));
             sessionStorage.setItem('savedNumDrivers', JSON.stringify(parsed.numDrivers));
             sessionStorage.setItem('savedTimestamp', JSON.stringify(parsed.timestamp));
 
