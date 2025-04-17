@@ -3,6 +3,7 @@ import React, { useEffect, useState, FormEvent } from 'react';
 import { 
   Plus,
   Truck,
+  Loader2,
 } from "lucide-react";
 import {
   Table,
@@ -57,6 +58,7 @@ export default function VehiclesPage() {
 
   const [data, setData] = useState<VehicleData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [deletingVehicles, setDeletingVehicles] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | undefined>();
   const log = session?.user?.email ?? '';
 
@@ -88,12 +90,31 @@ export default function VehiclesPage() {
 
   const remove = async (vehicle: VehicleData): Promise<void> => {
     if (!log) return;
+    
+    // Generate a unique key for this vehicle to track deletion state
+    const vehicleKey = `${vehicle[0]}-${vehicle[2]}`;
+    
+    // If already deleting, prevent duplicate action
+    if (deletingVehicles.has(vehicleKey)) {
+      return;
+    }
+    
     try {
+      // Set this specific vehicle as being deleted
+      setDeletingVehicles(prev => new Set(prev).add(vehicleKey));
+      
       await remove_vehicle(vehicle);
       await refresh();
     } catch (error) {
       console.error("Error removing vehicle:", error);
       setError("Failed to remove vehicle");
+    } finally {
+      // Clear the deleting state for this vehicle
+      setDeletingVehicles(prev => {
+        const updated = new Set(prev);
+        updated.delete(vehicleKey);
+        return updated;
+      });
     }
   };
   
@@ -221,21 +242,39 @@ export default function VehiclesPage() {
               <TableHead>Vehicle</TableHead>
               <TableHead>Driver</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((v) => (
-              <TableRow key={v[0]}>
-                <TableCell>{v[0]}</TableCell>
-                <TableCell>{v[1]}</TableCell>
-                <TableCell>{v[2]}</TableCell>
-                <TableCell>
-                  <Button variant="outline" onClick={() => remove(v)}>
-                    Delete
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {data.map((v) => {
+              // Generate a unique key for this vehicle
+              const vehicleKey = `${v[0]}-${v[2]}`;
+              const isDeleting = deletingVehicles.has(vehicleKey);
+              
+              return (
+                <TableRow key={vehicleKey}>
+                  <TableCell>{v[0]}</TableCell>
+                  <TableCell>{v[1]}</TableCell>
+                  <TableCell>{v[2]}</TableCell>
+                  <TableCell>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => remove(v)}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        "Delete"
+                      )}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
