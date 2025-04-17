@@ -43,21 +43,21 @@ const creditPackages: CreditPackage[] = [
     percent: 0
   },
   { 
-    credits: 500, 
+    credits: 450,
     price: 45, 
     bonus: 50, // 10% bonus
     totalCredits: 500,
     percent: 11
   },
   { 
-    credits: 1000, 
+    credits: 800,
     price: 80, 
     bonus: 200, // 10% bonus
     totalCredits: 1000,
     percent: 25
   },
   { 
-    credits: 5000, 
+    credits: 3500,
     price: 350, 
     bonus: 1500, // 10% bonus
     totalCredits: 5000,
@@ -266,7 +266,7 @@ export default function BillingPage() {
           <Card>
             <CardHeader>
               <CardTitle>Purchase Credits</CardTitle>
-              <CardDescription>1 USD = 10 Credits (bonus&#39; on packages over 100 credits!)</CardDescription>
+              <CardDescription>1 USD = 10 Credits (bonuses on packages over 100 credits!)</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
