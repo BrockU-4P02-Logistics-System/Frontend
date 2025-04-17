@@ -248,7 +248,7 @@ export default function RoutePlanner() {
       toast.success("Route options updated");
     }
     setShowRouteOptions(false);
-    };
+  };
   const handleSaveDialogClose = () => {
     setShowSaveDialog(false);
   };
@@ -745,9 +745,9 @@ export default function RoutePlanner() {
   const handleConfigChange = <K extends keyof RouteConfiguration>(
     key: K,
     value: RouteConfiguration[K]
-    ) => {
+  ) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
-    };
+  };
   // Function to handle exporting a specific driver's route
   const handleExportDriver = (driverId: number) => {
     // Find the driver's route
@@ -1173,7 +1173,6 @@ export default function RoutePlanner() {
     // Force map to refresh by generating a new key
     setMapKey(Date.now());
 
-
     toast.success("Route cleared");
   };
 
@@ -1278,73 +1277,73 @@ export default function RoutePlanner() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-              {/* Route Options Dialog */}
-        <Dialog open={showRouteOptions} onOpenChange={setShowRouteOptions}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Route Options</DialogTitle>
-              <DialogDescription>
-                Configure options for route calculation
-              </DialogDescription>
-            </DialogHeader>
+            {/* Route Options Dialog */}
+            <Dialog open={showRouteOptions} onOpenChange={setShowRouteOptions}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Route Options</DialogTitle>
+                  <DialogDescription>
+                    Configure options for route calculation
+                  </DialogDescription>
+                </DialogHeader>
 
-            <div className="grid gap-4 py-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="avoidHighways"
-                  checked={config.avoidHighways}
-                  onCheckedChange={(checked) =>
-                    handleConfigChange("avoidHighways", checked === true)
-                  }
-                />
-                <Label htmlFor="avoidHighways">Avoid highways</Label>
-              </div>
+                <div className="grid gap-4 py-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="avoidHighways"
+                      checked={config.avoidHighways}
+                      onCheckedChange={(checked) =>
+                        handleConfigChange("avoidHighways", checked === true)
+                      }
+                    />
+                    <Label htmlFor="avoidHighways">Avoid highways</Label>
+                  </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="avoidTolls"
-                  checked={config.avoidTolls}
-                  onCheckedChange={(checked) =>
-                    handleConfigChange("avoidTolls", checked === true)
-                  }
-                />
-                <Label htmlFor="avoidTolls">Avoid tolls</Label>
-              </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="avoidTolls"
+                      checked={config.avoidTolls}
+                      onCheckedChange={(checked) =>
+                        handleConfigChange("avoidTolls", checked === true)
+                      }
+                    />
+                    <Label htmlFor="avoidTolls">Avoid tolls</Label>
+                  </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="avoidFerries"
-                  checked={config.avoidFerries}
-                  onCheckedChange={(checked) =>
-                    handleConfigChange("avoidFerries", checked === true)
-                  }
-                />
-                <Label htmlFor="avoidFerries">Avoid ferries</Label>
-              </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="avoidFerries"
+                      checked={config.avoidFerries}
+                      onCheckedChange={(checked) =>
+                        handleConfigChange("avoidFerries", checked === true)
+                      }
+                    />
+                    <Label htmlFor="avoidFerries">Avoid ferries</Label>
+                  </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="returnToStart"
-                  checked={config.returnToStart}
-                  onCheckedChange={(checked) =>
-                    handleConfigChange("returnToStart", checked === true)
-                  }
-                />
-                <Label htmlFor="returnToStart">Return home</Label>
-              </div>
-            </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="returnToStart"
+                      checked={config.returnToStart}
+                      onCheckedChange={(checked) =>
+                        handleConfigChange("returnToStart", checked === true)
+                      }
+                    />
+                    <Label htmlFor="returnToStart">Return home</Label>
+                  </div>
+                </div>
 
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowRouteOptions(false)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleRouteOptionsApply}>Apply</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowRouteOptions(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleRouteOptionsApply}>Apply</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <h2 className="text-lg font-semibold">Credits: {credit}</h2>
             <div className="flex items-center space-x-2">
               <TooltipProvider>
@@ -1550,11 +1549,7 @@ export default function RoutePlanner() {
 
             <div className="flex justify-between items-center mt-4">
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleClearRoute}
-                >
+                <Button variant="outline" size="sm" onClick={handleClearRoute}>
                   Clear All
                 </Button>
               </div>
@@ -1590,6 +1585,7 @@ export default function RoutePlanner() {
               driverRoutes={driverRoutes}
               selectedDriverId={selectedDriverId}
               resetKey={mapResetKey}
+              routeConfig={config} // Pass the route configuration
             />
           </div>
         </div>
@@ -1769,6 +1765,7 @@ export default function RoutePlanner() {
             driverRoutes={driverRoutes}
             selectedDriverId={selectedDriverId}
             resetKey={mapResetKey}
+            routeConfig={config} // Pass the route configuration
           />
         </div>
 

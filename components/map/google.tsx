@@ -21,6 +21,21 @@ interface RouteStep {
   duration: string;
 }
 
+// Added RouteConfiguration interface
+interface RouteConfiguration {
+  maxSpeed: number;
+  weight: number;
+  length: number;
+  height: number;
+  avoidHighways: boolean;
+  avoidTolls: boolean;
+  avoidUnpaved: boolean;
+  avoidFerries: boolean;
+  avoidTunnels: boolean;
+  avoidUTurns: boolean;
+  returnToStart: boolean;
+}
+
 interface DriverRoute {
   driverId: number;
   markers: MarkerLocation[];
@@ -35,7 +50,7 @@ interface DriverRoute {
   color: string;
 }
 
-// Updated MapComponentProps to include straightLinePaths
+// Updated MapComponentProps to include routeConfig
 interface MapComponentProps {
   markers: MarkerLocation[];
   isLoaded: boolean;
@@ -49,6 +64,7 @@ interface MapComponentProps {
   driverRoutes?: DriverRoute[];
   selectedDriverId?: number | null;
   resetKey?: number;
+  routeConfig?: RouteConfiguration; // Added route configuration prop
 }
 
 // Updated MapComponent using DirectionsRenderer for more accurate road paths
@@ -62,6 +78,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   driverRoutes = [],
   selectedDriverId = null,
   resetKey,
+  routeConfig, // Accept route configuration
 }) => {
   const { theme } = useTheme();
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -162,6 +179,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
       driverRoutesCount: driverRoutes.length,
       selectedDriverId,
       currentTheme: theme,
+      routeConfig: routeConfig, // Log route configuration
     });
   }, [
     markers,
@@ -170,6 +188,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
     driverRoutes,
     selectedDriverId,
     theme,
+    routeConfig, // Add to dependency array
   ]);
 
   // Center the map based on markers, or default to the default center
@@ -281,11 +300,19 @@ const MapComponent: React.FC<MapComponentProps> = ({
         
         straightLinePolylineRefs.current.push(polyline);
       } else {
-        // Request directions for segments that should follow roads
+        // Apply route configuration to directions request
         directionsService.route({
           origin,
           destination,
           travelMode: google.maps.TravelMode.DRIVING,
+          // Apply route configuration if available
+          avoidHighways: routeConfig?.avoidHighways ?? false,
+          avoidTolls: routeConfig?.avoidTolls ?? false, 
+          avoidFerries: routeConfig?.avoidFerries ?? false,
+          drivingOptions: {
+            departureTime: new Date(),
+            trafficModel: google.maps.TrafficModel.BEST_GUESS,
+          },
         }, (result, status) => {
           if (status === google.maps.DirectionsStatus.OK && result) {
             // Create a DirectionsRenderer with custom options
@@ -294,6 +321,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
               directions: result,
               suppressMarkers: true, // Don't show default markers
               preserveViewport: true, // Don't change the map viewport
+              
               polylineOptions: {
                 strokeColor: driverRoute.color,
                 strokeOpacity: isSelected ? 1.0 : 0.7,
@@ -305,7 +333,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
             // Store the renderer for later cleanup
             directionsRendererRefs.current.push(directionsRenderer);
           } else {
-            console.error(`Failed to get directions for segment ${i} of driver ${driverRoute.driverId}`);
+            console.error(`Failed to get directions for segment ${i} of driver ${driverRoute.driverId}: ${status}`);
             // If directions failed, fall back to a straight line
             const polyline = new google.maps.Polyline({
               path: [origin, destination],
@@ -321,7 +349,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
         });
       }
     }
-  }, [map]);
+  }, [map, routeConfig]); // Add routeConfig to dependency array
 
   // Function to render directions for the selected driver
   const renderDirections = useCallback(() => {
@@ -366,11 +394,19 @@ const MapComponent: React.FC<MapComponentProps> = ({
           
           straightLinePolylineRefs.current.push(polyline);
         } else {
-          // Request directions
+          // Request directions with route configuration
           directionsService.route({
             origin,
             destination,
             travelMode: google.maps.TravelMode.DRIVING,
+            // Apply route configuration if available
+            avoidHighways: routeConfig?.avoidHighways ?? false,
+            avoidTolls: routeConfig?.avoidTolls ?? false,
+            avoidFerries: routeConfig?.avoidFerries ?? false,
+            drivingOptions: {
+              departureTime: new Date(),
+              trafficModel: google.maps.TrafficModel.BEST_GUESS,
+            },
           }, (result, status) => {
             if (status === google.maps.DirectionsStatus.OK && result) {
               const directionsRenderer = new google.maps.DirectionsRenderer({
@@ -387,7 +423,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
               
               directionsRendererRefs.current.push(directionsRenderer);
             } else {
-              console.error(`Failed to get directions for segment ${i}`);
+              console.error(`Failed to get directions for segment ${i}: ${status}`);
               // If directions failed, fall back to a straight line
               const polyline = new google.maps.Polyline({
                 path: [origin, destination],
@@ -404,12 +440,12 @@ const MapComponent: React.FC<MapComponentProps> = ({
         }
       }
     }
-  }, [map, driverRoutes, selectedDriverId, routePath, markers, straightLinePaths, clearDirections, renderDriverDirections]);
+  }, [map, driverRoutes, selectedDriverId, routePath, markers, straightLinePaths, clearDirections, renderDriverDirections, routeConfig]);
 
   // Apply directions when data changes
   useEffect(() => {
     renderDirections();
-  }, [map, driverRoutes, selectedDriverId, routePath, straightLinePaths, renderDirections]);
+  }, [map, driverRoutes, selectedDriverId, routePath, straightLinePaths, renderDirections, routeConfig]);
 
   // Fit map bounds to contain all markers whenever markers change
   useEffect(() => {
