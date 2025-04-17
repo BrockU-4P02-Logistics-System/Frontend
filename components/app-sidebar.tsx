@@ -12,6 +12,7 @@ import {
   Warehouse,
   Sun,
   Moon,
+  SaveAll,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -53,29 +54,40 @@ const data = {
   navMain: [
     {
       title: "Routes",
-      url: "/routes",
+      url: "/dashboard",
       icon: Route,
-      items: [
-        {
-          title: "Create Route",
-          url: "/dashboard",
-        },
-        {
-          title: "Saved Routes",
-          url: "/dashboard/routes/saved",
-        },
-      ],
+      // items: [
+      //   {
+      //     title: "Create Route",
+      //     url: "/dashboard",
+      //   },
+      //   {
+      //     title: "Saved Routes",
+      //     url: "/dashboard/routes/saved",
+      //   },
+      // ],
+    },
+    {
+      title: "Load",
+      url: "/dashboard/routes/saved",
+      icon: SaveAll,
+      // items: [
+      //   {
+      //     title: "Create Route",
+      //     url: "/dashboard",
+      //   },
+      //   {
+      //     title: "Saved Routes",
+      //     url: "/dashboard/routes/saved",
+      //   },
+      // ],
     },
 
     {
-      title: "Fleet",
-      url: "/fleet",
+      title: "Vehicles",
+      url: "/dashboard/fleet/vehicles",
       icon: Truck,
       items: [
-        {
-          title: "Vehicles",
-          url: "/dashboard/fleet/vehicles",
-        },
       ],
     },
     {
