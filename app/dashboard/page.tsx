@@ -1038,12 +1038,12 @@ export default function RoutePlanner() {
         // Check if the actual number of drivers is different from what was requested
         const actualDriverCount = data.totalDrivers || data.routes.length;
         if (actualDriverCount < originalDriverCount) {
-          // setDriverCountMessage(
-          //   `The route has been optimized with ${actualDriverCount} driver${
-          //     actualDriverCount !== 1 ? "s" : ""
-          //   } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
-          // );
-          // setShowDriverCountAlert(true);
+          setDriverCountMessage(
+            `The route has been optimized with ${actualDriverCount} driver${
+              actualDriverCount !== 1 ? "s" : ""
+            } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
+          );
+          setShowDriverCountAlert(true);
         }
 
 
@@ -1165,7 +1165,8 @@ export default function RoutePlanner() {
 
     return urls;
   }
-
+  const [showDriverCountAlert, setShowDriverCountAlert] = useState(false);
+  const [driverCountMessage, setDriverCountMessage] = useState("");
   const handleSaveRoute = async () => {
     const cost = 10;
     if (!log) {
@@ -1340,6 +1341,24 @@ export default function RoutePlanner() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            <AlertDialog
+                open={showDriverCountAlert}
+                onOpenChange={setShowDriverCountAlert}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Driver Count Adjusted</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {driverCountMessage}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <Button onClick={() => setShowDriverCountAlert(false)}>
+                    Understood
+                  </Button>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             {/* Route Options Dialog */}
             <Dialog open={showRouteOptions} onOpenChange={setShowRouteOptions}>
               <DialogContent>
