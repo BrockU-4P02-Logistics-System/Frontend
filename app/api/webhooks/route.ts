@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
     // On error, log and return the error message.
     if (err! instanceof Error) console.log(err);
-    console.log(`❌ Error message: ${errorMessage}`);
+    console.log(`Error message: ${errorMessage}`);
     return NextResponse.json(
       { message: `Webhook Error: ${errorMessage}` },
       { status: 400 },
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   }
 
   // Successfully constructed event.
-  console.log("✅ Success:", event.id);
+  console.log("Success:", event.id);
 
   const permittedEvents: string[] = [
     "checkout.session.completed",
@@ -40,15 +40,15 @@ export async function POST(req: Request) {
       switch (event.type) {
         case "checkout.session.completed":
           data = event.data.object as Stripe.Checkout.Session;
-          console.log(`💰 CheckoutSession status: ${data.payment_status}`);
+          console.log(`CheckoutSession status: ${data.payment_status}`);
           break;
         case "payment_intent.payment_failed":
           data = event.data.object as Stripe.PaymentIntent;
-          console.log(`❌ Payment failed: ${data.last_payment_error?.message}`);
+          console.log(`Payment failed: ${data.last_payment_error?.message}`);
           break;
         case "payment_intent.succeeded":
           data = event.data.object as Stripe.PaymentIntent;
-          console.log(`💰 PaymentIntent status: ${data.status}`);
+          console.log(`PaymentIntent status: ${data.status}`);
           break;
         default:
           throw new Error(`Unhandled event: ${event.type}`);
