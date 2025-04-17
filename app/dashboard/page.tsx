@@ -913,7 +913,7 @@ export default function RoutePlanner() {
 
   // Update calculateRoute function to better handle the backend response:
   const calculateRoute = async () => {
-    const cost = 10;
+    const cost = 10 * numDrivers;
     const credits = await check_credits(log);
     if (credits < cost) {
         toast.error(
@@ -1046,6 +1046,7 @@ export default function RoutePlanner() {
           // setShowDriverCountAlert(true);
         }
 
+
         handleDriverSelect(0);
         toast.success("Route optimized successfully!");
 
@@ -1055,7 +1056,7 @@ export default function RoutePlanner() {
         if (driverRoutes.length > 0) {
           setExpandedDrivers(new Set([driverRoutes[0].driverId]));
         }
-        await removeCredits(cost);
+        await removeCredits(10* actualDriverCount);
       } else if (data.route) {
         // Backward compatibility with old format
         const optimizedMarkers = data.route.map((marker: MarkerLocation) => ({
@@ -1089,7 +1090,7 @@ export default function RoutePlanner() {
         if (driverRoutes.length > 0) {
           setExpandedDrivers(new Set([driverRoutes[0].driverId]));
         }
-        await removeCredits(cost);
+        await removeCredits(10);
       } else {
         toast.error("Invalid route data received");
       }
