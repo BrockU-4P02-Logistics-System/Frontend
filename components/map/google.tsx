@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useCallback, useEffect } from "react";
-import { GoogleMap, MarkerF, Polyline } from "@react-google-maps/api";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { GoogleMap, MarkerF } from "@react-google-maps/api";
 import { useTheme } from "next-themes";
 
 // Define MarkerLocation interface directly to avoid import issues
@@ -51,7 +51,7 @@ interface MapComponentProps {
   resetKey?: number;
 }
 
-// Updated MapComponent render function to properly show straight lines and support dark mode
+// Updated MapComponent using DirectionsRenderer for more accurate road paths
 const MapComponent: React.FC<MapComponentProps> = ({
   markers,
   isLoaded,
@@ -65,7 +65,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
 }) => {
   const { theme } = useTheme();
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const defaultCenter = { lat: 43.117470, lng: -79.242897 }; // Brock's coordinates
+  const defaultCenter = { lat: 43.117470, lng: -79.242897 }; // Default coordinates
+  
+  // Refs to store DirectionsRenderer instances for cleanup
+  const directionsRendererRefs = useRef<google.maps.DirectionsRenderer[]>([]);
+  const straightLinePolylineRefs = useRef<google.maps.Polyline[]>([]);
 
   // Dark mode styles for Google Maps
   const darkModeStyle = [
@@ -159,20 +163,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
       selectedDriverId,
       currentTheme: theme,
     });
-
-    if (straightLinePaths.length > 0) {
-      console.log("Straight line paths:", straightLinePaths);
-    }
-
-    if (driverRoutes.length > 0) {
-      driverRoutes.forEach((route, idx) => {
-        if (route.straightLinePaths?.length) {
-          console.log(
-            `Driver ${idx} has ${route.straightLinePaths.length} straight paths`
-          );
-        }
-      });
-    }
   }, [
     markers,
     routePath,
@@ -182,7 +172,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
     theme,
   ]);
 
-  // Center the map based on markers, or default to Toronto
+  // Center the map based on markers, or default to the default center
   const center =
       markers.length > 0 && markers[0].latitude && markers[0].longitude
           ? { lat: markers[0].latitude, lng: markers[0].longitude }
@@ -201,16 +191,44 @@ const MapComponent: React.FC<MapComponentProps> = ({
   }, [center, markers.length]);
 
   const onUnmount = useCallback(() => {
+    // Clean up all direction renderers
+    directionsRendererRefs.current.forEach(renderer => {
+      renderer.setMap(null);
+    });
+    directionsRendererRefs.current = [];
+    
+    // Clean up all polylines
+    straightLinePolylineRefs.current.forEach(polyline => {
+      polyline.setMap(null);
+    });
+    straightLinePolylineRefs.current = [];
+    
     setMap(null);
+  }, []);
+
+  // Clean up function to remove all directions
+  const clearDirections = useCallback(() => {
+    // Clean up all direction renderers
+    directionsRendererRefs.current.forEach(renderer => {
+      renderer.setMap(null);
+    });
+    directionsRendererRefs.current = [];
+    
+    // Clean up all polylines
+    straightLinePolylineRefs.current.forEach(polyline => {
+      polyline.setMap(null);
+    });
+    straightLinePolylineRefs.current = [];
   }, []);
 
   // Reset map when resetKey changes
   useEffect(() => {
     if (map && markers.length === 0) {
       map.setCenter(defaultCenter);
-      map.setZoom(8); // A better default zoom for Canada
+      map.setZoom(8); // Default zoom level
+      clearDirections();
     }
-  }, [map, markers.length, resetKey]);
+  }, [map, markers.length, resetKey, clearDirections]);
 
   // Apply dark mode styling when theme changes
   useEffect(() => {
@@ -223,9 +241,179 @@ const MapComponent: React.FC<MapComponentProps> = ({
     }
   }, [map, theme]);
 
+  // Function to render directions for a driver route
+  const renderDriverDirections = useCallback((driverRoute: DriverRoute, isSelected: boolean) => {
+    if (!map || !driverRoute.markers || driverRoute.markers.length < 2) return;
+    
+    // Process each segment between markers
+    for (let i = 0; i < driverRoute.markers.length - 1; i++) {
+      const origin = { 
+        lat: driverRoute.markers[i].latitude, 
+        lng: driverRoute.markers[i].longitude 
+      };
+      const destination = { 
+        lat: driverRoute.markers[i + 1].latitude, 
+        lng: driverRoute.markers[i + 1].longitude 
+      };
+      
+      // Create a DirectionsService
+      const directionsService = new google.maps.DirectionsService();
+      
+      // Check if this segment is in straightLinePaths
+      const isUnreachable = driverRoute.straightLinePaths?.some(
+        path => 
+          (Math.abs(path.origin.lat - origin.lat) < 0.000001 && 
+           Math.abs(path.origin.lng - origin.lng) < 0.000001 &&
+           Math.abs(path.destination.lat - destination.lat) < 0.000001 &&
+           Math.abs(path.destination.lng - destination.lng) < 0.000001)
+      );
+      
+      if (isUnreachable) {
+        // Create a straight line polyline
+        const polyline = new google.maps.Polyline({
+          path: [origin, destination],
+          geodesic: true,
+          strokeColor: driverRoute.color,
+          strokeOpacity: isSelected ? 0.8 : 0.6,
+          strokeWeight: isSelected ? 5 : 3,
+          map: map
+        });
+        
+        straightLinePolylineRefs.current.push(polyline);
+      } else {
+        // Request directions for segments that should follow roads
+        directionsService.route({
+          origin,
+          destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+        }, (result, status) => {
+          if (status === google.maps.DirectionsStatus.OK && result) {
+            // Create a DirectionsRenderer with custom options
+            const directionsRenderer = new google.maps.DirectionsRenderer({
+              map: map,
+              directions: result,
+              suppressMarkers: true, // Don't show default markers
+              preserveViewport: true, // Don't change the map viewport
+              polylineOptions: {
+                strokeColor: driverRoute.color,
+                strokeOpacity: isSelected ? 1.0 : 0.7,
+                strokeWeight: isSelected ? 6 : 4,
+                zIndex: isSelected ? 100 : 1
+              }
+            });
+            
+            // Store the renderer for later cleanup
+            directionsRendererRefs.current.push(directionsRenderer);
+          } else {
+            console.error(`Failed to get directions for segment ${i} of driver ${driverRoute.driverId}`);
+            // If directions failed, fall back to a straight line
+            const polyline = new google.maps.Polyline({
+              path: [origin, destination],
+              geodesic: true,
+              strokeColor: driverRoute.color,
+              strokeOpacity: isSelected ? 0.8 : 0.6,
+              strokeWeight: isSelected ? 5 : 3,
+              map: map
+            });
+            
+            straightLinePolylineRefs.current.push(polyline);
+          }
+        });
+      }
+    }
+  }, [map]);
+
+  // Function to render directions for the selected driver
+  const renderDirections = useCallback(() => {
+    if (!map) return;
+    
+    // Clear previous directions
+    clearDirections();
+    
+    if (driverRoutes.length > 0) {
+      // Render all driver routes, with the selected one more prominent
+      driverRoutes.forEach(route => {
+        const isSelected = selectedDriverId === route.driverId;
+        renderDriverDirections(route, isSelected);
+      });
+    } else if (routePath.length > 1) {
+      // If no driver routes but we have a single route path
+      const directionsService = new google.maps.DirectionsService();
+      
+      for (let i = 0; i < markers.length - 1; i++) {
+        const origin = { lat: markers[i].latitude, lng: markers[i].longitude };
+        const destination = { lat: markers[i+1].latitude, lng: markers[i+1].longitude };
+        
+        // Check if this segment is in straightLinePaths
+        const isUnreachable = straightLinePaths?.some(
+          path => 
+            (Math.abs(path.origin.lat - origin.lat) < 0.000001 && 
+             Math.abs(path.origin.lng - origin.lng) < 0.000001 &&
+             Math.abs(path.destination.lat - destination.lat) < 0.000001 &&
+             Math.abs(path.destination.lng - destination.lng) < 0.000001)
+        );
+        
+        if (isUnreachable) {
+          // Create a straight line polyline
+          const polyline = new google.maps.Polyline({
+            path: [origin, destination],
+            geodesic: true,
+            strokeColor: "#FF0000", // Red for unreachable segments
+            strokeOpacity: 0.8,
+            strokeWeight: 3,
+            map: map
+          });
+          
+          straightLinePolylineRefs.current.push(polyline);
+        } else {
+          // Request directions
+          directionsService.route({
+            origin,
+            destination,
+            travelMode: google.maps.TravelMode.DRIVING,
+          }, (result, status) => {
+            if (status === google.maps.DirectionsStatus.OK && result) {
+              const directionsRenderer = new google.maps.DirectionsRenderer({
+                map: map,
+                directions: result,
+                suppressMarkers: true,
+                preserveViewport: true,
+                polylineOptions: {
+                  strokeColor: "#4285F4", // Google Blue
+                  strokeOpacity: 0.8,
+                  strokeWeight: 5
+                }
+              });
+              
+              directionsRendererRefs.current.push(directionsRenderer);
+            } else {
+              console.error(`Failed to get directions for segment ${i}`);
+              // If directions failed, fall back to a straight line
+              const polyline = new google.maps.Polyline({
+                path: [origin, destination],
+                geodesic: true,
+                strokeColor: "#FF0000", // Red for unreachable segments
+                strokeOpacity: 0.8,
+                strokeWeight: 3,
+                map: map
+              });
+              
+              straightLinePolylineRefs.current.push(polyline);
+            }
+          });
+        }
+      }
+    }
+  }, [map, driverRoutes, selectedDriverId, routePath, markers, straightLinePaths, clearDirections, renderDriverDirections]);
+
+  // Apply directions when data changes
+  useEffect(() => {
+    renderDirections();
+  }, [map, driverRoutes, selectedDriverId, routePath, straightLinePaths, renderDirections]);
+
   // Fit map bounds to contain all markers whenever markers change
   useEffect(() => {
-    if (!map) return;
+    if (!map || markers.length === 0) return;
 
     const bounds = new google.maps.LatLngBounds();
     let hasValidBounds = false;
@@ -235,28 +423,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
           (route) => route.driverId === selectedDriverId
       );
 
-      if (selectedRoute) {
-        if (selectedRoute.markers && selectedRoute.markers.length > 0) {
-          selectedRoute.markers.forEach((marker) => {
-            bounds.extend({ lat: marker.latitude, lng: marker.longitude });
-            hasValidBounds = true;
-          });
-        }
-
-        if (selectedRoute.routePath && selectedRoute.routePath.length > 0) {
-          selectedRoute.routePath.forEach((point) => {
-            bounds.extend(point);
-            hasValidBounds = true;
-          });
-        }
-
-        if (selectedRoute.straightLinePaths && selectedRoute.straightLinePaths.length > 0) {
-          selectedRoute.straightLinePaths.forEach((path) => {
-            bounds.extend(path.origin);
-            bounds.extend(path.destination);
-            hasValidBounds = true;
-          });
-        }
+      if (selectedRoute && selectedRoute.markers && selectedRoute.markers.length > 0) {
+        selectedRoute.markers.forEach((marker) => {
+          bounds.extend({ lat: marker.latitude, lng: marker.longitude });
+          hasValidBounds = true;
+        });
 
         if (hasValidBounds) {
           map.fitBounds(bounds);
@@ -265,47 +436,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
       }
     }
 
-    // Fallback: show all markers and routes
-    if (markers && markers.length > 0) {
-      markers.forEach((marker) => {
-        bounds.extend({ lat: marker.latitude, lng: marker.longitude });
-        hasValidBounds = true;
-      });
-    }
-
-    if (routePath && routePath.length > 0) {
-      routePath.forEach((point) => {
-        bounds.extend(point);
-        hasValidBounds = true;
-      });
-    }
-
-    if (straightLinePaths && straightLinePaths.length > 0) {
-      straightLinePaths.forEach((path) => {
-        bounds.extend(path.origin);
-        bounds.extend(path.destination);
-        hasValidBounds = true;
-      });
-    }
-
-    if (driverRoutes && driverRoutes.length > 0) {
-      driverRoutes.forEach((route) => {
-        if (route.routePath && route.routePath.length > 0) {
-          route.routePath.forEach((point) => {
-            bounds.extend(point);
-            hasValidBounds = true;
-          });
-        }
-
-        if (route.straightLinePaths && route.straightLinePaths.length > 0) {
-          route.straightLinePaths.forEach((path) => {
-            bounds.extend(path.origin);
-            bounds.extend(path.destination);
-            hasValidBounds = true;
-          });
-        }
-      });
-    }
+    // Fallback: show all markers
+    markers.forEach((marker) => {
+      bounds.extend({ lat: marker.latitude, lng: marker.longitude });
+      hasValidBounds = true;
+    });
 
     if (hasValidBounds) {
       map.fitBounds(bounds);
@@ -318,10 +453,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
   }, [
     map,
     markers,
-    routePath,
-    straightLinePaths,
     driverRoutes,
-    selectedDriverId, // trigger refit on route change
+    selectedDriverId,
   ]);
 
   // Get marker color based on driver ID
@@ -336,8 +469,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   };
 
   // Get marker label based on index and driver ID
-  const getMarkerLabel = (index: number, driverId: number | undefined) => {
-    // Always use just the index for the marker label
+  const getMarkerLabel = (index: number) => {
     return {
       text: (index + 1).toString(),
       color: selectedMarkerIndex === index ? "white" : "black",
@@ -370,7 +502,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
             position={{ lat: marker.latitude, lng: marker.longitude }}
             title={marker.address}
             onClick={() => onMarkerClick && onMarkerClick(index)}
-            label={getMarkerLabel(index, marker.driverId)}
+            label={getMarkerLabel(index)}
             animation={google.maps.Animation.DROP}
             zIndex={selectedMarkerIndex === index ? 1000 : index}
             icon={{
@@ -383,88 +515,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
             }}
           />
         ))}
-
-      {/* Render driver routes - both road paths and straight lines for unreachable segments */}
-      {driverRoutes.length > 0 ? (
-        driverRoutes.map((route) => (
-          <div key={`route-container-${route.driverId}-${resetKey}`}>
-            {/* Road paths for reachable segments */}
-            {route.routePath && route.routePath.length > 0 && (
-              <Polyline
-                key={`road-route-${route.driverId}-${resetKey}`}
-                path={route.routePath}
-                options={{
-                  strokeColor: route.color,
-                  strokeOpacity:
-                    selectedDriverId === route.driverId ? 1.0 : 0.7,
-                  strokeWeight: selectedDriverId === route.driverId ? 6 : 4,
-                  geodesic: false, // Set to false to follow roads
-                  zIndex: selectedDriverId === route.driverId ? 100 : 1,
-                }}
-              />
-            )}
-
-            {/* Straight lines for unreachable segments */}
-            {route.straightLinePaths &&
-              route.straightLinePaths.length > 0 &&
-              route.straightLinePaths.map((path, idx) => {
-                console.log(
-                  `Rendering driver straight line: ${route.driverId}-${idx}`,
-                  path
-                );
-                return (
-                  <Polyline
-                    key={`straight-route-${route.driverId}-${idx}-${resetKey}`}
-                    path={[path.origin, path.destination]}
-                    options={{
-                      strokeColor: route.color,
-                      strokeOpacity:
-                        selectedDriverId === route.driverId ? 0.8 : 0.6,
-                      strokeWeight: selectedDriverId === route.driverId ? 5 : 3,
-                      geodesic: true, // Set to true for straight lines
-                      zIndex: selectedDriverId === route.driverId ? 99 : 0, // Just below road paths
-                    }}
-                  />
-                );
-              })}
-          </div>
-        ))
-      ) : (
-        <div key="single-route-container">
-          {/* Single route - road paths */}
-          {routePath && routePath.length > 1 && (
-            <Polyline
-              key={`single-road-route-${resetKey}`}
-              path={routePath}
-              options={{
-                strokeColor: "#4285F4",
-                strokeOpacity: 0.8,
-                strokeWeight: 5,
-                geodesic: false, // Follow roads
-              }}
-            />
-          )}
-
-          {/* Single route - straight lines for unreachable segments */}
-          {straightLinePaths &&
-            straightLinePaths.length > 0 &&
-            straightLinePaths.map((path, idx) => {
-              console.log(`Rendering straight line path ${idx}:`, path);
-              return (
-                <Polyline
-                  key={`single-straight-route-${idx}-${resetKey}`}
-                  path={[path.origin, path.destination]}
-                  options={{
-                    strokeColor: "#FF0000", // Red for unreachable segments
-                    strokeOpacity: 0.8,
-                    strokeWeight: 3,
-                    geodesic: true, // Straight line between points
-                  }}
-                />
-              );
-            })}
-        </div>
-      )}
     </GoogleMap>
   );
 };
