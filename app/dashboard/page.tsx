@@ -913,6 +913,14 @@ export default function RoutePlanner() {
 
   // Update calculateRoute function to better handle the backend response:
   const calculateRoute = async () => {
+    const cost = 10;
+    const credits = await check_credits(log);
+    if (credits < cost) {
+        toast.error(
+            "You don't have enough credits to calculate this route. Please purchase more credits."
+        );
+        return;
+    }
     if (markers.length < 2) {
       toast.error("Please add at least two locations");
       return;
@@ -1047,6 +1055,7 @@ export default function RoutePlanner() {
         if (driverRoutes.length > 0) {
           setExpandedDrivers(new Set([driverRoutes[0].driverId]));
         }
+        await removeCredits(cost);
       } else if (data.route) {
         // Backward compatibility with old format
         const optimizedMarkers = data.route.map((marker: MarkerLocation) => ({
@@ -1080,6 +1089,7 @@ export default function RoutePlanner() {
         if (driverRoutes.length > 0) {
           setExpandedDrivers(new Set([driverRoutes[0].driverId]));
         }
+        await removeCredits(cost);
       } else {
         toast.error("Invalid route data received");
       }
@@ -1156,6 +1166,7 @@ export default function RoutePlanner() {
   }
 
   const handleSaveRoute = async () => {
+    const cost = 10;
     if (!log) {
       toast.error("You must be logged in to save routes");
       return;
@@ -1167,7 +1178,7 @@ export default function RoutePlanner() {
       return;
     }
 
-    if (credit <= 0) {
+    if (credit < cost) {
       toast.error("Not enough credits!");
       handleSaveDialogClose();
       return;
@@ -1199,7 +1210,7 @@ export default function RoutePlanner() {
 
     //sessionStorage.setItem("savedRoute", JSON.stringify(routeData));
     await save_route(log, JSON.stringify(routeData), formData.name);
-    await removeCredits();
+    await removeCredits(cost);
     toast.success("Route saved successfully");
     handleSaveDialogClose();
   };
@@ -1253,12 +1264,18 @@ export default function RoutePlanner() {
     }
   };
 
-  const removeCredits = async () => {
+  /**
+   * Note from Cole: this is totally insecure, a user could just inspect element ts lmao
+   * too late to change now tho
+   * @param amount
+   */
+  const removeCredits = async (amount: number) => {
     if (log) {
-      await remove_credits(log, -10);
+      await remove_credits(log, -amount);
       await loadCredits();
     }
   };
+
 
   useEffect(() => {
     if (status === "authenticated" && log) {
