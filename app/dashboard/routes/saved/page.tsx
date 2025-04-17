@@ -21,11 +21,29 @@ import { toast } from "sonner";
 
 type RouteTuple = [string, string]; // [routeName, routeId]
 
+// Define a proper interface for route details
+interface RouteDetails {
+  name: string;
+  id: string;
+  timestamp: string;
+  locations: number;
+  drivers: number;
+}
+
+interface RouteDetailData {
+    timestamp?: string;
+    markers?: unknown[];
+    numDrivers?: number;
+    config?: unknown;
+    driverRoutes?: unknown[];
+    [key: string]: unknown;
+  }
+
 export default function SavedRoutes() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const [data, setData] = useState<RouteTuple[]>([]);
-    const [routes, setRoutes] = useState<any[]>([]);
+    const [routes, setRoutes] = useState<RouteDetails[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [routeToDelete, setRouteToDelete] = useState<RouteTuple | null>(null);
     const [deletingRouteId, setDeletingRouteId] = useState<string | null>(null);
@@ -105,13 +123,26 @@ export default function SavedRoutes() {
                 return;
             }
 
-            const parsed = JSON.parse(listJson) as { routes: RouteTuple[], details: any[] };
+            interface ParsedResponse {
+                routes: RouteTuple[];
+                details: string[];
+            }
+
+            const parsed = JSON.parse(listJson) as ParsedResponse;
             setData(Array.from(parsed.routes));
             
             // Also store the processed routes with more details if available
             if (parsed.details) {
-                const processedRoutes = parsed.routes.map((route, index) => {
-                    const detail = parsed.details[index] ? JSON.parse(parsed.details[index]) : null;
+                const processedRoutes: RouteDetails[] = parsed.routes.map((route, index) => {
+                    let detail: RouteDetailData = {};
+                    
+                    try {
+                        if (parsed.details[index]) {
+                            detail = JSON.parse(parsed.details[index]);
+                        }
+                    } catch (e) {
+                        console.error("Error parsing route details:", e);
+                    }
                     
                     return {
                         name: route[0],
@@ -165,7 +196,7 @@ export default function SavedRoutes() {
                     <Route className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-lg font-medium mb-2">No saved routes</h3>
                     <p className="text-muted-foreground mb-4">
-                        You haven't saved any routes yet. Create and save a route to see it here.
+                        You have not saved any routes yet. Create and save a route to see it here.
                     </p>
                     <Button onClick={() => router.push('/dashboard')}>
                         Create Your First Route
@@ -245,7 +276,7 @@ export default function SavedRoutes() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Route</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete "{routeToDelete?.[0]}"? This action cannot be undone.
+                            Are you sure you want to delete &quot;{routeToDelete?.[0]}&quot;? This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

@@ -3,7 +3,6 @@ import React, { Suspense, useState, useCallback, useEffect } from "react";
 import { useJsApiLoader } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Trash,
   Bolt,
@@ -15,9 +14,7 @@ import {
   Minus,
   Settings,
   ChevronDown,
-  ChevronRight,
   ExternalLink,
-  CheckCircle,
   ClipboardCopy,
   MapPin,
   Clock,
@@ -63,6 +60,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface MarkerLocation {
   address: string;
@@ -143,6 +141,8 @@ export default function RoutePlanner() {
   const [expandedDrivers, setExpandedDrivers] = useState<Set<number>>(
     new Set()
   );
+
+  const [showRouteOptions, setShowRouteOptions] = useState(false);
   const [expandedDirections, setExpandedDirections] = useState<boolean>(false);
 
   const [mapResetKey, setMapKey] = useState<number>(Date.now());
@@ -152,9 +152,7 @@ export default function RoutePlanner() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [newAddress, setNewAddress] = useState("");
   const [routeHistory, setRouteHistory] = useState<MarkerLocation[][]>([]);
-  const [showClearDialog, setShowClearDialog] = useState(false);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
-  const [showRouteOptions, setShowRouteOptions] = useState(false);
   const [shouldLoadRoute, setShouldLoadRoute] = useState(false);
 
   // Multi-driver state
@@ -164,9 +162,7 @@ export default function RoutePlanner() {
 
   // New state for current view
   const [routePath, setRoutePath] = useState<google.maps.LatLngLiteral[]>([]);
-  const [routeDirections, setRouteDirections] = useState<RouteStep[]>([]);
   const [totalRouteDistance, setTotalRouteDistance] = useState<string>("");
-  const [totalRouteDuration, setTotalRouteDuration] = useState<string>("");
 
   // Add new state for straight line paths
   const [straightLinePaths, setStraightLinePaths] = useState<
@@ -209,22 +205,6 @@ export default function RoutePlanner() {
   const router = useRouter();
 
   // Toggle the expanded state for directions section
-  const toggleDirectionsExpanded = () => {
-    setExpandedDirections((prev) => !prev);
-  };
-
-  // Toggle the expanded state for a specific driver
-  const toggleDriverExpanded = (driverId: number) => {
-    setExpandedDrivers((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(driverId)) {
-        newSet.delete(driverId);
-      } else {
-        newSet.add(driverId);
-      }
-      return newSet;
-    });
-  };
 
   // Maximum number of drivers based on number of markers
   const maxDrivers = Math.min(10, Math.max(1, markers.length - 1));
@@ -261,7 +241,14 @@ export default function RoutePlanner() {
   const handleSaveDialogOpen = () => {
     setShowSaveDialog(true);
   };
-
+  const handleRouteOptionsApply = () => {
+    if (driverRoutes.length > 0) {
+      // If we already have routes, recalculate them with the new options
+      processDriverRoutes(markers);
+      toast.success("Route options updated");
+    }
+    setShowRouteOptions(false);
+    };
   const handleSaveDialogClose = () => {
     setShowSaveDialog(false);
   };
@@ -288,9 +275,7 @@ export default function RoutePlanner() {
     // Set all the route data
     setRoutePath(driverRoute.routePath || []);
     setStraightLinePaths(driverRoute.straightLinePaths || []);
-    setRouteDirections(driverRoute.directions);
     setTotalRouteDistance(driverRoute.totalDistance);
-    setTotalRouteDuration(driverRoute.totalDuration);
 
     // Double-check what was actually set
     setTimeout(() => {
@@ -358,9 +343,7 @@ export default function RoutePlanner() {
       setMarkers(previousRoute);
       setRouteHistory((prev) => prev.slice(0, -1));
       setRoutePath([]);
-      setRouteDirections([]);
       setTotalRouteDistance("");
-      setTotalRouteDuration("");
       setDriverRoutes([]);
       setSelectedDriverId(null);
     }
@@ -404,9 +387,7 @@ export default function RoutePlanner() {
         setMarkers((prev) => [...prev, markerLocation]);
         setNewAddress("");
         setRoutePath([]);
-        setRouteDirections([]);
         setTotalRouteDistance("");
-        setTotalRouteDuration("");
         setDriverRoutes([]);
         setSelectedDriverId(null);
         setMapKey(Date.now());
@@ -421,9 +402,7 @@ export default function RoutePlanner() {
     saveToHistory();
     setMarkers(markers.filter((_, i) => i !== index));
     setRoutePath([]);
-    setRouteDirections([]);
     setTotalRouteDistance("");
-    setTotalRouteDuration("");
     setDriverRoutes([]);
     setSelectedDriverId(null);
     toast.success("Location removed");
@@ -446,9 +425,7 @@ export default function RoutePlanner() {
     setMarkers(newMarkers);
     setDraggedItemIndex(index);
     setRoutePath([]);
-    setRouteDirections([]);
     setTotalRouteDistance("");
-    setTotalRouteDuration("");
     setDriverRoutes([]);
     setSelectedDriverId(null);
     setMapKey(Date.now());
@@ -765,7 +742,12 @@ export default function RoutePlanner() {
 
     return { unreachableRoutes, allRoutesChecked };
   };
-
+  const handleConfigChange = <K extends keyof RouteConfiguration>(
+    key: K,
+    value: RouteConfiguration[K]
+    ) => {
+    setConfig((prev) => ({ ...prev, [key]: value }));
+    };
   // Function to handle exporting a specific driver's route
   const handleExportDriver = (driverId: number) => {
     // Find the driver's route
@@ -1046,12 +1028,12 @@ export default function RoutePlanner() {
         // Check if the actual number of drivers is different from what was requested
         const actualDriverCount = data.totalDrivers || data.routes.length;
         if (actualDriverCount < originalDriverCount) {
-          setDriverCountMessage(
-            `The route has been optimized with ${actualDriverCount} driver${
-              actualDriverCount !== 1 ? "s" : ""
-            } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
-          );
-          setShowDriverCountAlert(true);
+          // setDriverCountMessage(
+          //   `The route has been optimized with ${actualDriverCount} driver${
+          //     actualDriverCount !== 1 ? "s" : ""
+          //   } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
+          // );
+          // setShowDriverCountAlert(true);
         }
 
         handleDriverSelect(0);
@@ -1129,13 +1111,6 @@ export default function RoutePlanner() {
     return urls;
   }
 
-  const handleConfigChange = <K extends keyof RouteConfiguration>(
-    key: K,
-    value: RouteConfiguration[K]
-  ) => {
-    setConfig((prev) => ({ ...prev, [key]: value }));
-  };
-
   const handleSaveRoute = async () => {
     if (!log) {
       toast.error("You must be logged in to save routes");
@@ -1190,9 +1165,7 @@ export default function RoutePlanner() {
     // Clear all route-related state
     setMarkers([]);
     setRoutePath([]);
-    setRouteDirections([]);
     setTotalRouteDistance("");
-    setTotalRouteDuration("");
     setDriverRoutes([]);
     setSelectedDriverId(null);
     setNumDrivers(1);
@@ -1200,18 +1173,8 @@ export default function RoutePlanner() {
     // Force map to refresh by generating a new key
     setMapKey(Date.now());
 
-    setShowClearDialog(false);
 
     toast.success("Route cleared");
-  };
-
-  const handleRouteOptionsApply = () => {
-    if (driverRoutes.length > 0) {
-      // If we already have routes, recalculate them with the new options
-      processDriverRoutes(markers);
-      toast.success("Route options updated");
-    }
-    setShowRouteOptions(false);
   };
 
   const handleDriverSelect = (driverId: number) => {
@@ -1237,8 +1200,6 @@ export default function RoutePlanner() {
     }
   };
 
-  const [showDriverCountAlert, setShowDriverCountAlert] = useState(false);
-  const [driverCountMessage, setDriverCountMessage] = useState("");
   const [showExport, setExport] = useState(false);
 
   const loadCredits = async () => {
@@ -1317,6 +1278,73 @@ export default function RoutePlanner() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+              {/* Route Options Dialog */}
+        <Dialog open={showRouteOptions} onOpenChange={setShowRouteOptions}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Route Options</DialogTitle>
+              <DialogDescription>
+                Configure options for route calculation
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4 py-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="avoidHighways"
+                  checked={config.avoidHighways}
+                  onCheckedChange={(checked) =>
+                    handleConfigChange("avoidHighways", checked === true)
+                  }
+                />
+                <Label htmlFor="avoidHighways">Avoid highways</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="avoidTolls"
+                  checked={config.avoidTolls}
+                  onCheckedChange={(checked) =>
+                    handleConfigChange("avoidTolls", checked === true)
+                  }
+                />
+                <Label htmlFor="avoidTolls">Avoid tolls</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="avoidFerries"
+                  checked={config.avoidFerries}
+                  onCheckedChange={(checked) =>
+                    handleConfigChange("avoidFerries", checked === true)
+                  }
+                />
+                <Label htmlFor="avoidFerries">Avoid ferries</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="returnToStart"
+                  checked={config.returnToStart}
+                  onCheckedChange={(checked) =>
+                    handleConfigChange("returnToStart", checked === true)
+                  }
+                />
+                <Label htmlFor="returnToStart">Return home</Label>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowRouteOptions(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleRouteOptionsApply}>Apply</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
             <h2 className="text-lg font-semibold">Credits: {credit}</h2>
             <div className="flex items-center space-x-2">
               <TooltipProvider>
@@ -1525,7 +1553,7 @@ export default function RoutePlanner() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowClearDialog(true)}
+                  onClick={() => handleClearRoute}
                 >
                   Clear All
                 </Button>
