@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 //import type Stripe from "stripe";
 import { formatAmountForDisplay } from "@/utils/stripe-helpers";
 import * as config from "@/config";
@@ -254,11 +253,7 @@ export default function BillingPage() {
                 </span>
                 <span className="text-muted-foreground">credits available</span>
               </div>
-              <div className="mt-6">
-                <p className="text-sm text-muted-foreground mb-2">Credit usage this month</p>
-                <Progress value={35} className="h-2" />
-                <p className="text-xs text-muted-foreground mt-2">350 credits used this month</p>
-              </div>
+              
             </CardContent>
           </Card>
 
