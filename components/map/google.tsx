@@ -94,6 +94,23 @@ const MapComponent: React.FC<MapComponentProps> = ({
     { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
     { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
     {
+      featureType: "administrative.country",
+      elementType: "geometry.stroke",
+      stylers: [
+        { color: "#4a4a4a" },   // dark gray outline
+        { weight: 1.8 }         // slightly thicker line
+      ],
+    },
+    // State/province borders
+    {
+      featureType: "administrative.province",
+      elementType: "geometry.stroke",
+      stylers: [
+        { color: "#5a5a5a" },   // a bit lighter gray
+        { weight: 1.2 }
+      ],
+    },
+    {
       featureType: "administrative.locality",
       elementType: "labels.text.fill",
       stylers: [{ color: "#d59563" }],
