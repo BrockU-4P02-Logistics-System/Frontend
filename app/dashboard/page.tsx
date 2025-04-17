@@ -757,7 +757,8 @@ export default function RoutePlanner() {
 
     if (driverRoute) {
       // Generate Google Maps URLs for the selected driver's markers
-      const urls = generateGoogleMapsRouteUrls(driverRoute.markers);
+      // Pass the route configuration to include route options like avoid highways
+      const urls = generateGoogleMapsRouteUrls(driverRoute.markers, config);
       setMapURLs(urls);
       setExport(true);
     } else {
@@ -1092,20 +1093,62 @@ export default function RoutePlanner() {
     }
   };
 
-  function generateGoogleMapsRouteUrls(markers: MarkerLocation[]): string[] {
+  function generateGoogleMapsRouteUrls(
+    markers: MarkerLocation[],
+    routeConfig?: RouteConfiguration
+  ): string[] {
     if (!Array.isArray(markers) || markers.length === 0) {
       throw new Error("Invalid markers array");
     }
 
-    const baseUrl = "https://www.google.com/maps/dir/";
+    // Use the modern Google Maps URL format with ?api=1
     const urls: string[] = [];
 
+    // Process markers in chunks of 10 (Google Maps limit)
     for (let i = 0; i < markers.length; i += 10) {
       const chunk = markers.slice(i, i + 10);
-      const waypoints = chunk
-        .map((marker) => encodeURIComponent(marker.address))
-        .join("/");
-      urls.push(`${baseUrl}${waypoints}?dirflg=d`);
+
+      if (chunk.length >= 2) {
+        // For modern URL format, separate origin and destination
+        const origin = encodeURIComponent(chunk[0].address);
+        const destination = encodeURIComponent(chunk[chunk.length - 1].address);
+
+        // Build waypoints if there are intermediate stops
+        let waypointsParam = "";
+        if (chunk.length > 2) {
+          const waypoints = chunk
+            .slice(1, chunk.length - 1)
+            .map((marker) => encodeURIComponent(marker.address))
+            .join("|");
+          waypointsParam = `&waypoints=${waypoints}`;
+        }
+
+        // Add route configuration options if provided
+        let optionsParam = "";
+        if (routeConfig) {
+          const avoidOptions = [];
+
+          if (routeConfig.avoidHighways) avoidOptions.push("highways");
+          if (routeConfig.avoidTolls) avoidOptions.push("tolls");
+          if (routeConfig.avoidFerries) avoidOptions.push("ferries");
+
+          if (avoidOptions.length > 0) {
+            optionsParam = `&avoid=${avoidOptions.join("|")}`;
+          }
+        }
+
+        // Use the modern format
+        urls.push(
+          `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypointsParam}&travelmode=driving${optionsParam}`
+        );
+      } else if (chunk.length === 1) {
+        // For a single location, just use Google Maps search
+        urls.push(
+          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+            chunk[0].address
+          )}`
+        );
+      }
     }
 
     return urls;
@@ -1187,7 +1230,8 @@ export default function RoutePlanner() {
     if (driverRoute) {
       updateRouteView(driverRoute);
 
-      const urls = generateGoogleMapsRouteUrls(driverRoute.markers);
+      // Pass the route configuration here too
+      const urls = generateGoogleMapsRouteUrls(driverRoute.markers, config);
       setMapURLs(urls);
     }
   };
@@ -1797,6 +1841,7 @@ export default function RoutePlanner() {
 
         {/* Export Dialog remains unchanged */}
         {/* Enhanced Export Dialog */}
+        {/* Enhanced Export Dialog with Route Options Display */}
         <Dialog open={showExport} onOpenChange={setExport}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -1811,6 +1856,41 @@ export default function RoutePlanner() {
                   : "No route data available to export."}
               </DialogDescription>
             </DialogHeader>
+
+            {/* Add route options indicators */}
+            {config &&
+              (config.avoidHighways ||
+                config.avoidTolls ||
+                config.avoidFerries) && (
+                <div className="mb-2 p-2 bg-muted/30 rounded-md">
+                  <p className="text-sm font-medium mb-1">
+                    Route options included:
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {config.avoidHighways && (
+                      <Badge variant="outline" className="bg-primary/10">
+                        Avoid Highways
+                      </Badge>
+                    )}
+                    {config.avoidTolls && (
+                      <Badge variant="outline" className="bg-primary/10">
+                        Avoid Tolls
+                      </Badge>
+                    )}
+                    {config.avoidFerries && (
+                      <Badge variant="outline" className="bg-primary/10">
+                        Avoid Ferries
+                      </Badge>
+                    )}
+                    {config.returnToStart && (
+                      <Badge variant="outline" className="bg-primary/10">
+                        Return Home
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
             <div className="max-h-[50vh] overflow-y-auto mt-2">
               {mapsUrls.map((url, index) => (
                 <div key={index} className="mb-4 p-3 bg-muted/30 rounded-md">
