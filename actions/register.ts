@@ -359,7 +359,6 @@ export const check_credits = async(auth: any) => {
 
         connectDB();
 
-        console.log('Is this using?', auth)
         const data = () => {
 
             return User.findOne({email: auth}, {"credits": 1, "_id": 0}).lean();
@@ -371,8 +370,6 @@ export const check_credits = async(auth: any) => {
        //console.log("NEW:" + match);
        //console.log(match[0]);
         const value:number = match[0];
-        console.log(credits);
-        console.log(value);
         return value;
 
        
