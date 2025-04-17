@@ -482,10 +482,11 @@ export default function RoutePlanner() {
             avoidHighways: config.avoidHighways,
             avoidFerries: config.avoidFerries,
             avoidTolls: config.avoidTolls,
-            drivingOptions: {// Current time for real-time traffic
+            drivingOptions: {
+              // Current time for real-time traffic
               departureTime: new Date(),
-              trafficModel: google.maps.TrafficModel.BEST_GUESS
-            }
+              trafficModel: google.maps.TrafficModel.BEST_GUESS,
+            },
           });
 
           if (result.routes && result.routes.length > 0) {
@@ -572,21 +573,21 @@ export default function RoutePlanner() {
     if (!isLoaded || markers.length < 2) {
       return { roadPath: [], unreachablePaths: [] };
     }
-
+  
     const directionsService = new google.maps.DirectionsService();
     let roadPath: google.maps.LatLngLiteral[] = [];
     const unreachablePaths: {
       origin: { lat: number; lng: number };
       destination: { lat: number; lng: number };
     }[] = [];
-
+  
     for (let i = 0; i < markers.length - 1; i++) {
       const origin = { lat: markers[i].latitude, lng: markers[i].longitude };
       const destination = {
         lat: markers[i + 1].latitude,
         lng: markers[i + 1].longitude,
       };
-
+  
       try {
         const result = await directionsService.route({
           origin,
@@ -595,31 +596,54 @@ export default function RoutePlanner() {
           avoidHighways: config.avoidHighways,
           avoidFerries: config.avoidFerries,
           avoidTolls: config.avoidTolls,
-          drivingOptions: {// Current time for real-time traffic
+          drivingOptions: {
             departureTime: new Date(),
             trafficModel: google.maps.TrafficModel.BEST_GUESS
-          }
+          },
+          // Request more detailed path
+          provideRouteAlternatives: false
         });
-
+  
         if (result.routes.length > 0) {
-          const legPath = result.routes[0].overview_path.map((point) => ({
-            lat: point.lat(),
-            lng: point.lng(),
-          }));
-
+          // Use legs[0].steps to get more detailed path points
+          const moreDetailedPath: google.maps.LatLngLiteral[] = [];
+          
+          if (result.routes[0].legs[0] && result.routes[0].legs[0].steps) {
+            // Extract path points from each step for greater detail
+            result.routes[0].legs[0].steps.forEach(step => {
+              if (step.path) {
+                const stepPoints = step.path.map(point => ({
+                  lat: point.lat(),
+                  lng: point.lng()
+                }));
+                moreDetailedPath.push(...stepPoints);
+              }
+            });
+          }
+          
+          // If we got detailed points, use them; otherwise fall back to overview_path
+          const legPath = moreDetailedPath.length > 0 
+            ? moreDetailedPath 
+            : result.routes[0].overview_path.map((point) => ({
+                lat: point.lat(),
+                lng: point.lng(),
+              }));
+  
           if (i === 0 || roadPath.length === 0) {
             roadPath = [...legPath];
           } else {
+            // Avoid duplicate points between segments
             roadPath = [...roadPath, ...legPath.slice(1)];
           }
         }
-      } catch {
+      } catch (error) {
         console.log(
           `Adding straight line for unreachable segment: ${
             markers[i].address
-          } to ${markers[i + 1].address}`
+          } to ${markers[i + 1].address}`,
+          error
         );
-
+  
         // Add this segment to unreachablePaths
         unreachablePaths.push({
           origin: { lat: markers[i].latitude, lng: markers[i].longitude },
@@ -630,14 +654,11 @@ export default function RoutePlanner() {
         });
       }
     }
-
+  
     console.log(
       `Found ${roadPath.length} road path points and ${unreachablePaths.length} unreachable segments`
     );
-    if (unreachablePaths.length > 0) {
-      console.log("Unreachable paths:", unreachablePaths);
-    }
-
+    
     return { roadPath, unreachablePaths };
   };
 
@@ -699,10 +720,11 @@ export default function RoutePlanner() {
           avoidHighways: config.avoidHighways,
           avoidFerries: config.avoidFerries,
           avoidTolls: config.avoidTolls,
-          drivingOptions: {// Current time for real-time traffic
+          drivingOptions: {
+            // Current time for real-time traffic
             departureTime: new Date(),
-            trafficModel: google.maps.TrafficModel.BEST_GUESS
-          }
+            trafficModel: google.maps.TrafficModel.BEST_GUESS,
+          },
         });
 
         // If no routes, this segment is problematic
@@ -904,10 +926,11 @@ export default function RoutePlanner() {
             avoidHighways: config.avoidHighways,
             avoidFerries: config.avoidFerries,
             avoidTolls: config.avoidTolls,
-            drivingOptions: {// Current time for real-time traffic
+            drivingOptions: {
+              // Current time for real-time traffic
               departureTime: new Date(),
-              trafficModel: google.maps.TrafficModel.BEST_GUESS
-            }
+              trafficModel: google.maps.TrafficModel.BEST_GUESS,
+            },
           });
         } catch {
           unreachableLocations.push({
@@ -1070,15 +1093,11 @@ export default function RoutePlanner() {
       return;
     }
 
-    const routeData = {
-      markers,
-      config,
-      driverRoutes,
-      numDrivers,
-      timestamp: new Date().toISOString(),
-    };
-
-    const num = await num_routes(log);
+    if (!totalRouteDistance || driverRoutes.length === 0) {
+      toast.error("No route calculated!");
+      handleSaveDialogClose();
+      return;
+    }
 
     if (credit <= 0) {
       toast.error("Not enough credits!");
@@ -1091,21 +1110,25 @@ export default function RoutePlanner() {
       return;
     }
 
-    if (!totalRouteDistance) {
-      toast.error("No route calculated!");
-      handleSaveDialogClose();
-      return;
-    }
+    const num = await num_routes(log);
 
     if (num === false) {
       toast.error("Too many routes already saved.");
       handleSaveDialogClose();
       setUnreachableAlertMessage("");
-      setShowUnreachableAlert(true);      
+      setShowUnreachableAlert(true);
       return;
     }
 
     // All checks passed, save the route
+    const routeData = {
+      markers,
+      config,
+      driverRoutes,
+      numDrivers,
+      timestamp: new Date().toISOString(),
+    };
+
     sessionStorage.setItem("savedRoute", JSON.stringify(routeData));
     await save_route(log, sessionStorage.getItem("savedRoute"), formData.name);
     await removeCredits();
@@ -1252,38 +1275,37 @@ export default function RoutePlanner() {
         {/* Add Location Section */}
         <div className="rounded-xl bg-muted/50 px-4 py-2">
           <div className="flex items-center justify-between">
-          <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-
-<DialogContent>
-  <DialogHeader>
-    <DialogTitle>Save Route</DialogTitle>
-    <DialogDescription>
-      Give your route a name so you can find it later.
-    </DialogDescription>
-  </DialogHeader>
-  <div className="py-4">
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="route-name">Route Name</Label>
-        <Input
-          id="route-name"
-          placeholder="My Route"
-          value={formData.name}
-          onChange={(e) =>
-            setFormData({ ...formData, name: e.target.value })
-          }
-        />
-      </div>
-    </div>
-  </div>
-  <DialogFooter>
-    <Button variant="outline" onClick={handleSaveDialogClose}>
-      Cancel
-    </Button>
-    <Button onClick={handleSaveRoute}>Save Route</Button>
-  </DialogFooter>
-</DialogContent>
-</Dialog>
+            <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Save Route</DialogTitle>
+                  <DialogDescription>
+                    Give your route a name so you can find it later.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="route-name">Route Name</Label>
+                      <Input
+                        id="route-name"
+                        placeholder="My Route"
+                        value={formData.name}
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={handleSaveDialogClose}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveRoute}>Save Route</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <h2 className="text-lg font-semibold">Credits: {credit}</h2>
             <div className="flex items-center space-x-2">
               <TooltipProvider>
@@ -1309,15 +1331,22 @@ export default function RoutePlanner() {
                       variant="outline"
                       size="icon"
                       onClick={handleSaveDialogOpen}
+                      disabled={
+                        !totalRouteDistance || driverRoutes.length === 0
+                      }
                     >
                       <Save className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Save Route</TooltipContent>
+                  <TooltipContent>
+                    {!totalRouteDistance || driverRoutes.length === 0
+                      ? "Calculate a route first"
+                      : "Save Route"}
+                  </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
 
-              <TooltipProvider>
+              {/* <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -1330,7 +1359,7 @@ export default function RoutePlanner() {
                   </TooltipTrigger>
                   <TooltipContent>Share route</TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
+              </TooltipProvider> */}
 
               <TooltipProvider>
                 <Tooltip>
@@ -1675,24 +1704,39 @@ export default function RoutePlanner() {
               </DialogTitle>
               <DialogDescription>
                 {mapsUrls.length > 0
-                  ? "Click on the links below to open this route in Google Maps:"
+                  ? "Use these links to access your route in Google Maps:"
                   : "No route data available to export."}
               </DialogDescription>
             </DialogHeader>
             <div className="max-h-[50vh] overflow-y-auto mt-2">
               {mapsUrls.map((url, index) => (
                 <div key={index} className="mb-4 p-2 bg-muted/30 rounded-md">
-                  <p className="text-sm font-medium mb-1">
-                    Route Segment {index + 1}
+                  <p className="text-sm font-medium mb-2">
+                    {mapsUrls.length > 1
+                      ? `Route Segment ${index + 1} (${Math.min(
+                          10,
+                          markers.length - index * 10
+                        )} stops)`
+                      : "Complete Route"}
                   </p>
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline break-all"
-                  >
-                    {url}
-                  </a>
+                  <div className="flex space-x-2">
+                    <Button
+                      className="flex-1"
+                      onClick={() => window.open(url, "_blank")}
+                    >
+                      Open in Maps
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        navigator.clipboard.writeText(url);
+                        toast.success("URL copied to clipboard");
+                      }}
+                    >
+                      Copy URL
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1840,7 +1884,10 @@ export default function RoutePlanner() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Maximum limit of 6 saved routes reached. Delete routes before adding more</AlertDialogTitle>
+            <AlertDialogTitle>
+              Maximum limit of 6 saved routes reached. Delete routes before
+              adding more
+            </AlertDialogTitle>
             <AlertDialogDescription className="whitespace-pre-line">
               {unreachableAlertMessage}
             </AlertDialogDescription>

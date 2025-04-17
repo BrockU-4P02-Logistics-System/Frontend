@@ -337,19 +337,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
   // Get marker label based on index and driver ID
   const getMarkerLabel = (index: number, driverId: number | undefined) => {
-    // If we have driver routes, prefix the label with the driver number
-    if (driverRoutes.length > 0 && driverId !== undefined) {
-      return {
-        text: `${driverId + 1}:${index + 1}`,
-        color: "white",
-        fontWeight: "bold",
-      };
-    }
-
-    // Otherwise, just use the index
+    // Always use just the index for the marker label
     return {
       text: (index + 1).toString(),
       color: selectedMarkerIndex === index ? "white" : "black",
+      fontWeight: "bold",
     };
   };
 

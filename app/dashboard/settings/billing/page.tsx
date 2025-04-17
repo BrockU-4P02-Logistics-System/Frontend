@@ -227,12 +227,6 @@ export default function BillingPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="credits">
-        <TabsList className="grid w-full grid-cols-1">
-          <TabsTrigger value="credits">Credits</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="credits" className="space-y-6">
           {/* Credit Balance */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -370,8 +364,7 @@ export default function BillingPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+
     </div>
   );
 }
