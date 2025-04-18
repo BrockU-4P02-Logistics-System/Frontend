@@ -155,6 +155,7 @@ export default function RoutePlanner() {
   const [routeHistory, setRouteHistory] = useState<MarkerLocation[][]>([]);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   const [shouldLoadRoute, setShouldLoadRoute] = useState(false);
+  const [exportDriverId, setExportDriverId] = useState<number | null>(null);
 
   // Multi-driver state
   const [numDrivers, setNumDrivers] = useState<number>(1);
@@ -295,41 +296,37 @@ export default function RoutePlanner() {
         console.log("No saved route found in sessionStorage.");
         return;
       }
-      
+
       const savedRouteJson = decompress(savedRouteItem);
       if (!savedRouteJson) {
         console.log("Failed to decompress saved route.");
         return;
       }
-  
+
       const savedMarkersJson = sessionStorage.getItem("savedMarkers");
       const savedConfigJson = sessionStorage.getItem("savedConfig");
-      
+
       // Handle driver routes safely
       const savedDriverRoutesItem = sessionStorage.getItem("savedDriverRoutes");
       let savedDriverRoutesJson = null;
       if (savedDriverRoutesItem) {
         savedDriverRoutesJson = decompress(savedDriverRoutesItem);
       }
-      
+
       const savedNumDriversJson = sessionStorage.getItem("savedNumDrivers");
-  
+
       // Parse and set markers
       if (savedMarkersJson) {
-        const parsedMarkers = JSON.parse(
-          savedMarkersJson
-        ) as MarkerLocation[];
+        const parsedMarkers = JSON.parse(savedMarkersJson) as MarkerLocation[];
         setMarkers(parsedMarkers);
       }
-  
+
       // Parse and set config
       if (savedConfigJson) {
-        const parsedConfig = JSON.parse(
-          savedConfigJson
-        ) as RouteConfiguration;
+        const parsedConfig = JSON.parse(savedConfigJson) as RouteConfiguration;
         setConfig(parsedConfig);
       }
-  
+
       // Parse and set driver routes
       if (savedDriverRoutesJson) {
         const parsedDriverRoutes = JSON.parse(
@@ -337,13 +334,13 @@ export default function RoutePlanner() {
         ) as DriverRoute[];
         setDriverRoutes(parsedDriverRoutes);
       }
-  
+
       // Parse and set number of drivers
       if (savedNumDriversJson) {
         const parsedNumDrivers = JSON.parse(savedNumDriversJson) as number;
         setNumDrivers(parsedNumDrivers);
       }
-  
+
       // Select the first driver
       handleDriverSelect(0);
     } catch (err) {
@@ -767,17 +764,24 @@ export default function RoutePlanner() {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
   // Function to handle exporting a specific driver's route
-  const handleExportDriver = (driverId: number) => {
-    // Find the driver's route
+  const handleExportDriver = (driverId: number, e?: React.MouseEvent) => {
+    // Stop event propagation if provided (for buttons within collapsible)
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    // Find the driver's route directly from driverRoutes array
     const driverRoute = driverRoutes.find(
       (route) => route.driverId === driverId
     );
-
+  
     if (driverRoute) {
-      // Generate Google Maps URLs for the selected driver's markers
-      // Pass the route configuration to include route options like avoid highways
+      // Generate Google Maps URLs specifically for this driver's markers
       const urls = generateGoogleMapsRouteUrls(driverRoute.markers, config);
+      
+      // Set the export URLs and dialog title based on this specific driver
       setMapURLs(urls);
+      setExportDriverId(driverId); // Store which driver we're exporting
       setExport(true);
     } else {
       toast.error("No route data available for this driver");
@@ -931,7 +935,7 @@ export default function RoutePlanner() {
   // Update calculateRoute function to better handle the backend response:
   const calculateRoute = async () => {
     const cost = 10 * numDrivers;
-    const credits = await check_credits(log) as number;
+    const credits = (await check_credits(log)) as number;
     if (credits < cost) {
       toast.error(
         "You don't have enough credits to calculate this route. Please purchase more credits."
@@ -942,10 +946,10 @@ export default function RoutePlanner() {
       toast.error("Please add at least two locations");
       return;
     }
-  
+
     setIsCalculating(true);
     saveToHistory();
-  
+
     try {
       // Extract route options into an array for the backend
       const options = [
@@ -953,7 +957,7 @@ export default function RoutePlanner() {
         config.avoidTolls || false,
         config.avoidFerries || false,
       ];
-  
+
       const response = await fetch("/api/process", {
         method: "POST",
         headers: {
@@ -967,17 +971,17 @@ export default function RoutePlanner() {
           options: options, // Include the options array in the request
         }),
       });
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-  
+
       const data = await response.json();
       const originalDriverCount = numDrivers; // Store original count for comparison
-  
+
       if (data.routes && Array.isArray(data.routes)) {
         let allMarkers: MarkerLocation[] = [];
-  
+
         // Process each driver's route from the response
         data.routes.forEach(
           (driverRoute: { driverId: number; stops: MarkerLocation[] }) => {
@@ -985,19 +989,19 @@ export default function RoutePlanner() {
               ...marker,
               driverId: driverRoute.driverId,
             }));
-  
+
             allMarkers = [...allMarkers, ...driverMarkers];
           }
         );
-  
+
         // Remove duplicates before updating state
         const uniqueMarkers = removeDuplicateMarkers(allMarkers);
         setMarkers(uniqueMarkers);
-  
+
         // Now check for unreachable routes AFTER getting the optimized route from backend
         // Process each driver's route
         await processDriverRoutes(uniqueMarkers);
-  
+
         // Check if the actual number of drivers is different from what was requested
         const actualDriverCount = data.totalDrivers || data.routes.length;
         if (actualDriverCount < originalDriverCount) {
@@ -1008,10 +1012,10 @@ export default function RoutePlanner() {
           );
           setShowDriverCountAlert(true);
         }
-  
+
         handleDriverSelect(0);
         toast.success("Route optimized successfully!");
-  
+
         // Expand directions section when route is calculated
         setExpandedDirections(true);
         // Automatically expand the first driver's directions
@@ -1019,23 +1023,23 @@ export default function RoutePlanner() {
           setExpandedDrivers(new Set([driverRoutes[0].driverId]));
         }
         // Make sure log is not null before passing to removeCredits
-  if (log) {
-    await removeCredits(10 * actualDriverCount);
-  }
+        if (log) {
+          await removeCredits(10 * actualDriverCount);
+        }
       } else if (data.route) {
         // Backward compatibility with old format
         const optimizedMarkers = data.route.map((marker: MarkerLocation) => ({
           ...marker,
           driverId: marker.driverId !== undefined ? marker.driverId : 0,
         }));
-  
+
         const uniqueMarkers = removeDuplicateMarkers(optimizedMarkers);
         setMarkers(uniqueMarkers);
-  
+
         // Now check for unreachable routes AFTER getting the optimized route from backend
         // Process each driver's route
         await processDriverRoutes(uniqueMarkers);
-  
+
         // Check how many unique driver IDs are in the response
         const uniqueDriverIds = new Set(
           optimizedMarkers.map((m: { driverId: string }) => m.driverId)
@@ -1047,9 +1051,9 @@ export default function RoutePlanner() {
             } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
           );
         }
-  
+
         toast.success("Route optimized successfully!");
-  
+
         // Expand directions section when route is calculated
         setExpandedDirections(true);
         // Automatically expand the first driver's directions
@@ -1057,9 +1061,9 @@ export default function RoutePlanner() {
           setExpandedDrivers(new Set([driverRoutes[0].driverId]));
         }
         // Make sure log is not null before passing to removeCredits
-  if (log) {
-    await removeCredits(10);
-  }
+        if (log) {
+          await removeCredits(10);
+        }
       } else {
         toast.error("Invalid route data received");
       }
@@ -1739,14 +1743,14 @@ export default function RoutePlanner() {
                             size="icon"
                             variant="ghost"
                             className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleExportDriver(route.driverId);
-                            }}
+                            onClick={(e) =>
+                              handleExportDriver(route.driverId, e)
+                            }
                             title="Export route"
                           >
                             <ExternalLink className="h-4 w-4" />
                           </Button>
+
                           <ChevronDown
                             className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
                               expandedDrivers.has(route.driverId)
@@ -1787,10 +1791,9 @@ export default function RoutePlanner() {
                             size="sm"
                             variant="outline"
                             className="w-full"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleExportDriver(route.driverId);
-                            }}
+                            onClick={(e) =>
+                              handleExportDriver(route.driverId, e)
+                            }
                           >
                             <ExternalLink className="mr-2 h-4 w-4" />
                             Export to Google Maps
@@ -1855,8 +1858,8 @@ export default function RoutePlanner() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {selectedDriverId !== null
-                  ? `Export Route for Driver ${selectedDriverId + 1}`
+                {exportDriverId !== null
+                  ? `Export Route for Driver ${exportDriverId + 1}`
                   : "Export Route"}
               </DialogTitle>
               <DialogDescription>
@@ -1909,9 +1912,7 @@ export default function RoutePlanner() {
                         ? `Segment ${index + 1}`
                         : "Complete Route"}
                     </p>
-                    <Badge variant="outline" className="ml-2">
-                      {Math.min(10, markers.length - index * 10)} stops
-                    </Badge>
+                    {/* Removed the Badge showing stop count */}
                   </div>
                   <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                     <Button
