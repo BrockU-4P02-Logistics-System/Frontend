@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
             const timeout = setTimeout(() => {
                 cleanup();
                 reject(new Error('Processing timeout'));
-            }, 90000);
+            }, 150000);
 
             channel.consume(replyTo, (msg) => {
                 if (!msg) return;
