@@ -52,7 +52,7 @@ export default function LandingPage() {
 
         {/* About the Product Section */}
         <section className="mt-24 px-8 py-16">
-          <h2 className="text-4xl font-semibold text-center text-purple-900 mb-12">About the Product</h2>
+          <h2 className="text-4xl font-semibold text-center text-purple-900 mb-12">Product Overview</h2>
 
           {/* Route One Driver Section */}
           <div className="mb-24">
@@ -62,14 +62,14 @@ export default function LandingPage() {
             <div className="flex mb-12 justify-center items-center gap-8">
               <div className="w-[490px] h-[420px]">
                 <img
-                  src="/SingleDriverLocations.png"
+                  src="/LandingPage.2.1.png"
                   alt="Single Driver Locations"
                   className="w-full h-full object-contain"
                 />
               </div>
               <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
                 <h4 className="text-2xl font-semibold text-purple-900 mb-4">Add Destinations</h4>
-                <p className="text-gray-700">{`Just like regular mapping software, REROUTE offers optimal directions for a single driver to stop at multiple locations.`}</p>
+                <p className="text-gray-700">{`Add your locations and generate optimal route.`}</p>
               </div>
             </div>
 
@@ -77,14 +77,14 @@ export default function LandingPage() {
             <div className="flex mb-12 justify-center items-center gap-8">
               <div className="w-[490px] h-[420px]">
                 <img
-                  src="/SingleDriverMap.png"
+                  src="/LandingPage.2.2.SingleVehicleRouted.png"
                   alt="Single Driver Map"
                   className="w-full h-full object-contain"
                 />
               </div>
               <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
                 <h4 className="text-2xl font-semibold text-purple-900 mb-4">View Optimal Route</h4>
-                <p className="text-gray-700">{`After computing the optimal route, it is shown geographically on the map.`}</p>
+                <p className="text-gray-700">{`Optimal route visually represented.`}</p>
               </div>
             </div>
 
@@ -92,7 +92,7 @@ export default function LandingPage() {
             <div className="flex justify-center items-center gap-8">
               <div className="w-[490px] h-[420px]">
                 <img
-                  src="/SingleDriverDirections.png"
+                  src="/LandingPage.2.3.SingleDriverDirections.png"
                   alt="Single Driver Directions"
                   className="w-full h-full object-contain"
                 />
@@ -112,14 +112,14 @@ export default function LandingPage() {
             <div className="flex mb-12 justify-center items-center gap-8">
               <div className="w-[490px] h-[420px]">
                 <img
-                  src="/MultiTSP_Map.png"
+                  src="/LandingPage.2.4.MultiDriverLocations.png"
                   alt="Multiple Drivers Map"
                   className="w-full h-full object-contain"
                 />
               </div>
               <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
-                <h4 className="text-2xl font-semibold text-purple-900 mb-4">Viewing Routes with Multiple Drivers</h4>
-                <p className="text-gray-700">{`Once you've specified how many drivers you want to route, upon calculation the driver routes are uploaded directly to the map.`}</p>
+                <h4 className="text-2xl font-semibold text-purple-900 mb-4">Prepare Route Query</h4>
+                <p className="text-gray-700">{`Select 1-10 drivers to be routed, configure route parameters, and add all locations.`}</p>
               </div>
             </div>
 
@@ -127,14 +127,14 @@ export default function LandingPage() {
             <div className="flex mb-12 justify-center items-center gap-8">
               <div className="w-[490px] h-[420px]">
                 <img
-                  src="/Driver1Route.png"
+                  src="/LandingPage.2.5.MultiDriverMappedRoutes.png"
                   alt="Driver 1 Route"
                   className="w-full h-full object-contain"
                 />
               </div>
               <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
-                <h4 className="text-2xl font-semibold text-purple-900 mb-4">View Directions for the First Driver</h4>
-                <p className="text-gray-700">{`Easily view the route the first driver has been assigned.`}</p>
+                <h4 className="text-2xl font-semibold text-purple-900 mb-4">Multi-Driver Routes Computed and Displayed</h4>
+                <p className="text-gray-700">{`Reroute computes the optimal set of routes and displays to the dashboard.`}</p>
               </div>
             </div>
 
@@ -142,14 +142,14 @@ export default function LandingPage() {
             <div className="flex mb-12 justify-center items-center gap-8">
               <div className="w-[490px] h-[420px]">
                 <img
-                  src="/Driver2Route.png"
+                  src="/LandingPage.2.6.2.2.png"
                   alt="Driver 2 Route"
                   className="w-full h-full object-contain"
                 />
               </div>
               <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
-                <h4 className="text-2xl font-semibold text-purple-900 mb-4">View Directions for the Second Driver</h4>
-                <p className="text-gray-700">{`Switch to the second driver to view their assigned route!`}</p>
+                <h4 className="text-2xl font-semibold text-purple-900 mb-4">Select a Driver to View Assigned Directions</h4>
+                <p className="text-gray-700">{`All vehicles provided with step-by-step directions`}</p>
               </div>
             </div>
 
@@ -157,14 +157,14 @@ export default function LandingPage() {
             <div className="flex justify-center items-center gap-8">
               <div className="w-[490px] h-[420px]">
                 <img
-                  src="/Driver3Route.png"
+                  src="/LandingPage.2.7.Driver3.png"
                   alt="Driver 3 Route"
                   className="w-full h-full object-contain"
                 />
               </div>
               <div className="w-[490px] h-[420px] flex flex-col justify-center items-center text-center">
                 <h4 className="text-2xl font-semibold text-purple-900 mb-4">The Nth Driver</h4>
-                <p className="text-gray-700">{`Switch to any additional driver to view their specific route.`}</p>
+                <p className="text-gray-700">{`Select any driver to view their route.`}</p>
               </div>
             </div>
           </div>
@@ -180,7 +180,7 @@ export default function LandingPage() {
               className="w-48 h-48 rounded-full object-contain"
             />
             <p className="text-xl text-center text-purple-900">
-              Andrew, Cole, Cam, Travis, Jordan, and Tristan are a team of upper year students at Brock University, ON, Canada. As part of an upper year Software Engineering Project, we have put together this application to expand the capabilities of mapping software. Over the course of a semester, we have built REROUTE into a full-fledged mapping product that permits users to route multiple drivers to multiple stops in a near optimal way. We express gratitude to our supervisors who helped us along the way.
+              Andrew, Cole, Cam, Travis, Jordan, and Tristan are a team of upper year students at Brock University, ON, Canada. To fulfill the requirements of a Senior Year Software Engineering Project, we have put together this application to expand the capabilities of existing mapping software. Over the course of a semester, we have built REROUTE into a full-fledged mapping product that permits users to route multiple drivers to multiple stops in a near optimal way. We express gratitude to our supervisors who have helped us along the way.
             </p>
           </div>
         </section>
