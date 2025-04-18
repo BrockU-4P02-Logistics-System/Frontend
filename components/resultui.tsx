@@ -68,7 +68,7 @@ export default function ResultUI({ result }: { result: PaymentResult }) {
                   <span className="text-muted-foreground">Base Credits:</span>
                   <span>{result.baseCredits} credits</span>
                 </div>
-                {(result.bonusCredits && result.bonusCredits > 0)
+                {(result.bonusCredits && result.baseCredits !== undefined && result.bonusCredits > 0)
                     ? (
                         <div className="flex justify-between items-center">
                           <span className="text-muted-foreground">Bonus Credits ({((result.bonusCredits / result.baseCredits) * 100).toFixed(0)}%):</span>
