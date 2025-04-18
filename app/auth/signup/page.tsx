@@ -92,7 +92,8 @@ export default function SignupPage() {
             <form onSubmit={handleSignup} className="space-y-4">
             {error && <div className="">{error}</div>}
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">Username    <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="company"
                   value={formData.username}
@@ -101,7 +102,8 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email    <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -111,7 +113,11 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password: must contain one digit from 1 to 9, one lowercase letter, one uppercase letter, one special character, no space, and between 8-16 characters</Label>
+                <Label htmlFor="password">Password                <span className="text-red-500">*</span>
+
+                <span className="text-sm text-gray-500 block"> Must contain one digit from 1 to 9, one lowercase letter, one uppercase letter, one special character, no space, and between 8-16 characters</span>
+
+                </Label>
                 <Input
                   id="password"
                   type="password"
@@ -121,7 +127,10 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Label htmlFor="confirm-password">Confirm Password
+                <span className="text-red-500">*</span>
+
+                </Label>
                 <Input
                   id="confirm-password"
                   type="password"
@@ -131,7 +140,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="org_name">Organization Name*</Label>
+                <Label htmlFor="org_name">Organization Name</Label>
                 <Input
                   id="org_name"
                   value={formData.org_name}
@@ -140,7 +149,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="org_name">Organization Address*</Label>
+                <Label htmlFor="org_name">Organization Address</Label>
                 <Input
                   id="org_address"
                   value={formData.org_address}
@@ -149,7 +158,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="org_phone">Organization Phone*</Label>
+                <Label htmlFor="org_phone">Organization Phone</Label>
                 <Input
                   id="org_phone"
                   value={formData.org_phone}
@@ -158,7 +167,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="org_phone">Organization Site*</Label>
+                <Label htmlFor="org_phone">Organization Site</Label>
                 <Input
                   id="org_site"
                   value={formData.org_site}
