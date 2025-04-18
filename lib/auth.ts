@@ -43,4 +43,13 @@ export const authOptions: NextAuthOptions = {
     session: {
         strategy: "jwt",
     },
+    callbacks: {
+        async redirect({ url, baseUrl }) {
+            // Redirect to /app/dashboard after signing in with Google
+            if (url === "/profile" || url === "/") {
+                return "/dashboard";
+            }
+            return url.startsWith(baseUrl) ? url : baseUrl;
+        },
+    },
 };
