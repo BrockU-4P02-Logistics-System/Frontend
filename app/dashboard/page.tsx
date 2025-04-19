@@ -166,6 +166,9 @@ export default function RoutePlanner() {
   const [routePath, setRoutePath] = useState<google.maps.LatLngLiteral[]>([]);
   const [totalRouteDistance, setTotalRouteDistance] = useState<string>("");
 
+  // Destination panel state
+  const [isDestinationsOpen, setIsDestinationsOpen] = useState(true);
+
   // Add new state for straight line paths
   const [straightLinePaths, setStraightLinePaths] = useState<
     {
@@ -769,16 +772,16 @@ export default function RoutePlanner() {
     if (e) {
       e.stopPropagation();
     }
-    
+
     // Find the driver's route directly from driverRoutes array
     const driverRoute = driverRoutes.find(
       (route) => route.driverId === driverId
     );
-  
+
     if (driverRoute) {
       // Generate Google Maps URLs specifically for this driver's markers
       const urls = generateGoogleMapsRouteUrls(driverRoute.markers, config);
-      
+
       // Set the export URLs and dialog title based on this specific driver
       setMapURLs(urls);
       setExportDriverId(driverId); // Store which driver we're exporting
@@ -1520,113 +1523,136 @@ export default function RoutePlanner() {
         {/* Destinations List */}
         {markers.length > 0 && (
           <div className="rounded-xl bg-muted/50 p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-lg">Destinations</h2>
+            <div
+              className="flex items-center justify-between mb-4 cursor-pointer"
+              onClick={() => setIsDestinationsOpen(!isDestinationsOpen)}
+            >
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold text-lg">Destinations</h2>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${
+                    isDestinationsOpen ? "" : "transform rotate-180"
+                  }`}
+                />
+              </div>
               <span className="text-sm text-muted-foreground">
                 {markers.length} location{markers.length !== 1 ? "s" : ""}
               </span>
             </div>
 
-            <div className="space-y-2">
-              {markers.map((marker, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
-                  draggable
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={() => handleDragOver(index)}
-                  onDragEnd={handleDragEnd}
-                >
-                  <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {marker.address}
-                    </p>
-                    {/* Replace this driver ID display with our new logic */}
-                    {marker.driverId !== undefined &&
-                      driverRoutes.length > 0 && (
-                        <div className="flex gap-1 items-center">
-                          {/* Determine if this is a start location */}
-                          {index === 0 ||
-                          driverRoutes.some(
-                            (route) =>
-                              route.markers[0].latitude === marker.latitude &&
-                              route.markers[0].longitude === marker.longitude
-                          ) ? (
-                            <span className="text-xs font-semibold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
-                              Start Location
-                            </span>
-                          ) : /* Determine if this is a return location */
-                          config.returnToStart &&
-                            driverRoutes.some(
-                              (route) =>
-                                route.markers.length > 1 &&
-                                route.markers[route.markers.length - 1]
-                                  .latitude === marker.latitude &&
-                                route.markers[route.markers.length - 1]
-                                  .longitude === marker.longitude &&
-                                route.markers[0].latitude === marker.latitude &&
-                                route.markers[0].longitude === marker.longitude
-                            ) ? (
-                            <span className="text-xs font-semibold px-1.5 py-0.5 bg-green-100 text-green-800 rounded">
-                              Return Location
-                            </span>
-                          ) : (
-                            /* Otherwise show the driver assignment */
-                            <p
-                              className="text-xs font-medium"
-                              style={{
-                                color:
-                                  ROUTE_COLORS[
-                                    (marker.driverId || 0) % ROUTE_COLORS.length
-                                  ],
-                              }}
-                            >
-                              Driver {(marker.driverId || 0) + 1}
-                            </p>
+            {isDestinationsOpen && (
+              <>
+                <div className="space-y-2">
+                  {markers.map((marker, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={() => handleDragOver(index)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {marker.address}
+                        </p>
+                        {/* Replace this driver ID display with our new logic */}
+                        {marker.driverId !== undefined &&
+                          driverRoutes.length > 0 && (
+                            <div className="flex gap-1 items-center">
+                              {/* Determine if this is a start location */}
+                              {index === 0 ||
+                              driverRoutes.some(
+                                (route) =>
+                                  route.markers[0].latitude ===
+                                    marker.latitude &&
+                                  route.markers[0].longitude ===
+                                    marker.longitude
+                              ) ? (
+                                <span className="text-xs font-semibold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
+                                  Start Location
+                                </span>
+                              ) : /* Determine if this is a return location */
+                              config.returnToStart &&
+                                driverRoutes.some(
+                                  (route) =>
+                                    route.markers.length > 1 &&
+                                    route.markers[route.markers.length - 1]
+                                      .latitude === marker.latitude &&
+                                    route.markers[route.markers.length - 1]
+                                      .longitude === marker.longitude &&
+                                    route.markers[0].latitude ===
+                                      marker.latitude &&
+                                    route.markers[0].longitude ===
+                                      marker.longitude
+                                ) ? (
+                                <span className="text-xs font-semibold px-1.5 py-0.5 bg-green-100 text-green-800 rounded">
+                                  Return Location
+                                </span>
+                              ) : (
+                                /* Otherwise show the driver assignment */
+                                <p
+                                  className="text-xs font-medium"
+                                  style={{
+                                    color:
+                                      ROUTE_COLORS[
+                                        (marker.driverId || 0) %
+                                          ROUTE_COLORS.length
+                                      ],
+                                  }}
+                                >
+                                  Driver {(marker.driverId || 0) + 1}
+                                </p>
+                              )}
+                            </div>
                           )}
-                        </div>
-                      )}
-                    {marker.note && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        {marker.note}
-                      </p>
-                    )}
+                        {marker.note && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {marker.note}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveAddress(index)}
+                      >
+                        <Trash className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center mt-4">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearRoute}
+                    >
+                      Clear All
+                    </Button>
                   </div>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveAddress(index)}
+                    onClick={calculateRoute}
+                    disabled={isCalculating || markers.length < 2}
                   >
-                    <Trash className="h-4 w-4 text-red-500" />
+                    {isCalculating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Calculating...
+                      </>
+                    ) : (
+                      <>
+                        <Bolt className="mr-2 h-4 w-4" />
+                        Optimize Route
+                      </>
+                    )}
                   </Button>
                 </div>
-              ))}
-            </div>
-
-            <div className="flex justify-between items-center mt-4">
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleClearRoute}>
-                  Clear All
-                </Button>
-              </div>
-              <Button
-                onClick={calculateRoute}
-                disabled={isCalculating || markers.length < 2}
-              >
-                {isCalculating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Calculating...
-                  </>
-                ) : (
-                  <>
-                    <Bolt className="mr-2 h-4 w-4" />
-                    Optimize Route
-                  </>
-                )}
-              </Button>
-            </div>
+              </>
+            )}
           </div>
         )}
 
