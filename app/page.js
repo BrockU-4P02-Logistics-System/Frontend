@@ -80,6 +80,33 @@ export default function LandingPage() {
             </button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="lg:hidden bg-white shadow-lg">
+            <div className="container mx-auto px-8 py-6 flex flex-col space-y-6">
+              <a
+                href="#solutions"
+                onClick={() => setIsMenuOpen(false)}
+                className="text-gray-800 font-medium py-2 hover:text-blue-600 transition-colors"
+              >
+                Solutions
+              </a>
+              <a
+                href="#platform"
+                onClick={() => setIsMenuOpen(false)}
+                className="text-gray-800 font-medium py-2 hover:text-blue-600 transition-colors"
+              >
+                Platform
+              </a>
+              <a href="/auth/login">
+                <button className="w-full px-8 py-3 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 font-medium">
+                  Get Started
+                </button>
+              </a>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
@@ -339,6 +366,7 @@ const FooterLinks = ({ title, links }) => {
     Contact: "mailto:support@re-route.ca",
     Documentation: "/docs",
     Guides: "/guides",
+    Demo: "#",
   };
 
   return (
