@@ -1546,22 +1546,20 @@ export default function RoutePlanner() {
                   {markers.map((marker, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
+                      className="flex items-center gap-2 bg-muted/50 rounded-md p-2 w-full"
                       draggable
                       onDragStart={() => handleDragStart(index)}
                       onDragOver={() => handleDragOver(index)}
                       onDragEnd={handleDragEnd}
                     >
-                      <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm font-medium">
+                      <GripVertical className="h-4 w-4 shrink-0 cursor-move text-muted-foreground" />
+                      <div className="flex-1 min-w-0 max-w-full overflow-hidden">
+                        <p className="truncate text-sm font-medium max-w-full">
                           {marker.address}
                         </p>
-                        {/* Replace this driver ID display with our new logic */}
                         {marker.driverId !== undefined &&
                           driverRoutes.length > 0 && (
-                            <div className="flex gap-1 items-center">
-                              {/* Determine if this is a start location */}
+                            <div className="flex gap-1 items-center overflow-hidden">
                               {index === 0 ||
                               driverRoutes.some(
                                 (route) =>
@@ -1570,11 +1568,10 @@ export default function RoutePlanner() {
                                   route.markers[0].longitude ===
                                     marker.longitude
                               ) ? (
-                                <span className="text-xs font-semibold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
+                                <span className="text-xs font-semibold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded whitespace-nowrap">
                                   Start Location
                                 </span>
-                              ) : /* Determine if this is a return location */
-                              config.returnToStart &&
+                              ) : config.returnToStart &&
                                 driverRoutes.some(
                                   (route) =>
                                     route.markers.length > 1 &&
@@ -1587,13 +1584,12 @@ export default function RoutePlanner() {
                                     route.markers[0].longitude ===
                                       marker.longitude
                                 ) ? (
-                                <span className="text-xs font-semibold px-1.5 py-0.5 bg-green-100 text-green-800 rounded">
+                                <span className="text-xs font-semibold px-1.5 py-0.5 bg-green-100 text-green-800 rounded whitespace-nowrap">
                                   Return Location
                                 </span>
                               ) : (
-                                /* Otherwise show the driver assignment */
                                 <p
-                                  className="text-xs font-medium"
+                                  className="text-xs font-medium whitespace-nowrap"
                                   style={{
                                     color:
                                       ROUTE_COLORS[
@@ -1616,6 +1612,7 @@ export default function RoutePlanner() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="shrink-0"
                         onClick={() => handleRemoveAddress(index)}
                       >
                         <Trash className="h-4 w-4 text-red-500" />
