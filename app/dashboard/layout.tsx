@@ -112,7 +112,7 @@ export default function DashboardLayout({
     <div className="relative">
       <SidebarProvider>
         <AppSidebar/>
-        <SidebarInset>
+        <SidebarInset className="w-full">
           {/* Header */}
           <header className="flex h-16 shrink-0 items-center border-b">
             <div className="flex items-center gap-2 px-4">
