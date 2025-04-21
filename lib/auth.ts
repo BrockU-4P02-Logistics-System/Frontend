@@ -71,7 +71,7 @@ export const authOptions: NextAuthOptions = {
                                 org_name: "",
                                 org_phone: "",
                                 org_site: "",
-                                image: profile.picture || profile.image,
+                                image: profile.image,
                                 authProvider: "google",
                                 fleet,
                                 credits,
