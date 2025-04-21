@@ -149,9 +149,15 @@ export default function LandingPage() {
                   <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
               </a>
-              <button className="inline-flex items-center px-8 py-4 rounded-full border-2 border-white/10 text-white font-medium hover:bg-white/10 backdrop-blur-sm transition-all duration-300">
-                Watch Demo
-              </button>
+              <a
+                  href="https://www.youtube.com/watch?v=TIt0dmDkLsY"
+                  target="_blank"
+                  rel="noopener noreferrer"
+              >
+                <button className="inline-flex items-center px-8 py-4 rounded-full border-2 border-white/10 text-white font-medium hover:bg-white/10 backdrop-blur-sm transition-all duration-300">
+                  Watch Demo
+                </button>
+              </a>
             </div>
 
             <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-12">
@@ -364,9 +370,9 @@ const FooterLinks = ({ title, links }) => {
     Solutions: "#solutions",
     Platform: "#platform",
     Contact: "mailto:support@re-route.ca",
-    Documentation: "/docs",
+    Documentation: "https://github.com/BrockU-4P02-Logistics-System/Frontend/tree/main/Documentation",
     Guides: "/guides",
-    Demo: "#",
+    Demo: "https://www.youtube.com/watch?v=TIt0dmDkLsY",
   };
 
   return (
