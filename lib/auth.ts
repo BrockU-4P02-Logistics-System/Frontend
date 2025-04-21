@@ -51,13 +51,13 @@ export const authOptions: NextAuthOptions = {
                     const username = profile.name || email.split('@')[0];
 
                     // Default values matching your register function
-                    let fleet = [[
+                    const fleet = [[
                         "Example Car",
                         "Driver 1",
                         "test@gmail.com"
                     ]];
-                    let credits = 0;
-                    let routes = [];
+                    const credits = 0;
+                    const routes = [];
 
                     // Try to create/update user with upsert
                     await User.findOneAndUpdate(
