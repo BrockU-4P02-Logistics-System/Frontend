@@ -157,7 +157,7 @@ export default function LandingPage() {
             <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-12">
               <StatCard label="Routable Cities" value="25K+" />
               <StatCard label="Cost Reduction" value="90%" />
-              <StatCard label="Faster Routing" value="X7" />
+              <StatCard label="Faster Routing" value="7x" />
               <StatCard label="Canadian" value="100%" />
             </div>
           </div>
