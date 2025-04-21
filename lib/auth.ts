@@ -33,17 +33,61 @@ export const authOptions: NextAuthOptions = {
             },
         }),
         Google({
-
             clientId: process.env.AUTH_GOOGLE_ID || "",
             clientSecret: process.env.AUTH_GOOGLE_SECRET || ""
-
-          
         }),
     ],
     session: {
         strategy: "jwt",
     },
     callbacks: {
+        async signIn({ user, account, profile }) {
+            // Only attempt to create user if Google login
+            if (account?.provider === "google" && profile?.email) {
+                try {
+                    await connectDB();
+
+                    const email = profile.email.toLowerCase();
+                    const username = profile.name || email.split('@')[0];
+
+                    // Default values matching your register function
+                    let fleet = [[
+                        "Example Car",
+                        "Driver 1",
+                        "test@gmail.com"
+                    ]];
+                    let credits = 0;
+                    let routes = [];
+
+                    // Try to create/update user with upsert
+                    await User.findOneAndUpdate(
+                        { email: email },
+                        {
+                            $setOnInsert: {
+                                username,
+                                email,
+                                password: "", // Empty password for OAuth users
+                                org_address: "",
+                                org_name: "",
+                                org_phone: "",
+                                org_site: "",
+                                image: profile.picture || profile.image,
+                                authProvider: "google",
+                                fleet,
+                                credits,
+                                routes
+                            }
+                        },
+                        { upsert: true, new: true }
+                    );
+                } catch (error) {
+                    console.error("Error creating Google user:", error);
+                    // Still allow sign in even if creation fails
+                }
+            }
+            return true; // Allow sign in process to continue
+        },
+
         async redirect({ url, baseUrl }) {
             // Redirect to /app/dashboard after signing in with Google
             if (url === "/profile" || url === "/") {
