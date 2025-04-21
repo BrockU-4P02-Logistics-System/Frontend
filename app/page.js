@@ -369,7 +369,7 @@ const FooterLinks = ({ title, links }) => {
   const linkMap = {
     Solutions: "#solutions",
     Platform: "#platform",
-    Contact: "mailto:support@re-route.ca",
+    Contact: "mailto:reroute4p02@gmail.com",
     Documentation: "https://github.com/BrockU-4P02-Logistics-System/Frontend/tree/main/Documentation",
     Guides: "/guides",
     Demo: "https://www.youtube.com/watch?v=TIt0dmDkLsY",
