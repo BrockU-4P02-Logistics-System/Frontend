@@ -81,7 +81,7 @@ type RabbitMQResponse = {
     route: ResponseFeature[][];
 } | ResponseFeature[][] | ResponseFeature[];
 
-const RABBITMQ_URL = 'amqp://cole:corbett@132.145.102.107:5672';
+const RABBITMQ_URL = 'amqp://jordan:4p02@40.233.88.212';
 const QUEUE_NAME = 'logistic-request';
 
 export async function POST(req: NextRequest) {
