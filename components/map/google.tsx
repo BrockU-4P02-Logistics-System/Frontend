@@ -205,15 +205,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
   // Log what's being received
   useEffect(() => {
-    console.log("MapComponent received props:", {
-      markersCount: markers.length,
-      routePathLength: routePath.length,
-      straightLinePathsLength: straightLinePaths.length,
-      driverRoutesCount: driverRoutes.length,
-      selectedDriverId,
-      currentTheme: theme,
-      routeConfig: routeConfig, // Log route configuration
-    });
   }, [
     markers,
     routePath,
