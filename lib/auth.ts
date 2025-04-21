@@ -57,7 +57,7 @@ export const authOptions: NextAuthOptions = {
                         "test@gmail.com"
                     ]];
                     const credits = 0;
-                    const routes = [];
+                    const routes: string[] = [];
 
                     // Try to create/update user with upsert
                     await User.findOneAndUpdate(
