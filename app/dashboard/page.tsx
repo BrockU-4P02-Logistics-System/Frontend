@@ -699,7 +699,6 @@ export default function RoutePlanner() {
     return Array.from(uniqueMarkers.values());
   };
 
-  // ProcessDriverRoutes function
   // Function to detect unreachable locations
   const detectUnreachableLocations = async (
     markers: MarkerLocation[],
@@ -891,7 +890,6 @@ export default function RoutePlanner() {
     }
 
     // Handle problematic routes - alert but still show route
-    // Handle problematic routes - alert but still show route
     if (problematicDrivers.length > 0) {
       let detailedMessage = "ALERT: Problematic Route(s) Detected\n\n";
 
@@ -939,12 +937,19 @@ export default function RoutePlanner() {
   const calculateRoute = async () => {
     const cost = 10 * numDrivers;
     const credits = (await check_credits(log)) as number;
+
+    if (credits <= 0) {
+      setShowNoCreditsDialog(true);
+      return;
+    }
+
     if (credits < cost) {
       toast.error(
-        "You don't have enough credits to calculate this route. Please purchase more credits."
+        `You don't have enough credits. Need ${cost} credits but only have ${credits}.`
       );
       return;
     }
+
     if (markers.length < 2) {
       toast.error("Please add at least two locations");
       return;
@@ -1242,6 +1247,8 @@ export default function RoutePlanner() {
     }
   };
 
+  const [showNoCreditsDialog, setShowNoCreditsDialog] = useState(false);
+
   /**
    * Note from Cole: this is totally insecure, a user could just inspect element ts lmao
    * too late to change now tho
@@ -1337,6 +1344,7 @@ export default function RoutePlanner() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+
             {/* Route Options Dialog */}
             <Dialog open={showRouteOptions} onOpenChange={setShowRouteOptions}>
               <DialogContent>
@@ -1462,6 +1470,7 @@ export default function RoutePlanner() {
             Add Location
           </Button>
         </div>
+
         {/* Driver Count Selection */}
         {markers.length >= 2 && (
           <div className="rounded-xl bg-muted/50 p-4">
@@ -1671,7 +1680,6 @@ export default function RoutePlanner() {
         </div>
 
         {/* New Directions Panel */}
-        {/* New Directions Panel with Updated Driver Dropdowns */}
         {driverRoutes.length > 0 && (
           <div className="rounded-xl bg-muted/50 p-4">
             {/* Main Directions Collapsible */}
@@ -1967,9 +1975,47 @@ export default function RoutePlanner() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
         {/* Other dialogs remain unchanged */}
       </div>
+
+      <Dialog open={showNoCreditsDialog} onOpenChange={setShowNoCreditsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Credits Required</DialogTitle>
+            <DialogDescription>
+              You need credits to optimize routes. Route optimization costs 10
+              credits per driver.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-between py-3">
+            <div className="flex items-center gap-2">
+              <Bolt className="h-5 w-5 text-primary" />
+              <span className="font-medium">
+                Required Credits: {10 * numDrivers}
+              </span>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Current Balance: {credit}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNoCreditsDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setShowNoCreditsDialog(false);
+                router.push("/dashboard/settings/billing");
+              }}
+            >
+              Purchase Credits
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Combined AlertDialog for both unreachable segments and max routes */}
       <AlertDialog
