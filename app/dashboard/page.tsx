@@ -214,6 +214,8 @@ export default function RoutePlanner() {
   // Maximum number of drivers based on number of markers
   const maxDrivers = Math.min(10, Math.max(1, markers.length - 1));
 
+  const [isSaving, setIsSaving] = useState(false);
+
   // Effect to handle driver count changes
   useEffect(() => {
     // Ensure we don't have more drivers than possible
@@ -248,9 +250,19 @@ export default function RoutePlanner() {
   };
   const handleRouteOptionsApply = () => {
     if (driverRoutes.length > 0) {
-      // If we already have routes, recalculate them with the new options
-      processDriverRoutes(markers);
-      toast.success("Route options updated");
+      setIsCalculating(true); // Disable optimize button
+      // Process each driver's route
+      processDriverRoutes(markers)
+        .then(() => {
+          toast.success("Route options updated");
+        })
+        .catch((error) => {
+          console.error("Error updating route:", error);
+          toast.error("Failed to update route with new options");
+        })
+        .finally(() => {
+          setIsCalculating(false); // Re-enable optimize button
+        });
     }
     setShowRouteOptions(false);
   };
@@ -1172,30 +1184,36 @@ export default function RoutePlanner() {
       return;
     }
 
-    const num = await num_routes(log);
+    setIsSaving(true); // Set saving state to true
 
-    if (num === false) {
-      toast.error("Too many routes already saved.");
+    try {
+      const num = await num_routes(log);
+
+      if (num === false) {
+        toast.error("Too many routes already saved.");
+        handleSaveDialogClose();
+        setUnreachableAlertMessage("");
+        setShowUnreachableAlert(true);
+        return;
+      }
+
+      const routeData = {
+        markers,
+        config,
+        driverRoutes,
+        numDrivers,
+        timestamp: new Date().toISOString(),
+      };
+
+      await save_route(log, JSON.stringify(routeData), formData.name);
+      await removeCredits(cost);
+      toast.success("Route saved successfully");
       handleSaveDialogClose();
-      setUnreachableAlertMessage("");
-      setShowUnreachableAlert(true);
-      return;
+    } catch (error) {
+      toast.error("Failed to save route");
+    } finally {
+      setIsSaving(false); // Reset saving state
     }
-
-    // All checks passed, save the route
-    const routeData = {
-      markers,
-      config,
-      driverRoutes,
-      numDrivers,
-      timestamp: new Date().toISOString(),
-    };
-
-    //sessionStorage.setItem("savedRoute", JSON.stringify(routeData));
-    await save_route(log, JSON.stringify(routeData), formData.name);
-    await removeCredits(cost);
-    toast.success("Route saved successfully");
-    handleSaveDialogClose();
   };
 
   const handleClearRoute = () => {
@@ -1320,8 +1338,15 @@ export default function RoutePlanner() {
                   <Button variant="outline" onClick={handleSaveDialogClose}>
                     Cancel
                   </Button>
-                  <Button onClick={handleSaveRoute}>
-                    Save Route (10 credits)
+                  <Button onClick={handleSaveRoute} disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      `Save Route (10 credits)`
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -1647,7 +1672,7 @@ export default function RoutePlanner() {
                     {isCalculating ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Calculating...
+                        {showRouteOptions ? "Updating..." : "Calculating..."}
                       </>
                     ) : (
                       <>
