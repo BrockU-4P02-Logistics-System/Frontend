@@ -1184,6 +1184,7 @@ export default function RoutePlanner() {
     };
 
     //sessionStorage.setItem("savedRoute", JSON.stringify(routeData));
+    console.log(routeData);
     await save_route(log, JSON.stringify(routeData), formData.name);
     await removeCredits(cost);
     toast.success("Route saved successfully");
