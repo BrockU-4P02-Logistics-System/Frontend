@@ -94,7 +94,6 @@ export default async function ResultPage({
 
 {
   // Process the payment on the server
-  console.log("code ran")
   const result = await processPayment(searchParams.session_id, searchParams.userEmail);
   
   // Pass the result to the client UI component

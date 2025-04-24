@@ -166,6 +166,9 @@ export default function RoutePlanner() {
   const [routePath, setRoutePath] = useState<google.maps.LatLngLiteral[]>([]);
   const [totalRouteDistance, setTotalRouteDistance] = useState<string>("");
 
+  // Destination panel state
+  const [isDestinationsOpen, setIsDestinationsOpen] = useState(true);
+
   // Add new state for straight line paths
   const [straightLinePaths, setStraightLinePaths] = useState<
     {
@@ -211,6 +214,8 @@ export default function RoutePlanner() {
   // Maximum number of drivers based on number of markers
   const maxDrivers = Math.min(10, Math.max(1, markers.length - 1));
 
+  const [isSaving, setIsSaving] = useState(false);
+
   // Effect to handle driver count changes
   useEffect(() => {
     // Ensure we don't have more drivers than possible
@@ -245,9 +250,19 @@ export default function RoutePlanner() {
   };
   const handleRouteOptionsApply = () => {
     if (driverRoutes.length > 0) {
-      // If we already have routes, recalculate them with the new options
-      processDriverRoutes(markers);
-      toast.success("Route options updated");
+      setIsCalculating(true); // Disable optimize button
+      // Process each driver's route
+      processDriverRoutes(markers)
+        .then(() => {
+          toast.success("Route options updated");
+        })
+        .catch((error) => {
+          console.error("Error updating route:", error);
+          toast.error("Failed to update route with new options");
+        })
+        .finally(() => {
+          setIsCalculating(false); // Re-enable optimize button
+        });
     }
     setShowRouteOptions(false);
   };
@@ -696,7 +711,6 @@ export default function RoutePlanner() {
     return Array.from(uniqueMarkers.values());
   };
 
-  // ProcessDriverRoutes function
   // Function to detect unreachable locations
   const detectUnreachableLocations = async (
     markers: MarkerLocation[],
@@ -769,16 +783,16 @@ export default function RoutePlanner() {
     if (e) {
       e.stopPropagation();
     }
-    
+
     // Find the driver's route directly from driverRoutes array
     const driverRoute = driverRoutes.find(
       (route) => route.driverId === driverId
     );
-  
+
     if (driverRoute) {
       // Generate Google Maps URLs specifically for this driver's markers
       const urls = generateGoogleMapsRouteUrls(driverRoute.markers, config);
-      
+
       // Set the export URLs and dialog title based on this specific driver
       setMapURLs(urls);
       setExportDriverId(driverId); // Store which driver we're exporting
@@ -888,7 +902,6 @@ export default function RoutePlanner() {
     }
 
     // Handle problematic routes - alert but still show route
-    // Handle problematic routes - alert but still show route
     if (problematicDrivers.length > 0) {
       let detailedMessage = "ALERT: Problematic Route(s) Detected\n\n";
 
@@ -936,12 +949,19 @@ export default function RoutePlanner() {
   const calculateRoute = async () => {
     const cost = 10 * numDrivers;
     const credits = (await check_credits(log)) as number;
+
+    if (credits <= 0) {
+      setShowNoCreditsDialog(true);
+      return;
+    }
+
     if (credits < cost) {
       toast.error(
-        "You don't have enough credits to calculate this route. Please purchase more credits."
+        `You don't have enough credits. Need ${cost} credits but only have ${credits}.`
       );
       return;
     }
+
     if (markers.length < 2) {
       toast.error("Please add at least two locations");
       return;
@@ -1164,31 +1184,35 @@ export default function RoutePlanner() {
       return;
     }
 
-    const num = await num_routes(log);
+    setIsSaving(true); // Set saving state to true
 
-    if (num === false) {
-      toast.error("Too many routes already saved.");
+    try {
+      const num = await num_routes(log);
+
+      if (num === false) {
+        toast.error("Too many routes already saved.");
+        handleSaveDialogClose();
+        setUnreachableAlertMessage("");
+        setShowUnreachableAlert(true);
+        return;
+      }
+
+      const routeData = {
+        markers,
+        config,
+        driverRoutes,
+        numDrivers,
+        timestamp: new Date().toISOString(),
+      };
+
+      await save_route(log, JSON.stringify(routeData), formData.name);
+      await removeCredits(cost);
+      toast.success("Route saved successfully");
       handleSaveDialogClose();
-      setUnreachableAlertMessage("");
-      setShowUnreachableAlert(true);
-      return;
+   
+    } finally {
+      setIsSaving(false); // Reset saving state
     }
-
-    // All checks passed, save the route
-    const routeData = {
-      markers,
-      config,
-      driverRoutes,
-      numDrivers,
-      timestamp: new Date().toISOString(),
-    };
-
-    //sessionStorage.setItem("savedRoute", JSON.stringify(routeData));
-    console.log(routeData);
-    await save_route(log, JSON.stringify(routeData), formData.name);
-    await removeCredits(cost);
-    toast.success("Route saved successfully");
-    handleSaveDialogClose();
   };
 
   const handleClearRoute = () => {
@@ -1239,6 +1263,8 @@ export default function RoutePlanner() {
       setCredits(credits ?? 0);
     }
   };
+
+  const [showNoCreditsDialog, setShowNoCreditsDialog] = useState(false);
 
   /**
    * Note from Cole: this is totally insecure, a user could just inspect element ts lmao
@@ -1311,8 +1337,15 @@ export default function RoutePlanner() {
                   <Button variant="outline" onClick={handleSaveDialogClose}>
                     Cancel
                   </Button>
-                  <Button onClick={handleSaveRoute}>
-                    Save Route (10 credits)
+                  <Button onClick={handleSaveRoute} disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      `Save Route (10 credits)`
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -1335,6 +1368,7 @@ export default function RoutePlanner() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+
             {/* Route Options Dialog */}
             <Dialog open={showRouteOptions} onOpenChange={setShowRouteOptions}>
               <DialogContent>
@@ -1460,6 +1494,7 @@ export default function RoutePlanner() {
             Add Location
           </Button>
         </div>
+
         {/* Driver Count Selection */}
         {markers.length >= 2 && (
           <div className="rounded-xl bg-muted/50 p-4">
@@ -1521,113 +1556,133 @@ export default function RoutePlanner() {
         {/* Destinations List */}
         {markers.length > 0 && (
           <div className="rounded-xl bg-muted/50 p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-lg">Destinations</h2>
+            <div
+              className="flex items-center justify-between mb-4 cursor-pointer"
+              onClick={() => setIsDestinationsOpen(!isDestinationsOpen)}
+            >
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold text-lg">Destinations</h2>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${
+                    isDestinationsOpen ? "" : "transform rotate-180"
+                  }`}
+                />
+              </div>
               <span className="text-sm text-muted-foreground">
                 {markers.length} location{markers.length !== 1 ? "s" : ""}
               </span>
             </div>
 
-            <div className="space-y-2">
-              {markers.map((marker, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
-                  draggable
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={() => handleDragOver(index)}
-                  onDragEnd={handleDragEnd}
-                >
-                  <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {marker.address}
-                    </p>
-                    {/* Replace this driver ID display with our new logic */}
-                    {marker.driverId !== undefined &&
-                      driverRoutes.length > 0 && (
-                        <div className="flex gap-1 items-center">
-                          {/* Determine if this is a start location */}
-                          {index === 0 ||
-                          driverRoutes.some(
-                            (route) =>
-                              route.markers[0].latitude === marker.latitude &&
-                              route.markers[0].longitude === marker.longitude
-                          ) ? (
-                            <span className="text-xs font-semibold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
-                              Start Location
-                            </span>
-                          ) : /* Determine if this is a return location */
-                          config.returnToStart &&
-                            driverRoutes.some(
-                              (route) =>
-                                route.markers.length > 1 &&
-                                route.markers[route.markers.length - 1]
-                                  .latitude === marker.latitude &&
-                                route.markers[route.markers.length - 1]
-                                  .longitude === marker.longitude &&
-                                route.markers[0].latitude === marker.latitude &&
-                                route.markers[0].longitude === marker.longitude
-                            ) ? (
-                            <span className="text-xs font-semibold px-1.5 py-0.5 bg-green-100 text-green-800 rounded">
-                              Return Location
-                            </span>
-                          ) : (
-                            /* Otherwise show the driver assignment */
-                            <p
-                              className="text-xs font-medium"
-                              style={{
-                                color:
-                                  ROUTE_COLORS[
-                                    (marker.driverId || 0) % ROUTE_COLORS.length
-                                  ],
-                              }}
-                            >
-                              Driver {(marker.driverId || 0) + 1}
-                            </p>
+            {isDestinationsOpen && (
+              <>
+                <div className="space-y-2">
+                  {markers.map((marker, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 bg-muted/50 rounded-md p-2 w-full"
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={() => handleDragOver(index)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <GripVertical className="h-4 w-4 shrink-0 cursor-move text-muted-foreground" />
+                      <div className="flex-1 min-w-0 max-w-full overflow-hidden">
+                        <p className="truncate text-sm font-medium max-w-full">
+                          {marker.address}
+                        </p>
+                        {marker.driverId !== undefined &&
+                          driverRoutes.length > 0 && (
+                            <div className="flex gap-1 items-center overflow-hidden">
+                              {index === 0 ||
+                              driverRoutes.some(
+                                (route) =>
+                                  route.markers[0].latitude ===
+                                    marker.latitude &&
+                                  route.markers[0].longitude ===
+                                    marker.longitude
+                              ) ? (
+                                <span className="text-xs font-semibold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded whitespace-nowrap">
+                                  Start Location
+                                </span>
+                              ) : config.returnToStart &&
+                                driverRoutes.some(
+                                  (route) =>
+                                    route.markers.length > 1 &&
+                                    route.markers[route.markers.length - 1]
+                                      .latitude === marker.latitude &&
+                                    route.markers[route.markers.length - 1]
+                                      .longitude === marker.longitude &&
+                                    route.markers[0].latitude ===
+                                      marker.latitude &&
+                                    route.markers[0].longitude ===
+                                      marker.longitude
+                                ) ? (
+                                <span className="text-xs font-semibold px-1.5 py-0.5 bg-green-100 text-green-800 rounded whitespace-nowrap">
+                                  Return Location
+                                </span>
+                              ) : (
+                                <p
+                                  className="text-xs font-medium whitespace-nowrap"
+                                  style={{
+                                    color:
+                                      ROUTE_COLORS[
+                                        (marker.driverId || 0) %
+                                          ROUTE_COLORS.length
+                                      ],
+                                  }}
+                                >
+                                  Driver {(marker.driverId || 0) + 1}
+                                </p>
+                              )}
+                            </div>
                           )}
-                        </div>
-                      )}
-                    {marker.note && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        {marker.note}
-                      </p>
-                    )}
+                        {marker.note && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {marker.note}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0"
+                        onClick={() => handleRemoveAddress(index)}
+                      >
+                        <Trash className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center mt-4">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearRoute}
+                    >
+                      Clear All
+                    </Button>
                   </div>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveAddress(index)}
+                    onClick={calculateRoute}
+                    disabled={isCalculating || markers.length < 2}
                   >
-                    <Trash className="h-4 w-4 text-red-500" />
+                    {isCalculating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {showRouteOptions ? "Updating..." : "Calculating..."}
+                      </>
+                    ) : (
+                      <>
+                        <Bolt className="mr-2 h-4 w-4" />
+                        Optimize Route
+                      </>
+                    )}
                   </Button>
                 </div>
-              ))}
-            </div>
-
-            <div className="flex justify-between items-center mt-4">
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleClearRoute}>
-                  Clear All
-                </Button>
-              </div>
-              <Button
-                onClick={calculateRoute}
-                disabled={isCalculating || markers.length < 2}
-              >
-                {isCalculating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Calculating...
-                  </>
-                ) : (
-                  <>
-                    <Bolt className="mr-2 h-4 w-4" />
-                    Optimize Route
-                  </>
-                )}
-              </Button>
-            </div>
+              </>
+            )}
           </div>
         )}
 
@@ -1649,7 +1704,6 @@ export default function RoutePlanner() {
         </div>
 
         {/* New Directions Panel */}
-        {/* New Directions Panel with Updated Driver Dropdowns */}
         {driverRoutes.length > 0 && (
           <div className="rounded-xl bg-muted/50 p-4">
             {/* Main Directions Collapsible */}
@@ -1945,9 +1999,47 @@ export default function RoutePlanner() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
         {/* Other dialogs remain unchanged */}
       </div>
+
+      <Dialog open={showNoCreditsDialog} onOpenChange={setShowNoCreditsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Credits Required</DialogTitle>
+            <DialogDescription>
+              You need credits to optimize routes. Route optimization costs 10
+              credits per driver.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-between py-3">
+            <div className="flex items-center gap-2">
+              <Bolt className="h-5 w-5 text-primary" />
+              <span className="font-medium">
+                Required Credits: {10 * numDrivers}
+              </span>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Current Balance: {credit}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNoCreditsDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setShowNoCreditsDialog(false);
+                router.push("/dashboard/settings/billing");
+              }}
+            >
+              Purchase Credits
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Combined AlertDialog for both unreachable segments and max routes */}
       <AlertDialog

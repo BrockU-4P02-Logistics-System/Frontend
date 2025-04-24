@@ -12,7 +12,8 @@ import { useSearchParams } from 'next/navigation';
 jest.mock("next/navigation", () => ({
   useRouter() {
     return {
-      prefetch: () => null
+      prefetch: () => null,
+      push: jest.fn(), // Mock implementation for router.push
     };
   },
   useSearchParams: jest.fn(),
