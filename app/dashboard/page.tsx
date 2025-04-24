@@ -1209,8 +1209,7 @@ export default function RoutePlanner() {
       await removeCredits(cost);
       toast.success("Route saved successfully");
       handleSaveDialogClose();
-    } catch (error) {
-      toast.error("Failed to save route");
+   
     } finally {
       setIsSaving(false); // Reset saving state
     }

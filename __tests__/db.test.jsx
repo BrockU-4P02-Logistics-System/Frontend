@@ -42,4 +42,21 @@ describe('insert', () => {
     expect(insertedUser.email).toEqual('fake@mail');
   });
 
+  it('Insert 1000 accounts', async () => {
+
+    const users = db.collection('test_users');
+
+    for (let i = 0; i < 1000; i++) {
+
+      const mockUser = {username: 'test', email: 'fake@mail'+i, password: 'hash_pw'};
+      await users.insertOne(mockUser);
+  
+      const insertedUser = await users.findOne({email: 'fake@mail'+i});
+      expect(insertedUser).toEqual(mockUser);
+
+    }
+  }, 500000);
+
+
+
 });
