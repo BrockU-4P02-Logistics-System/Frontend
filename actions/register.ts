@@ -143,39 +143,55 @@ export const remove_vehicle = async (vehicle: any) => {
 
 export const save_route = async (auth: any, input: any, name: any) => {
   try {
-    // const inputPath = path.join('./', 'input.txt');
-    //const input = fs.readFileSync(inputPath, 'utf-8');
-    //console.log(input);
-
-    //connectDB();
-
-    //const client = mongodb.MongoClient;
     const url: any = MONGODB_URI;
-
     const client = new mongodb.MongoClient(url);
     await client.connect();
     const db = client.db("reroute");
-    const myobj: any = JSON.parse(input);
-    var route = (await db.collection("routes").insertOne(myobj)).insertedId;
-
-    //console.log(route);
-
+    
+    // Parse the input data
+    const routeData = JSON.parse(input);
+    
+    // Create a trimmed version that excludes large coordinate arrays
+    // but preserves direction information
+    const trimmedData = {
+      // Keep essential metadata
+      timestamp: routeData.timestamp,
+      config: routeData.config,
+      numDrivers: routeData.numDrivers,
+      
+      // Keep markers (stops) as they're essential and relatively small
+      markers: routeData.markers,
+      
+      // For driver routes, keep all essential data except coordinate arrays
+      driverRoutes: routeData.driverRoutes?.map((route: any) => ({
+        driverId: route.driverId,
+        markers: route.markers,
+        totalDistance: route.totalDistance,
+        totalDuration: route.totalDuration,
+        color: route.color,
+        directions: route.directions,
+        // Set empty arrays for coordinates - these will be regenerated on load
+        routePath: [], 
+        straightLinePaths: []
+      }))
+    };
+    
+    // Save the trimmed data to MongoDB
+    var route = (await db.collection("routes").insertOne(trimmedData)).insertedId;
+    
+    // Update the user's routes list
     await User.findOneAndUpdate(
       { email: auth },
       { $push: { routes: [name, route] } }
     );
 
-    //var id = '67cb5d55570913c32d9e1550';
-    // var query = { _id: new mongodb.ObjectId(id)};
-    //var doc = await db.collection("routes").findOne(route); // Find route by id
-    //console.log(doc);
-
     client.close();
+    return true;
   } catch (e) {
     console.log(e);
+    return false;
   }
 };
-
 export const get_routes = async (auth: any) => {
   try {
     connectDB();
@@ -225,62 +241,33 @@ export const load_route = async (routeID: any) => {
     const db = client.db("reroute");
     var query = new mongodb.ObjectId(routeID);
 
+    // Get the full route document without _id field
     const data = await db
       .collection("routes")
       .findOne(query, { projection: { _id: 0 } });
-    const markers = await db
-      .collection("routes")
-      .findOne(query, { projection: { markers: 1, _id: 0 } });
-    const config = await db
-      .collection("routes")
-      .findOne(query, { projection: { config: 1, _id: 0 } });
-    const driverRoutes = await db
-      .collection("routes")
-      .findOne(query, { projection: { driverRoutes: 1, _id: 0 } });
-    const numDrivers = await db
-      .collection("routes")
-      .findOne(query, { projection: { numDrivers: 1, _id: 0 } });
-    const timestamp = await db
-      .collection("routes")
-      .findOne(query, { projection: { timestamp: 1, _id: 0 } });
-
-    /* Single TSP
-        const routePath = await db.collection("routes").findOne(query, { projection: { routePath: 1, _id: 0 } });
-        const routeDirections = await db.collection("routes").findOne(query, { projection: { routeDirections: 1, _id: 0 } });
-        const totalRouteDistance = await db.collection("routes").findOne(query, { projection: { totalRouteDistance: 1, _id: 0 } });
-        const totalRouteDuration = await db.collection("routes").findOne(query, { projection: { totalRouteDuration: 1, _id: 0 } });
-        */
-    /*
-        sessionStorage.setItem('savedConfig', JSON.stringify(config));
-        sessionStorage.setItem('savedMarkers', JSON.stringify(markers));
-        sessionStorage.setItem('savedRoutePath', JSON.stringify(routePath));
-        sessionStorage.setItem('savedRouteDirections', JSON.stringify(routeDirections));
-        sessionStorage.setItem('savedRouteDistance', JSON.stringify(totalRouteDistance));
-        sessionStorage.setItem('savedRouteDuration', JSON.stringify(totalRouteDuration));
-        sessionStorage.setItem('savedTimestamp', JSON.stringify(timestamp));
-        */
-
+    
+    if (!data) {
+      throw new Error("Route not found");
+    }
+    
+    // No need to modify the data - it already has the empty arrays
+    // for routePath and straightLinePaths from when it was saved
+    // And it preserves all the direction information
+    
     const route_arr = [
       JSON.stringify(data),
-      JSON.stringify(markers),
-      JSON.stringify(config),
-      JSON.stringify(driverRoutes),
-      JSON.stringify(numDrivers),
-      JSON.stringify(timestamp),
-
-      /*JSON.stringify(routePath), 
-            JSON.stringify(routeDirections), 
-            JSON.stringify(totalRouteDistance), 
-            JSON.stringify(totalRouteDuration), 
-            */
+      JSON.stringify({ markers: data.markers }),
+      JSON.stringify({ config: data.config }),
+      JSON.stringify({ driverRoutes: data.driverRoutes }),
+      JSON.stringify({ numDrivers: data.numDrivers }),
+      JSON.stringify({ timestamp: data.timestamp }),
     ];
 
-    const route = JSON.stringify(data);
-    //console.log("DB: " + route);
-    //console.log("NEW:" + JSON.stringify(JSON.parse(route)[0]))
+    client.close();
     return route_arr;
   } catch (e) {
     console.log(e);
+    return [];
   }
 };
 

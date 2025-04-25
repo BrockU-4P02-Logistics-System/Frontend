@@ -311,55 +311,75 @@ export default function RoutePlanner() {
         console.log("No saved route found in sessionStorage.");
         return;
       }
-
+  
       const savedRouteJson = decompress(savedRouteItem);
       if (!savedRouteJson) {
         console.log("Failed to decompress saved route.");
         return;
       }
-
+  
       const savedMarkersJson = sessionStorage.getItem("savedMarkers");
       const savedConfigJson = sessionStorage.getItem("savedConfig");
-
+  
       // Handle driver routes safely
       const savedDriverRoutesItem = sessionStorage.getItem("savedDriverRoutes");
       let savedDriverRoutesJson = null;
       if (savedDriverRoutesItem) {
         savedDriverRoutesJson = decompress(savedDriverRoutesItem);
       }
-
+  
       const savedNumDriversJson = sessionStorage.getItem("savedNumDrivers");
-
+  
       // Parse and set markers
+      let parsedMarkers: MarkerLocation[] = [];
       if (savedMarkersJson) {
-        const parsedMarkers = JSON.parse(savedMarkersJson) as MarkerLocation[];
+        parsedMarkers = JSON.parse(savedMarkersJson) as MarkerLocation[];
         setMarkers(parsedMarkers);
       }
-
+  
       // Parse and set config
       if (savedConfigJson) {
         const parsedConfig = JSON.parse(savedConfigJson) as RouteConfiguration;
         setConfig(parsedConfig);
       }
-
+  
       // Parse and set driver routes
       if (savedDriverRoutesJson) {
         const parsedDriverRoutes = JSON.parse(
           savedDriverRoutesJson
         ) as DriverRoute[];
-        setDriverRoutes(parsedDriverRoutes);
+        
+        // Check if routes are missing coordinate data and regenerate if needed
+        const hasRoutePathData = parsedDriverRoutes.some(
+          route => route.routePath && route.routePath.length > 0
+        );
+        
+        if (!hasRoutePathData && parsedMarkers.length > 0) {
+          console.log("Coordinate data missing, will regenerate from markers");
+          // Set driver routes but don't update view yet
+          setDriverRoutes(parsedDriverRoutes);
+          
+          // Process each driver's route to regenerate coordinates
+          setIsCalculating(true);
+          await processDriverRoutes(parsedMarkers);
+          setIsCalculating(false);
+        } else {
+          // If route paths exist, use them directly
+          setDriverRoutes(parsedDriverRoutes);
+        }
       }
-
+  
       // Parse and set number of drivers
       if (savedNumDriversJson) {
         const parsedNumDrivers = JSON.parse(savedNumDriversJson) as number;
         setNumDrivers(parsedNumDrivers);
       }
-
+  
       // Select the first driver
       handleDriverSelect(0);
     } catch (err) {
       console.error("Error loading route:", err);
+      toast.error("Failed to load saved route");
     }
   }, []);
 
@@ -806,10 +826,10 @@ export default function RoutePlanner() {
   const processDriverRoutes = async (optimizedMarkers: MarkerLocation[]) => {
     const directionsService = new google.maps.DirectionsService();
     const driverRoutesMap = new Map<number, MarkerLocation[]>();
-
+  
     // Get the starting location (first marker entered by user)
     const startLocation = optimizedMarkers[0];
-
+  
     // Group markers by driver ID
     optimizedMarkers.forEach((marker) => {
       // Make sure undefined driverId is treated as 0
@@ -826,23 +846,23 @@ export default function RoutePlanner() {
               : startLocation.note || "Start point",
         });
       }
-
+  
       // Only add the marker if it's not duplicating the start location
       const isSameAsStart =
         Math.abs(marker.latitude - startLocation.latitude) < 0.000001 &&
         Math.abs(marker.longitude - startLocation.longitude) < 0.000001;
-
+  
       if (!isSameAsStart || marker.driverId !== driverId) {
         driverRoutesMap.get(driverId)?.push(marker);
       }
     });
-
+  
     const routes: DriverRoute[] = [];
     const problematicDrivers: {
       driverId: number;
       unreachableRoutes: { origin: string; destination: string }[];
     }[] = [];
-
+  
     // Process each driver's route
     for (const [driverId, driverMarkers] of driverRoutesMap.entries()) {
       // Only process if driver has at least 2 markers (start and end)
@@ -851,31 +871,31 @@ export default function RoutePlanner() {
         const routeMarkers = [...driverMarkers];
         const firstMarker = routeMarkers[0];
         const lastMarker = routeMarkers[routeMarkers.length - 1];
-
+  
         // Check if we need to add the start location as the end point
         const needToAddReturnStop =
           config.returnToStart &&
           (Math.abs(lastMarker.latitude - firstMarker.latitude) >= 0.000001 ||
             Math.abs(lastMarker.longitude - firstMarker.longitude) >= 0.000001);
-
+  
         if (needToAddReturnStop) {
           routeMarkers.push({
             ...firstMarker,
             note: "Return to start",
           });
         }
-
+  
         // Check for unreachable locations
         const { unreachableRoutes } = await detectUnreachableLocations(
           routeMarkers,
           directionsService,
           config
         );
-
+  
         if (unreachableRoutes.length > 0) {
           problematicDrivers.push({ driverId, unreachableRoutes });
         }
-
+  
         // Get both road paths and straight lines for unreachable segments - ONLY ONCE
         console.log("Getting route paths for driver:", driverId);
         const { roadPath, unreachablePaths } = await getRoutePathFromDirections(
@@ -883,11 +903,11 @@ export default function RoutePlanner() {
         );
         console.log("Road path length:", roadPath.length);
         console.log("Unreachable paths:", unreachablePaths);
-
+  
         // Get directions info - ONLY ONCE
         const { directions, totalDistance, totalDuration } =
           await getDetailedDirections(routeMarkers);
-
+  
         routes.push({
           driverId,
           markers: routeMarkers,
@@ -900,27 +920,27 @@ export default function RoutePlanner() {
         });
       }
     }
-
+  
     // Handle problematic routes - alert but still show route
     if (problematicDrivers.length > 0) {
       let detailedMessage = "ALERT: Problematic Route(s) Detected\n\n";
-
+  
       problematicDrivers.forEach(({ driverId, unreachableRoutes }) => {
         detailedMessage += `Issues with Driver ${driverId + 1}:\n`;
-
+  
         unreachableRoutes.forEach(({ origin, destination }) => {
           detailedMessage += `- Cannot find road route from "${origin}" to "${destination}" - showing direct line instead\n`;
         });
-
+  
         detailedMessage += "\n";
       });
-
+  
       detailedMessage +=
         "For unreachable locations, a straight line will be shown. Road routes will be shown where available.";
       setUnreachableAlertMessage(detailedMessage);
       setShowUnreachableAlert(true);
     }
-
+  
     // Debug the routes that will be set
     console.log("Setting driver routes:", routes);
     routes.forEach((route, idx) => {
@@ -930,14 +950,14 @@ export default function RoutePlanner() {
         }, straightLinePaths: ${route.straightLinePaths?.length || 0}`
       );
     });
-
+  
     setDriverRoutes(routes);
-
+  
     // Update numDrivers to match the actual number of drivers detected
     if (routes.length > 0) {
       setNumDrivers(routes.length);
     }
-
+  
     // If we have routes, select the first one
     if (routes.length > 0) {
       setSelectedDriverId(routes[0].driverId);
@@ -1160,6 +1180,9 @@ export default function RoutePlanner() {
   }
   const [showDriverCountAlert, setShowDriverCountAlert] = useState(false);
   const [driverCountMessage, setDriverCountMessage] = useState("");
+
+
+  
   const handleSaveRoute = async () => {
     const cost = 10;
     if (!log) {
@@ -1233,21 +1256,20 @@ export default function RoutePlanner() {
 
   const handleDriverSelect = (driverId: number) => {
     setSelectedDriverId(driverId);
-
+  
     // Update the displayed route information
     const driverRoute = driverRoutes.find(
       (route) => route.driverId === driverId
     );
-
+  
     if (driverRoute) {
       updateRouteView(driverRoute);
-
+  
       // Pass the route configuration here too
       const urls = generateGoogleMapsRouteUrls(driverRoute.markers, config);
       setMapURLs(urls);
     }
   };
-
   const handleDriverCountChange = (value: string) => {
     const count = parseInt(value, 10);
     if (!isNaN(count) && count >= 1 && count <= maxDrivers) {
