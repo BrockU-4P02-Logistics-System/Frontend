@@ -141,7 +141,49 @@ export const remove_vehicle = async (vehicle: any) => {
   }
 };
 
-export const save_route = async (auth: any, input: any, name: any) => {
+"use server";
+// This goes in actions/register.ts
+
+// Define interfaces for the route data structure
+interface RouteStep {
+  instruction: string;
+  distance: string;
+  duration: string;
+}
+
+interface MarkerLocation {
+  address: string;
+  latitude: number;
+  longitude: number;
+  note?: string;
+  arrivalTime?: string;
+  departureTime?: string;
+  driverId?: number;
+}
+
+interface DriverRoute {
+  driverId: number;
+  markers: MarkerLocation[];
+  routePath: Array<{ lat: number; lng: number }>;
+  straightLinePaths?: Array<{
+    origin: { lat: number; lng: number };
+    destination: { lat: number; lng: number };
+  }>;
+  directions: RouteStep[];
+  totalDistance: string;
+  totalDuration: string;
+  color: string;
+}
+
+interface RouteData {
+  timestamp: string;
+  config: Record<string, unknown>;
+  numDrivers: number;
+  markers: MarkerLocation[];
+  driverRoutes: DriverRoute[];
+}
+
+export const save_route = async (auth: string, input: string, name: string) => {
   try {
     const url: any = MONGODB_URI;
     const client = new mongodb.MongoClient(url);
@@ -149,7 +191,7 @@ export const save_route = async (auth: any, input: any, name: any) => {
     const db = client.db("reroute");
     
     // Parse the input data
-    const routeData = JSON.parse(input);
+    const routeData = JSON.parse(input) as RouteData;
     
     // Create a trimmed version that excludes large coordinate arrays
     // but preserves direction information
@@ -163,7 +205,7 @@ export const save_route = async (auth: any, input: any, name: any) => {
       markers: routeData.markers,
       
       // For driver routes, keep all essential data except coordinate arrays
-      driverRoutes: routeData.driverRoutes?.map((route: any) => ({
+      driverRoutes: routeData.driverRoutes?.map((route: DriverRoute) => ({
         driverId: route.driverId,
         markers: route.markers,
         totalDistance: route.totalDistance,

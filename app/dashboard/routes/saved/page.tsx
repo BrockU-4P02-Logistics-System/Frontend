@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSession } from 'next-auth/react';
@@ -29,6 +29,20 @@ interface RouteDetails {
   timestamp: string;
   locations: number;
   drivers: number;
+  directionCount?: number;
+}
+
+// Define a type for the route result from the backend
+interface RouteData {
+  markers?: unknown[];
+  config?: unknown;
+  driverRoutes?: Array<{
+    directions?: unknown[];
+    [key: string]: unknown;
+  }>;
+  numDrivers?: number;
+  timestamp?: string;
+  [key: string]: unknown;
 }
 
 export default function SavedRoutes() {
@@ -43,13 +57,82 @@ export default function SavedRoutes() {
 
     const userEmail = session?.user?.email;
 
+    // Wrap refresh in useCallback to use it safely in useEffect
+    const refresh = useCallback(async () => {
+      setIsLoading(true);
+      try {
+        const email = session?.user?.email;
+        if (!email) return;
+    
+        const listJson = await get_routes(email);
+    
+        // Check if listJson is defined before parsing
+        if (!listJson) {
+          console.error("Failed to get routes");
+          return;
+        }
+    
+        interface ParsedResponse {
+          routes: RouteTuple[];
+        }
+    
+        const parsed = JSON.parse(listJson) as ParsedResponse;
+        setData(Array.from(parsed.routes || []));
+        
+        // Load additional details for each route
+        const routeDetailsPromises = parsed.routes?.map(async (route) => {
+          try {
+            // Load just the basic info for the route list view
+            const routeData = await load_route(route[1]);
+            if (routeData && routeData.length > 0) {
+              const basicInfo = JSON.parse(routeData[0]) as RouteData;
+              return {
+                name: route[0],
+                id: route[1],
+                timestamp: basicInfo.timestamp ? new Date(basicInfo.timestamp as string).toLocaleDateString() : 'Unknown date',
+                locations: basicInfo.markers?.length || 0,
+                drivers: basicInfo.numDrivers || 1,
+                // Add direction count to show that directions are preserved
+                directionCount: basicInfo.driverRoutes?.reduce(
+                  (total, route) => total + (route.directions?.length || 0), 
+                  0
+                ) || 0
+              };
+            }
+          } catch (error) {
+            console.error(`Error loading details for route ${route[0]}:`, error);
+          }
+          
+          // Return default values if loading fails
+          return {
+            name: route[0],
+            id: route[1],
+            timestamp: 'Unknown date',
+            locations: 0,
+            drivers: 1,
+            directionCount: 0
+          };
+        });
+        
+        if (routeDetailsPromises?.length) {
+          const routeDetails = await Promise.all(routeDetailsPromises);
+          setRoutes(routeDetails);
+        }
+      } catch (error) {
+        console.error("Error refreshing routes:", error);
+        toast.error("Failed to load saved routes");
+      } finally {
+        setIsLoading(false);
+      }
+    }, [session?.user?.email]); // Added session?.user?.email as a dependency
+
     useEffect(() => {
         if (status === "unauthenticated") {
             router.push("/auth/login");
         } else if (status === "authenticated") {
             refresh();
         }
-    }, [status, router]);
+    }, [status, router, refresh]); // Added refresh as a dependency
 
     const handleDeleteClick = (route: RouteTuple) => {
         setRouteToDelete(route);
@@ -88,7 +171,7 @@ export default function SavedRoutes() {
           sessionStorage.setItem('savedLoadedRoute', compress(result[0]));
           
           // Parse the first item to get the route data
-          const parsed = JSON.parse(result[0]);
+          const parsed = JSON.parse(result[0]) as RouteData;
           
           // Store the individual components
           sessionStorage.setItem('savedConfig', JSON.stringify(parsed.config));
@@ -105,76 +188,7 @@ export default function SavedRoutes() {
         } finally {
           setLoadingRouteId(null);
         }
-      };
-
-      const refresh = async () => {
-        setIsLoading(true);
-        try {
-          const email = session?.user?.email;
-          if (!email) return;
-      
-          const listJson = await get_routes(email);
-      
-          // Check if listJson is defined before parsing
-          if (!listJson) {
-            console.error("Failed to get routes");
-            return;
-          }
-      
-          interface ParsedResponse {
-            routes: RouteTuple[];
-          }
-      
-          const parsed = JSON.parse(listJson) as ParsedResponse;
-          setData(Array.from(parsed.routes || []));
-          
-          // Load additional details for each route
-          const routeDetailsPromises = parsed.routes?.map(async (route) => {
-            try {
-              // Load just the basic info for the route list view
-              const routeData = await load_route(route[1]);
-              if (routeData && routeData.length > 0) {
-                const basicInfo = JSON.parse(routeData[0]);
-                return {
-                  name: route[0],
-                  id: route[1],
-                  timestamp: basicInfo.timestamp ? new Date(basicInfo.timestamp).toLocaleDateString() : 'Unknown date',
-                  locations: basicInfo.markers?.length || 0,
-                  drivers: basicInfo.numDrivers || 1,
-                  // Add direction count to show that directions are preserved
-                  directionCount: basicInfo.driverRoutes?.reduce(
-                    (total: number, route: any) => total + (route.directions?.length || 0), 
-                    0
-                  ) || 0
-                };
-              }
-            } catch (error) {
-              console.error(`Error loading details for route ${route[0]}:`, error);
-            }
-            
-            // Return default values if loading fails
-            return {
-              name: route[0],
-              id: route[1],
-              timestamp: 'Unknown date',
-              locations: 0,
-              drivers: 1,
-              directionCount: 0
-            };
-          });
-          
-          if (routeDetailsPromises?.length) {
-            const routeDetails = await Promise.all(routeDetailsPromises);
-            setRoutes(routeDetails);
-          }
-        } catch (error) {
-          console.error("Error refreshing routes:", error);
-          toast.error("Failed to load saved routes");
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      
+    };
 
     if (isLoading) {
         return (
