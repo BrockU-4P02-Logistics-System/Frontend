@@ -353,14 +353,6 @@ export async function POST(req: NextRequest) {
     }
 }
 
-// Set config for Vercel
-export const config = {
-    maxDuration: 300, // 5 minutes in seconds
-    api: {
-        bodyParser: {
-            sizeLimit: '2mb' // Adjust if needed based on your payload size
-        }
-    }
-};
-
+// Configure route options using the new App Router syntax
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // 5 minutes in seconds
