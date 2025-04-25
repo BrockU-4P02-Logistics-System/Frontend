@@ -183,6 +183,7 @@ interface RouteData {
   driverRoutes: DriverRoute[];
 }
 
+"use server"
 export const save_route = async (auth: string, input: string, name: string) => {
   try {
     const url: any = MONGODB_URI;
