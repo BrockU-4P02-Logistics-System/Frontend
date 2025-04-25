@@ -83,9 +83,13 @@ type RabbitMQResponse = {
 
 const RABBITMQ_URL = 'amqp://jordan:4p02@40.233.88.212';
 const QUEUE_NAME = 'logistic-request';
+const TIMEOUT_MS = 270000; // 4.5 minutes (leaving buffer for the 5-minute limit)
 
 export async function POST(req: NextRequest) {
     console.log("Received request");
+    let connection: amqp.Connection | null = null;
+    let channel: amqp.Channel | null = null;
+    
     try {
         const body: RequestBody = await req.json();
 
@@ -117,8 +121,8 @@ export async function POST(req: NextRequest) {
 
         // Connect to RabbitMQ
         console.log("Connecting to RabbitMQ");
-        const connection = await amqp.connect(RABBITMQ_URL);
-        const channel = await connection.createChannel();
+        connection = await amqp.connect(RABBITMQ_URL);
+        channel = await connection.createChannel();
         console.log("Connected to RabbitMQ");
 
         // Ensure queue exists
@@ -176,25 +180,30 @@ export async function POST(req: NextRequest) {
             }
         );
 
+        // Setup cleanup function
+        const cleanup = async () => {
+            try {
+                if (channel) await channel.close();
+                if (connection) await connection.close();
+                console.log("RabbitMQ resources cleaned up");
+            } catch (err) {
+                console.error("Error during cleanup:", err);
+            }
+        };
+
+        // Wait for response with timeout
         const response: RabbitMQResponse = await new Promise((resolve, reject) => {
-            const cleanup = () => {
-                clearTimeout(timeout);
-                channel.close().catch(console.error);
-                connection.close().catch(console.error);
-            };
+            const timeoutId = setTimeout(() => {
+                reject(new Error('Processing timeout after ' + (TIMEOUT_MS / 1000) + ' seconds'));
+            }, TIMEOUT_MS);
 
-            const timeout = setTimeout(() => {
-                cleanup();
-                reject(new Error('Processing timeout'));
-            }, 150000);
-
-            channel.consume(replyTo, (msg) => {
+            channel!.consume(replyTo, (msg) => {
                 if (!msg) return;
 
                 if (msg.properties.correlationId !== correlationId) {
                     // For messages that don't belong to this request,
                     // simply acknowledge them to clear them out.
-                    channel.ack(msg);
+                    channel!.ack(msg);
                     return;
                 }
 
@@ -204,18 +213,21 @@ export async function POST(req: NextRequest) {
                     if (content?.error) {
                         throw new Error(`Backend error: ${content.error}`);
                     }
-                    channel.ack(msg);
-                    cleanup();
+                    channel!.ack(msg);
+                    clearTimeout(timeoutId);
                     resolve(content);
                 } catch (err) {
                     console.error("Error parsing backend response:", err);
                     // Acknowledge even on error so the message isn't requeued.
-                    channel.ack(msg);
-                    cleanup();
+                    channel!.ack(msg);
+                    clearTimeout(timeoutId);
                     reject(err);
                 }
             });
         });
+
+        // Make sure to clean up RabbitMQ resources
+        await cleanup();
 
         // Create lookup map for original addresses
         const addressMap = new Map<string, MarkerLocation>();
@@ -325,11 +337,30 @@ export async function POST(req: NextRequest) {
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
         console.error('Error processing request:', errorMessage);
+        
+        // Make sure to clean up RabbitMQ resources in case of error
+        try {
+            if (channel) await channel.close();
+            if (connection) await connection.close();
+        } catch (cleanupError) {
+            console.error('Error during connection cleanup:', cleanupError);
+        }
+        
         return NextResponse.json(
             { error: 'Internal server error', details: errorMessage },
             { status: 500 }
         );
     }
 }
+
+// Set config for Vercel
+export const config = {
+    maxDuration: 300, // 5 minutes in seconds
+    api: {
+        bodyParser: {
+            sizeLimit: '2mb' // Adjust if needed based on your payload size
+        }
+    }
+};
 
 export const dynamic = 'force-dynamic';
