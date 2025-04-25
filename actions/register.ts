@@ -1,4 +1,5 @@
 "use server";
+
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import mongoose from "mongoose";
@@ -6,6 +7,45 @@ import fs from "fs";
 import path from "path";
 import * as mongodb from "mongodb";
 const { MONGODB_URI } = process.env;
+
+// Define interfaces for the route data structure
+interface RouteStep {
+  instruction: string;
+  distance: string;
+  duration: string;
+}
+
+interface MarkerLocation {
+  address: string;
+  latitude: number;
+  longitude: number;
+  note?: string;
+  arrivalTime?: string;
+  departureTime?: string;
+  driverId?: number;
+}
+
+interface DriverRoute {
+  driverId: number;
+  markers: MarkerLocation[];
+  routePath: Array<{ lat: number; lng: number }>;
+  straightLinePaths?: Array<{
+    origin: { lat: number; lng: number };
+    destination: { lat: number; lng: number };
+  }>;
+  directions: RouteStep[];
+  totalDistance: string;
+  totalDuration: string;
+  color: string;
+}
+
+interface RouteData {
+  timestamp: string;
+  config: Record<string, unknown>;
+  numDrivers: number;
+  markers: MarkerLocation[];
+  driverRoutes: DriverRoute[];
+}
 
 export const register = async (values: any) => {
   let {
@@ -141,49 +181,6 @@ export const remove_vehicle = async (vehicle: any) => {
   }
 };
 
-"use server";
-// This goes in actions/register.ts
-
-// Define interfaces for the route data structure
-interface RouteStep {
-  instruction: string;
-  distance: string;
-  duration: string;
-}
-
-interface MarkerLocation {
-  address: string;
-  latitude: number;
-  longitude: number;
-  note?: string;
-  arrivalTime?: string;
-  departureTime?: string;
-  driverId?: number;
-}
-
-interface DriverRoute {
-  driverId: number;
-  markers: MarkerLocation[];
-  routePath: Array<{ lat: number; lng: number }>;
-  straightLinePaths?: Array<{
-    origin: { lat: number; lng: number };
-    destination: { lat: number; lng: number };
-  }>;
-  directions: RouteStep[];
-  totalDistance: string;
-  totalDuration: string;
-  color: string;
-}
-
-interface RouteData {
-  timestamp: string;
-  config: Record<string, unknown>;
-  numDrivers: number;
-  markers: MarkerLocation[];
-  driverRoutes: DriverRoute[];
-}
-
-"use server"
 export const save_route = async (auth: string, input: string, name: string) => {
   try {
     const url: any = MONGODB_URI;
@@ -235,6 +232,7 @@ export const save_route = async (auth: string, input: string, name: string) => {
     return false;
   }
 };
+
 export const get_routes = async (auth: any) => {
   try {
     connectDB();
