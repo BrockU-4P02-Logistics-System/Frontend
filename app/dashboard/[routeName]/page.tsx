@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useJsApiLoader } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +48,12 @@ import {
   remove_credits,
   save_route,
 } from "@/actions/register";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -85,7 +90,10 @@ interface DriverRoute {
   driverId: number;
   markers: MarkerLocation[];
   routePath: google.maps.LatLngLiteral[];
-  straightLinePaths: { origin: google.maps.LatLngLiteral; destination: google.maps.LatLngLiteral }[];
+  straightLinePaths: {
+    origin: google.maps.LatLngLiteral;
+    destination: google.maps.LatLngLiteral;
+  }[];
   directions: RouteStep[];
   totalDistance: string;
   totalDuration: string;
@@ -136,7 +144,10 @@ export default function RoutePlanner() {
   const [selectedDriverId, setSelectedDriverId] = useState<number | null>(null);
   const [routePath, setRoutePath] = useState<google.maps.LatLngLiteral[]>([]);
   const [straightLinePaths, setStraightLinePaths] = useState<
-    { origin: google.maps.LatLngLiteral; destination: google.maps.LatLngLiteral }[]
+    {
+      origin: google.maps.LatLngLiteral;
+      destination: google.maps.LatLngLiteral;
+    }[]
   >([]);
   const [totalRouteDistance, setTotalRouteDistance] = useState("");
   const [isDestinationsOpen, setIsDestinationsOpen] = useState(true);
@@ -145,7 +156,9 @@ export default function RoutePlanner() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showRouteOptions, setShowRouteOptions] = useState(false);
   const [expandedDirections, setExpandedDirections] = useState(false);
-  const [expandedDrivers, setExpandedDrivers] = useState<Set<number>>(new Set());
+  const [expandedDrivers, setExpandedDrivers] = useState<Set<number>>(
+    new Set()
+  );
   const [mapResetKey, setMapKey] = useState(Date.now());
   const [showExport, setShowExport] = useState(false);
   const [mapsUrls, setMapURLs] = useState<string[]>([]);
@@ -212,7 +225,7 @@ export default function RoutePlanner() {
       router.push("/auth/login");
       return;
     }
-  
+
     setIsCalculating(true);
     try {
       const routeData = await load_route_name(name, log);
@@ -220,10 +233,10 @@ export default function RoutePlanner() {
         toast.info(`No route named "${name}" found`);
         return;
       }
-  
+
       const parsedData: ProcessRouteResponse = JSON.parse(routeData);
       console.log("Parsed route data:", parsedData);
-  
+
       // Extract markers from the JSON data
       let markersFromJson: MarkerLocation[] = [];
       if (parsedData.routes) {
@@ -251,26 +264,36 @@ export default function RoutePlanner() {
           departureTime: marker.departureTime || "",
         }));
       }
-  
+
       const validMarkers = markersFromJson.filter((marker) => {
-        const isValidLatitude = marker.latitude >= -90 && marker.latitude <= 90 && marker.latitude !== 0;
-        const isValidLongitude = marker.longitude >= -180 && marker.longitude <= 180 && marker.longitude !== 0;
+        const isValidLatitude =
+          marker.latitude >= -90 &&
+          marker.latitude <= 90 &&
+          marker.latitude !== 0;
+        const isValidLongitude =
+          marker.longitude >= -180 &&
+          marker.longitude <= 180 &&
+          marker.longitude !== 0;
         if (!isValidLatitude || !isValidLongitude) {
-          console.warn(`Invalid coordinates for marker: ${marker.address}, Lat: ${marker.latitude}, Lng: ${marker.longitude}`);
+          console.warn(
+            `Invalid coordinates for marker: ${marker.address}, Lat: ${marker.latitude}, Lng: ${marker.longitude}`
+          );
           return false;
         }
         return true;
       });
-  
+
       const sortedMarkers = validMarkers
         .filter(
           (marker, index, self) =>
             self.findIndex(
-              (m) => m.latitude === marker.latitude && m.longitude === marker.longitude
+              (m) =>
+                m.latitude === marker.latitude &&
+                m.longitude === marker.longitude
             ) === index
         )
         .sort((a, b) => a.order - b.order);
-  
+
       if (sortedMarkers.length < 2) {
         console.warn("Not enough valid markers to generate a route");
         toast.error("Not enough valid locations to load the route");
@@ -278,17 +301,17 @@ export default function RoutePlanner() {
         setMarkers([]);
         return;
       }
-  
+
       // Set markers and other configurations
       setMarkers(sortedMarkers);
       setConfig(DEFAULT_CONFIG);
       setFormData({ name });
       setRouteHistory([]);
-      
+
       // CHANGE HERE: Instead of calling calculateRoute(), directly process the loaded routes
       setNumDrivers(parsedData.totalDrivers || 1);
       await processDriverRoutes(sortedMarkers);
-      
+
       toast.success("Route loaded successfully");
     } catch (error) {
       console.error("Error loading route:", error);
@@ -298,7 +321,9 @@ export default function RoutePlanner() {
     }
   };
 
-  const geocodeAddress = async (address: string): Promise<MarkerLocation | null> => {
+  const geocodeAddress = async (
+    address: string
+  ): Promise<MarkerLocation | null> => {
     if (!isLoaded) return null;
     const geocoder = new google.maps.Geocoder();
     try {
@@ -315,13 +340,16 @@ export default function RoutePlanner() {
           departureTime: "",
         };
       }
-    } catch {}  
-    
+    } catch {}
+
     return null;
   };
 
   const handleAddAddress = async () => {
-    if (newAddress.trim() && !markers.some((m) => m.address === newAddress.trim())) {
+    if (
+      newAddress.trim() &&
+      !markers.some((m) => m.address === newAddress.trim())
+    ) {
       const markerLocation = await geocodeAddress(newAddress.trim());
       if (markerLocation) {
         saveToHistory();
@@ -367,9 +395,10 @@ export default function RoutePlanner() {
   };
 
   const saveToHistory = () => {
-    setRouteHistory((prev: MarkerLocation[][]) =>
-      [...prev, markers.map((marker) => ({ ...marker }))]
-    );
+    setRouteHistory((prev: MarkerLocation[][]) => [
+      ...prev,
+      markers.map((marker) => ({ ...marker })),
+    ]);
   };
 
   const handleUndo = () => {
@@ -392,19 +421,21 @@ export default function RoutePlanner() {
 
   const handleDriverSelect = (driverId: number) => {
     if (selectedDriverId === driverId) return;
-    
+
     // Check if driverRoutes is populated
     if (!driverRoutes || driverRoutes.length === 0) {
       console.warn("No driver routes available");
       return;
     }
-    
-    const driverRoute = driverRoutes.find((route) => route.driverId === driverId);
+
+    const driverRoute = driverRoutes.find(
+      (route) => route.driverId === driverId
+    );
     if (!driverRoute) {
       console.warn(`Driver ${driverId + 1} route not found`);
       return;
     }
-    
+
     setSelectedDriverId(driverId);
     setRoutePath(driverRoute.routePath || []);
     setStraightLinePaths(driverRoute.straightLinePaths || []);
@@ -412,42 +443,50 @@ export default function RoutePlanner() {
     setMapURLs(generateGoogleMapsRouteUrls(driverRoute.markers, config));
     setMapKey(Date.now());
   };
-  
 
   const getRoutePathAndDirections = async (
     markers: MarkerLocation[],
     retryCount = 3
   ): Promise<{
     roadPath: google.maps.LatLngLiteral[];
-    straightLinePaths: { origin: google.maps.LatLngLiteral; destination: google.maps.LatLngLiteral }[];
+    straightLinePaths: {
+      origin: google.maps.LatLngLiteral;
+      destination: google.maps.LatLngLiteral;
+    }[];
     directions: RouteStep[];
     totalDistance: string;
     totalDuration: string;
   }> => {
-  
-  
     const directionsService = new google.maps.DirectionsService();
     let roadPath: google.maps.LatLngLiteral[] = [];
-    const straightLinePaths: { origin: google.maps.LatLngLiteral; destination: google.maps.LatLngLiteral }[] = [];
+    const straightLinePaths: {
+      origin: google.maps.LatLngLiteral;
+      destination: google.maps.LatLngLiteral;
+    }[] = [];
     let directions: RouteStep[] = [];
     let totalDistance = 0;
     let totalDuration = 0;
-  
+
     // Use a smaller waypoint batch size to ensure more connected paths
     const waypointBatchSize = 10; // Max waypoints per API call
-    
+
     if (markers.length <= waypointBatchSize + 2) {
       // If we have a small number of markers, we can process in a single request
       try {
         const origin = { lat: markers[0].latitude, lng: markers[0].longitude };
-        const destination = { lat: markers[markers.length - 1].latitude, lng: markers[markers.length - 1].longitude };
-        
+        const destination = {
+          lat: markers[markers.length - 1].latitude,
+          lng: markers[markers.length - 1].longitude,
+        };
+
         // Create waypoints from intermediate markers
-        const waypoints = markers.slice(1, markers.length - 1).map(marker => ({
-          location: { lat: marker.latitude, lng: marker.longitude },
-          stopover: true
-        }));
-        
+        const waypoints = markers
+          .slice(1, markers.length - 1)
+          .map((marker) => ({
+            location: { lat: marker.latitude, lng: marker.longitude },
+            stopover: true,
+          }));
+
         const result = await directionsService.route({
           origin,
           destination,
@@ -457,17 +496,24 @@ export default function RoutePlanner() {
           avoidFerries: config.avoidFerries,
           avoidTolls: config.avoidTolls,
           optimizeWaypoints: false, // Don't reorder our points
-          drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
+          drivingOptions: {
+            departureTime: new Date(),
+            trafficModel: google.maps.TrafficModel.BEST_GUESS,
+          },
         });
-        
+
         if (result.routes[0]?.legs) {
           // Process all legs to create a single continuous path
           for (const leg of result.routes[0].legs) {
             // Extract path points
-            const legPath = leg.steps.flatMap(step => 
-              step.path?.map(point => ({ lat: point.lat(), lng: point.lng() })) || []
+            const legPath = leg.steps.flatMap(
+              (step) =>
+                step.path?.map((point) => ({
+                  lat: point.lat(),
+                  lng: point.lng(),
+                })) || []
             );
-            
+
             // For the first leg, add the entire path
             // For subsequent legs, avoid duplicating the connecting point
             if (roadPath.length === 0) {
@@ -475,15 +521,17 @@ export default function RoutePlanner() {
             } else {
               roadPath = [...roadPath, ...legPath.slice(1)];
             }
-            
+
             // Accumulate distance and duration
-            totalDistance += leg.distance?.value ? leg.distance.value / 1000 : 0;
+            totalDistance += leg.distance?.value
+              ? leg.distance.value / 1000
+              : 0;
             totalDuration += leg.duration?.value || 0;
-            
+
             // Add all step instructions
             directions = [
               ...directions,
-              ...leg.steps.map(step => ({
+              ...leg.steps.map((step) => ({
                 instruction: step.instructions || "",
                 distance: step.distance?.text || "",
                 duration: step.duration?.text || "",
@@ -500,28 +548,30 @@ export default function RoutePlanner() {
       // For longer routes, process in batches but ensure path connectivity
       for (let i = 0; i < markers.length; i += waypointBatchSize) {
         const batchMarkers = markers.slice(
-          Math.max(0, i === 0 ? 0 : i - 1),  // Overlap by one marker for connectivity
+          Math.max(0, i === 0 ? 0 : i - 1), // Overlap by one marker for connectivity
           Math.min(markers.length, i + waypointBatchSize + 1)
         );
-        
+
         if (batchMarkers.length < 2) continue;
-        
+
         try {
-          const origin = { 
-            lat: batchMarkers[0].latitude, 
-            lng: batchMarkers[0].longitude 
+          const origin = {
+            lat: batchMarkers[0].latitude,
+            lng: batchMarkers[0].longitude,
           };
-          const destination = { 
-            lat: batchMarkers[batchMarkers.length - 1].latitude, 
-            lng: batchMarkers[batchMarkers.length - 1].longitude 
+          const destination = {
+            lat: batchMarkers[batchMarkers.length - 1].latitude,
+            lng: batchMarkers[batchMarkers.length - 1].longitude,
           };
-          
+
           // Create waypoints from intermediate markers
-          const waypoints = batchMarkers.slice(1, batchMarkers.length - 1).map(marker => ({
-            location: { lat: marker.latitude, lng: marker.longitude },
-            stopover: true
-          }));
-          
+          const waypoints = batchMarkers
+            .slice(1, batchMarkers.length - 1)
+            .map((marker) => ({
+              location: { lat: marker.latitude, lng: marker.longitude },
+              stopover: true,
+            }));
+
           const result = await directionsService.route({
             origin,
             destination,
@@ -531,17 +581,24 @@ export default function RoutePlanner() {
             avoidFerries: config.avoidFerries,
             avoidTolls: config.avoidTolls,
             optimizeWaypoints: false, // Don't reorder our points
-            drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
+            drivingOptions: {
+              departureTime: new Date(),
+              trafficModel: google.maps.TrafficModel.BEST_GUESS,
+            },
           });
-          
+
           if (result.routes[0]?.legs) {
             // Process all legs to create a single continuous path
             for (const leg of result.routes[0].legs) {
               // Extract path points
-              const legPath = leg.steps.flatMap(step => 
-                step.path?.map(point => ({ lat: point.lat(), lng: point.lng() })) || []
+              const legPath = leg.steps.flatMap(
+                (step) =>
+                  step.path?.map((point) => ({
+                    lat: point.lat(),
+                    lng: point.lng(),
+                  })) || []
               );
-              
+
               // For the first batch, add the entire path
               // For subsequent batches, avoid duplicating the connecting point if it's an overlap
               if (i === 0 || roadPath.length === 0) {
@@ -550,15 +607,17 @@ export default function RoutePlanner() {
                 // Skip the first point as it should be the same as the last point of the previous batch
                 roadPath = [...roadPath, ...legPath.slice(1)];
               }
-              
+
               // Accumulate distance and duration
-              totalDistance += leg.distance?.value ? leg.distance.value / 1000 : 0;
+              totalDistance += leg.distance?.value
+                ? leg.distance.value / 1000
+                : 0;
               totalDuration += leg.duration?.value || 0;
-              
+
               // Add all step instructions
               directions = [
                 ...directions,
-                ...leg.steps.map(step => ({
+                ...leg.steps.map((step) => ({
                   instruction: step.instructions || "",
                   distance: step.distance?.text || "",
                   duration: step.duration?.text || "",
@@ -567,11 +626,17 @@ export default function RoutePlanner() {
             }
           }
         } catch (error) {
-          console.error(`Failed to fetch route for batch starting at marker ${i}:`, error);
-          
+          console.error(
+            `Failed to fetch route for batch starting at marker ${i}:`,
+            error
+          );
+
           // If batch approach fails, try segment-by-segment for this batch
-          const segmentResult = await processRouteSegmentBySegment(batchMarkers, retryCount);
-          
+          const segmentResult = await processRouteSegmentBySegment(
+            batchMarkers,
+            retryCount
+          );
+
           roadPath = [...roadPath, ...segmentResult.roadPath];
           straightLinePaths.push(...segmentResult.straightLinePaths);
           directions.push(...segmentResult.directions);
@@ -580,65 +645,90 @@ export default function RoutePlanner() {
         }
       }
     }
-  
+
     // Format time duration
     const hours = Math.floor(totalDuration / 3600);
     const minutes = Math.floor((totalDuration % 3600) / 60);
-    
+
     return {
       roadPath,
       straightLinePaths,
-      directions: directions.length > 0 ? directions : [{
-        instruction: `<span style="color: red;">No directions generated</span>`,
-        distance: "N/A",
-        duration: "N/A",
-      }],
+      directions:
+        directions.length > 0
+          ? directions
+          : [
+              {
+                instruction: `<span style="color: red;">No directions generated</span>`,
+                distance: "N/A",
+                duration: "N/A",
+              },
+            ],
       totalDistance: `${totalDistance.toFixed(1)} km`,
-      totalDuration: hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`,
+      totalDuration:
+        hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`,
     };
   };
-  
+
   const processRouteSegmentBySegment = async (
     markers: MarkerLocation[],
     retryCount = 3
   ): Promise<{
     roadPath: google.maps.LatLngLiteral[];
-    straightLinePaths: { origin: google.maps.LatLngLiteral; destination: google.maps.LatLngLiteral }[];
+    straightLinePaths: {
+      origin: google.maps.LatLngLiteral;
+      destination: google.maps.LatLngLiteral;
+    }[];
     directions: RouteStep[];
     totalDistance: string;
     totalDuration: string;
   }> => {
     const directionsService = new google.maps.DirectionsService();
     let roadPath: google.maps.LatLngLiteral[] = [];
-    const straightLinePaths: { origin: google.maps.LatLngLiteral; destination: google.maps.LatLngLiteral }[] = [];
+    const straightLinePaths: {
+      origin: google.maps.LatLngLiteral;
+      destination: google.maps.LatLngLiteral;
+    }[] = [];
     let directions: RouteStep[] = [];
     let totalDistance = 0;
     let totalDuration = 0;
-  
+
     for (let i = 0; i < markers.length - 1; i++) {
       const origin = { lat: markers[i].latitude, lng: markers[i].longitude };
-      const destination = { lat: markers[i + 1].latitude, lng: markers[i + 1].longitude };
-  
+      const destination = {
+        lat: markers[i + 1].latitude,
+        lng: markers[i + 1].longitude,
+      };
+
       // Validate coordinates before making the API call
       if (
-        origin.lat === 0 || origin.lng === 0 ||
-        destination.lat === 0 || destination.lng === 0 ||
-        !isFinite(origin.lat) || !isFinite(origin.lng) ||
-        !isFinite(destination.lat) || !isFinite(destination.lng)
+        origin.lat === 0 ||
+        origin.lng === 0 ||
+        destination.lat === 0 ||
+        destination.lng === 0 ||
+        !isFinite(origin.lat) ||
+        !isFinite(origin.lng) ||
+        !isFinite(destination.lat) ||
+        !isFinite(destination.lng)
       ) {
-        console.warn(`Invalid coordinates for segment ${i + 1}: Origin (${origin.lat}, ${origin.lng}), Destination (${destination.lat}, ${destination.lng})`);
+        console.warn(
+          `Invalid coordinates for segment ${i + 1}: Origin (${origin.lat}, ${
+            origin.lng
+          }), Destination (${destination.lat}, ${destination.lng})`
+        );
         straightLinePaths.push({ origin, destination });
         directions.push({
-          instruction: `<span style="color: red;">Invalid coordinates between ${markers[i].address} and ${markers[i + 1].address}</span>`,
+          instruction: `<span style="color: red;">Invalid coordinates between ${
+            markers[i].address
+          } and ${markers[i + 1].address}</span>`,
           distance: "N/A",
           duration: "N/A",
         });
         continue;
       }
-  
+
       let attempts = 0;
       let success = false;
-  
+
       while (attempts < retryCount && !success) {
         try {
           const result = await directionsService.route({
@@ -648,16 +738,23 @@ export default function RoutePlanner() {
             avoidHighways: config.avoidHighways,
             avoidFerries: config.avoidFerries,
             avoidTolls: config.avoidTolls,
-            drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
+            drivingOptions: {
+              departureTime: new Date(),
+              trafficModel: google.maps.TrafficModel.BEST_GUESS,
+            },
           });
-  
+
           if (result.routes[0]?.legs[0]) {
             const leg = result.routes[0].legs[0];
             // Extract path
-            const legPath = leg.steps.flatMap((step) =>
-              step.path?.map((point) => ({ lat: point.lat(), lng: point.lng() })) || []
+            const legPath = leg.steps.flatMap(
+              (step) =>
+                step.path?.map((point) => ({
+                  lat: point.lat(),
+                  lng: point.lng(),
+                })) || []
             );
-            
+
             // For the first segment, add the entire path
             // For subsequent segments, avoid duplicating the connecting point
             if (i === 0) {
@@ -665,9 +762,11 @@ export default function RoutePlanner() {
             } else {
               roadPath = [...roadPath, ...legPath.slice(1)];
             }
-            
+
             // Extract directions, distance, and duration
-            totalDistance += leg.distance?.value ? leg.distance.value / 1000 : 0;
+            totalDistance += leg.distance?.value
+              ? leg.distance.value / 1000
+              : 0;
             totalDuration += leg.duration?.value || 0;
             directions = [
               ...directions,
@@ -679,23 +778,40 @@ export default function RoutePlanner() {
             ];
             success = true;
           } else {
-            console.warn(`No routes returned for segment ${i + 1} from ${markers[i].address} to ${markers[i + 1].address}`);
+            console.warn(
+              `No routes returned for segment ${i + 1} from ${
+                markers[i].address
+              } to ${markers[i + 1].address}`
+            );
             straightLinePaths.push({ origin, destination });
             directions.push({
-              instruction: `<span style="color: red;">Cannot route from ${markers[i].address} to ${markers[i + 1].address}</span>`,
+              instruction: `<span style="color: red;">Cannot route from ${
+                markers[i].address
+              } to ${markers[i + 1].address}</span>`,
               distance: "N/A",
               duration: "N/A",
             });
             break;
           }
         } catch (error) {
-          console.error(`Failed to fetch route for segment ${i + 1}, attempt ${attempts + 1}:`, error);
+          console.error(
+            `Failed to fetch route for segment ${i + 1}, attempt ${
+              attempts + 1
+            }:`,
+            error
+          );
           attempts++;
           if (attempts === retryCount) {
-            console.warn(`Max retries reached for segment ${i + 1}, falling back to straight line`);
+            console.warn(
+              `Max retries reached for segment ${
+                i + 1
+              }, falling back to straight line`
+            );
             straightLinePaths.push({ origin, destination });
             directions.push({
-              instruction: `<span style="color: red;">Cannot route from ${markers[i].address} to ${markers[i + 1].address}</span>`,
+              instruction: `<span style="color: red;">Cannot route from ${
+                markers[i].address
+              } to ${markers[i + 1].address}</span>`,
               distance: "N/A",
               duration: "N/A",
             });
@@ -704,33 +820,43 @@ export default function RoutePlanner() {
         }
       }
     }
-  
+
     const hours = Math.floor(totalDuration / 3600);
     const minutes = Math.floor((totalDuration % 3600) / 60);
     return {
       roadPath,
       straightLinePaths,
-      directions: directions.length > 0 ? directions : [{
-        instruction: `<span style="color: red;">No directions generated</span>`,
-        distance: "N/A",
-        duration: "N/A",
-      }],
+      directions:
+        directions.length > 0
+          ? directions
+          : [
+              {
+                instruction: `<span style="color: red;">No directions generated</span>`,
+                distance: "N/A",
+                duration: "N/A",
+              },
+            ],
       totalDistance: `${totalDistance.toFixed(1)} km`,
-      totalDuration: hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`,
+      totalDuration:
+        hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`,
     };
   };
 
-
   const detectUnreachableLocations = async (
     markers: MarkerLocation[]
-  ): Promise<{ unreachableRoutes: { origin: string; destination: string }[] }> => {
+  ): Promise<{
+    unreachableRoutes: { origin: string; destination: string }[];
+  }> => {
     if (markers.length < 2) return { unreachableRoutes: [] };
     const directionsService = new google.maps.DirectionsService();
     const unreachableRoutes: { origin: string; destination: string }[] = [];
 
     for (let i = 0; i < markers.length - 1; i++) {
       const origin = { lat: markers[i].latitude, lng: markers[i].longitude };
-      const destination = { lat: markers[i + 1].latitude, lng: markers[i + 1].longitude };
+      const destination = {
+        lat: markers[i + 1].latitude,
+        lng: markers[i + 1].longitude,
+      };
       try {
         const result = await directionsService.route({
           origin,
@@ -739,13 +865,22 @@ export default function RoutePlanner() {
           avoidHighways: config.avoidHighways,
           avoidFerries: config.avoidFerries,
           avoidTolls: config.avoidTolls,
-          drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
+          drivingOptions: {
+            departureTime: new Date(),
+            trafficModel: google.maps.TrafficModel.BEST_GUESS,
+          },
         });
         if (!result.routes.length) {
-          unreachableRoutes.push({ origin: markers[i].address, destination: markers[i + 1].address });
+          unreachableRoutes.push({
+            origin: markers[i].address,
+            destination: markers[i + 1].address,
+          });
         }
       } catch {
-        unreachableRoutes.push({ origin: markers[i].address, destination: markers[i + 1].address });
+        unreachableRoutes.push({
+          origin: markers[i].address,
+          destination: markers[i + 1].address,
+        });
       }
     }
     return { unreachableRoutes };
@@ -757,11 +892,13 @@ export default function RoutePlanner() {
     try {
       const driverRoutesMap = new Map<number, MarkerLocation[]>();
       const startLocation = optimizedMarkers[0];
-  
+
       optimizedMarkers.forEach((marker) => {
         const driverId = marker.driverId ?? 0;
         if (!driverRoutesMap.has(driverId)) {
-          driverRoutesMap.set(driverId, [{ ...startLocation, driverId, note: "Start point" }]);
+          driverRoutesMap.set(driverId, [
+            { ...startLocation, driverId, note: "Start point" },
+          ]);
         }
         if (
           Math.abs(marker.latitude - startLocation.latitude) > 0.000001 ||
@@ -770,29 +907,43 @@ export default function RoutePlanner() {
           driverRoutesMap.get(driverId)?.push(marker);
         }
       });
-  
+
       // Create an array of promises for each driver's route
       const routePromises: Promise<{
         route: DriverRoute;
         unreachableRoutes?: { origin: string; destination: string }[];
       }>[] = [];
-  
+
       for (const [driverId, driverMarkers] of driverRoutesMap) {
-        console.log(`Processing driver ${driverId + 1} with ${driverMarkers.length} markers:`, driverMarkers);
-  
-  
-  
+        console.log(
+          `Processing driver ${driverId + 1} with ${
+            driverMarkers.length
+          } markers:`,
+          driverMarkers
+        );
+
         // Create a promise for each driver's route processing
         const routePromise = (async () => {
           const routeMarkers = [...driverMarkers];
           if (config.returnToStart) {
-            routeMarkers.push({ ...startLocation, driverId, note: "Return to start" });
+            routeMarkers.push({
+              ...startLocation,
+              driverId,
+              note: "Return to start",
+            });
           }
-  
-          const { unreachableRoutes } = await detectUnreachableLocations(routeMarkers);
-          const { roadPath, straightLinePaths, directions, totalDistance, totalDuration } =
-            await getRoutePathAndDirections(routeMarkers);
-  
+
+          const { unreachableRoutes } = await detectUnreachableLocations(
+            routeMarkers
+          );
+          const {
+            roadPath,
+            straightLinePaths,
+            directions,
+            totalDistance,
+            totalDuration,
+          } = await getRoutePathAndDirections(routeMarkers);
+
           return {
             route: {
               driverId,
@@ -804,46 +955,55 @@ export default function RoutePlanner() {
               totalDuration,
               color: ROUTE_COLORS[driverId % ROUTE_COLORS.length],
             },
-            unreachableRoutes: unreachableRoutes.length > 0 ? unreachableRoutes : undefined
+            unreachableRoutes:
+              unreachableRoutes.length > 0 ? unreachableRoutes : undefined,
           };
         })();
-  
+
         routePromises.push(routePromise);
       }
-  
+
       // Wait for all route processing to complete
       const results = await Promise.all(routePromises);
-      const routes = results.map(result => result.route);
-      
+      const routes = results.map((result) => result.route);
+
       const problematicDrivers = results
-        .filter(result => result.unreachableRoutes && result.unreachableRoutes.length > 0)
-        .map(result => ({
+        .filter(
+          (result) =>
+            result.unreachableRoutes && result.unreachableRoutes.length > 0
+        )
+        .map((result) => ({
           driverId: result.route.driverId,
-          unreachableRoutes: result.unreachableRoutes || []
+          unreachableRoutes: result.unreachableRoutes || [],
         }));
-  
+
       if (problematicDrivers.length > 0) {
-        const message = problematicDrivers
-          .map(({ driverId, unreachableRoutes }) =>
-            `Driver ${driverId + 1}:\n` +
-            unreachableRoutes
-              .map(({ origin, destination }) => `- No route from "${origin}" to "${destination}"\n`)
-              .join("")
-          )
-          .join("\n") + "Showing direct lines for unreachable segments.";
+        const message =
+          problematicDrivers
+            .map(
+              ({ driverId, unreachableRoutes }) =>
+                `Driver ${driverId + 1}:\n` +
+                unreachableRoutes
+                  .map(
+                    ({ origin, destination }) =>
+                      `- No route from "${origin}" to "${destination}"\n`
+                  )
+                  .join("")
+            )
+            .join("\n") + "Showing direct lines for unreachable segments.";
         setUnreachableAlertMessage(message);
         setShowUnreachableAlert(true);
       }
-  
+
       console.log("Generated routes:", routes);
       setDriverRoutes(routes);
       setNumDrivers(Math.max(1, routes.length));
-      
+
       if (routes.length > 0) {
         handleDriverSelect(routes[0].driverId);
-        setExpandedDrivers(new Set(routes.map(route => route.driverId)));
+        setExpandedDrivers(new Set(routes.map((route) => route.driverId)));
       }
-      
+
       setMapKey(Date.now());
     } catch (error) {
       console.error("Error processing driver routes:", error);
@@ -855,7 +1015,7 @@ export default function RoutePlanner() {
 
   const calculateRoute = async () => {
     const cost = 10 * numDrivers;
-    const credits = await check_credits(log) as number;
+    const credits = (await check_credits(log)) as number;
     if (credits === null || credits <= 0) {
       setShowNoCreditsDialog(true);
       return;
@@ -873,14 +1033,16 @@ export default function RoutePlanner() {
     setIsCalculating(true);
     saveToHistory();
 
-    console.log('sending');
-    console.log(`what im sending ${JSON.stringify({
-      features: markers,
-      config,
-      numberDrivers: numDrivers,
-      returnToStart: config.returnToStart,
-      options: [config.avoidHighways, config.avoidTolls, config.avoidFerries],
-    })}`)
+    console.log("sending");
+    console.log(
+      `what im sending ${JSON.stringify({
+        features: markers,
+        config,
+        numberDrivers: numDrivers,
+        returnToStart: config.returnToStart,
+        options: [config.avoidHighways, config.avoidTolls, config.avoidFerries],
+      })}`
+    );
     try {
       const response = await fetch("/api/process", {
         method: "POST",
@@ -890,10 +1052,14 @@ export default function RoutePlanner() {
           config,
           numberDrivers: numDrivers,
           returnToStart: config.returnToStart,
-          options: [config.avoidHighways, config.avoidTolls, config.avoidFerries],
+          options: [
+            config.avoidHighways,
+            config.avoidTolls,
+            config.avoidFerries,
+          ],
         }),
       });
-      
+
       console.log("response");
 
       if (!response.ok) {
@@ -915,7 +1081,9 @@ export default function RoutePlanner() {
         [];
 
       const uniqueMarkers = Array.from(
-        new Map(allMarkers.map((m) => [`${m.latitude},${m.longitude}`, m])).values()
+        new Map(
+          allMarkers.map((m) => [`${m.latitude},${m.longitude}`, m])
+        ).values()
       ).sort((a, b) => a.order - b.order);
 
       setMarkers(uniqueMarkers);
@@ -968,7 +1136,11 @@ export default function RoutePlanner() {
         timestamp: new Date().toISOString(),
         name: formData.name,
       };
-      const saveResult = await save_route(log, JSON.stringify(routeData), formData.name);
+      const saveResult = await save_route(
+        log,
+        JSON.stringify(routeData),
+        formData.name
+      );
       if (!saveResult) throw new Error("Failed to save route");
       toast.success("Route saved successfully");
       setShowSaveDialog(false);
@@ -1012,7 +1184,9 @@ export default function RoutePlanner() {
       const chunk = markers.slice(i, i + 10);
       if (chunk.length < 2) {
         urls.push(
-          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(chunk[0].address)}`
+          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+            chunk[0].address
+          )}`
         );
         continue;
       }
@@ -1039,7 +1213,9 @@ export default function RoutePlanner() {
 
   const handleExportDriver = (driverId: number, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    const driverRoute = driverRoutes.find((route) => route.driverId === driverId);
+    const driverRoute = driverRoutes.find(
+      (route) => route.driverId === driverId
+    );
     if (driverRoute) {
       setMapURLs(generateGoogleMapsRouteUrls(driverRoute.markers, config));
       setExportDriverId(driverId);
@@ -1092,7 +1268,9 @@ export default function RoutePlanner() {
                       variant="outline"
                       size="icon"
                       onClick={() => setShowSaveDialog(true)}
-                      disabled={!totalRouteDistance || driverRoutes.length === 0}
+                      disabled={
+                        !totalRouteDistance || driverRoutes.length === 0
+                      }
                     >
                       <Save className="h-4 w-4" />
                     </Button>
@@ -1153,7 +1331,9 @@ export default function RoutePlanner() {
             </div>
             <div className="text-sm text-muted-foreground text-center mt-2">
               {maxDrivers < 10
-                ? `Limited to ${maxDrivers} driver${maxDrivers !== 1 ? "s" : ""} based on stops`
+                ? `Limited to ${maxDrivers} driver${
+                    maxDrivers !== 1 ? "s" : ""
+                  } based on stops`
                 : "Maximum 10 drivers"}
             </div>
           </div>
@@ -1179,7 +1359,9 @@ export default function RoutePlanner() {
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-lg">Destinations</h2>
                 <ChevronDown
-                  className={`h-4 w-4 transition-transform ${isDestinationsOpen ? "" : "rotate-180"}`}
+                  className={`h-4 w-4 transition-transform ${
+                    isDestinationsOpen ? "" : "rotate-180"
+                  }`}
                 />
               </div>
               <span className="text-sm text-muted-foreground">
@@ -1187,66 +1369,82 @@ export default function RoutePlanner() {
               </span>
             </div>
             {isDestinationsOpen && (
-  <>
-    <div className="space-y-2">
-      {[...markers].sort((a, b) => a.order - b.order).map((marker, index) => {
-        // Find the original index to keep the drag-n-drop functionality working
-        const originalIndex = markers.findIndex(m => m === marker);
-        return (
-          <div
-            key={originalIndex}
-            className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
-            draggable
-            onDragStart={() => handleDragStart(originalIndex)}
-            onDragOver={() => handleDragOver(originalIndex)}
-            onDragEnd={handleDragEnd}
-          >
-            <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
-            <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium">{marker.address}</p>
-              {marker.driverId !== undefined && driverRoutes.length > 0 && (
-                <p
-                  className="text-xs font-medium"
-                  style={{ color: ROUTE_COLORS[marker.driverId % ROUTE_COLORS.length] }}
-                >
-                  Driver {marker.driverId + 1}
-                </p>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleRemoveAddress(originalIndex)}
-            >
-              <Trash className="h-4 w-4 text-red-500" />
-            </Button>
-          </div>
-        );
-      })}
-    </div>
-    <div className="flex justify-between mt-4">
-      <Button variant="outline" size="sm" onClick={handleClearRoute}>
-        Clear All
-      </Button>
-      <Button
-        onClick={calculateRoute}
-        disabled={isCalculating || markers.length < 2}
-      >
-        {isCalculating ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Calculating...
-          </>
-        ) : (
-          <>
-            <Bolt className="mr-2 h-4 w-4" />
-            Optimize Route
-          </>
-        )}
-      </Button>
-    </div>
-  </>
-)}
+              <>
+                <div className="space-y-2">
+                  {[...markers]
+                    .sort((a, b) => a.order - b.order)
+                    .map((marker) => {
+                      // Find the original index to keep the drag-n-drop functionality working
+                      const originalIndex = markers.findIndex(
+                        (m) => m === marker
+                      );
+                      return (
+                        <div
+                          key={originalIndex}
+                          className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
+                          draggable
+                          onDragStart={() => handleDragStart(originalIndex)}
+                          onDragOver={() => handleDragOver(originalIndex)}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {marker.address}
+                            </p>
+                            {marker.driverId !== undefined &&
+                              driverRoutes.length > 0 && (
+                                <p
+                                  className="text-xs font-medium"
+                                  style={{
+                                    color:
+                                      ROUTE_COLORS[
+                                        marker.driverId % ROUTE_COLORS.length
+                                      ],
+                                  }}
+                                >
+                                  Driver {marker.driverId + 1}
+                                </p>
+                              )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveAddress(originalIndex)}
+                          >
+                            <Trash className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                </div>
+                <div className="flex justify-between mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearRoute}
+                  >
+                    Clear All
+                  </Button>
+                  <Button
+                    onClick={calculateRoute}
+                    disabled={isCalculating || markers.length < 2}
+                  >
+                    {isCalculating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Calculating...
+                      </>
+                    ) : (
+                      <>
+                        <Bolt className="mr-2 h-4 w-4" />
+                        Optimize Route
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -1265,113 +1463,133 @@ export default function RoutePlanner() {
           </div>
         </div>
         {driverRoutes.length > 0 ? (
-  <div className="rounded-xl bg-muted/50 p-4">
-    <Collapsible
-      open={expandedDirections}
-      onOpenChange={setExpandedDirections}
-    >
-      <CollapsibleTrigger className="flex items-center justify-between w-full">
-        <div className="flex items-center space-x-2">
-          <MapPin className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold">Route Directions</h2>
-        </div>
-        <ChevronDown
-          className={`h-5 w-5 ${expandedDirections ? "rotate-180" : ""}`}
-        />
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        {driverRoutes.map((route) => (
-          <Collapsible
-            key={route.driverId}
-            open={expandedDrivers.has(route.driverId)}
-            onOpenChange={(open) => {
-              setExpandedDrivers((prev) => {
-                const newSet = new Set(prev);
-                if (open) {
-                  newSet.add(route.driverId);
-                } else {
-                  newSet.delete(route.driverId);
-                }
-                return newSet;
-              });
-              if (open) handleDriverSelect(route.driverId);
-            }}
-            className={`border rounded-lg mt-2 ${
-              selectedDriverId === route.driverId ? "ring-1 ring-primary" : ""
-            }`}
-          >
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-3">
-              <div className="flex items-center">
-                <div
-                  className="w-3 h-3 rounded-full mr-3"
-                  style={{ backgroundColor: route.color }}
-                />
-                <span style={{ color: route.color }}>
-                  Driver {route.driverId + 1}
-                </span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <span className="text-xs text-muted-foreground">{route.totalDuration || "Calculating..."}</span>
-                <span className="text-xs text-muted-foreground">{route.totalDistance || "Calculating..."}</span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={(e) => handleExportDriver(route.driverId, e)}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
+          <div className="rounded-xl bg-muted/50 p-4">
+            <Collapsible
+              open={expandedDirections}
+              onOpenChange={setExpandedDirections}
+            >
+              <CollapsibleTrigger className="flex items-center justify-between w-full">
+                <div className="flex items-center space-x-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold">Route Directions</h2>
+                </div>
                 <ChevronDown
-                  className={`h-4 w-4 ${expandedDrivers.has(route.driverId) ? "rotate-180" : ""}`}
+                  className={`h-5 w-5 ${
+                    expandedDirections ? "rotate-180" : ""
+                  }`}
                 />
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="p-3 space-y-2 max-h-[300px] overflow-y-auto">
-                {route.directions && route.directions.length > 0 ? (
-                  route.directions.map((step, index) => (
-                    <div key={index} className="py-2 border-b last:border-0">
-                      <div dangerouslySetInnerHTML={{ __html: step.instruction }} />
-                      <div className="text-xs text-muted-foreground flex justify-between">
-                        <span>{step.distance}</span>
-                        <span>{step.duration}</span>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                {driverRoutes.map((route) => (
+                  <Collapsible
+                    key={route.driverId}
+                    open={expandedDrivers.has(route.driverId)}
+                    onOpenChange={(open) => {
+                      setExpandedDrivers((prev) => {
+                        const newSet = new Set(prev);
+                        if (open) {
+                          newSet.add(route.driverId);
+                        } else {
+                          newSet.delete(route.driverId);
+                        }
+                        return newSet;
+                      });
+                      if (open) handleDriverSelect(route.driverId);
+                    }}
+                    className={`border rounded-lg mt-2 ${
+                      selectedDriverId === route.driverId
+                        ? "ring-1 ring-primary"
+                        : ""
+                    }`}
+                  >
+                    <CollapsibleTrigger className="flex items-center justify-between w-full p-3">
+                      <div className="flex items-center">
+                        <div
+                          className="w-3 h-3 rounded-full mr-3"
+                          style={{ backgroundColor: route.color }}
+                        />
+                        <span style={{ color: route.color }}>
+                          Driver {route.driverId + 1}
+                        </span>
                       </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="py-2 text-center">
-                    <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
-                    <div>Loading directions...</div>
-                  </div>
-                )}
+                      <div className="flex items-center space-x-3">
+                        <span className="text-xs text-muted-foreground">
+                          {route.totalDuration || "Calculating..."}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {route.totalDistance || "Calculating..."}
+                        </span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => handleExportDriver(route.driverId, e)}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                        <ChevronDown
+                          className={`h-4 w-4 ${
+                            expandedDrivers.has(route.driverId)
+                              ? "rotate-180"
+                              : ""
+                          }`}
+                        />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="p-3 space-y-2 max-h-[300px] overflow-y-auto">
+                        {route.directions && route.directions.length > 0 ? (
+                          route.directions.map((step, index) => (
+                            <div
+                              key={index}
+                              className="py-2 border-b last:border-0"
+                            >
+                              <div
+                                dangerouslySetInnerHTML={{
+                                  __html: step.instruction,
+                                }}
+                              />
+                              <div className="text-xs text-muted-foreground flex justify-between">
+                                <span>{step.distance}</span>
+                                <span>{step.duration}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="py-2 text-center">
+                            <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                            <div>Loading directions...</div>
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full m-3"
+                        onClick={(e) => handleExportDriver(route.driverId, e)}
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Export to Google Maps
+                      </Button>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        ) : (
+          expandedDirections && (
+            <div className="rounded-xl bg-muted/50 p-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <MapPin className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Route Directions</h2>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full m-3"
-                onClick={(e) => handleExportDriver(route.driverId, e)}
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Export to Google Maps
-              </Button>
-            </CollapsibleContent>
-          </Collapsible>
-        ))}
-      </CollapsibleContent>
-    </Collapsible>
-  </div>
-) : (
-  expandedDirections && (
-    <div className="rounded-xl bg-muted/50 p-4">
-      <div className="flex items-center space-x-2 mb-4">
-        <MapPin className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">Route Directions</h2>
-      </div>
-      <div className="p-3 text-center text-muted-foreground">
-        No routes calculated yet. Add destinations and click Optimize Route.
-      </div>
-    </div>
-  )
-)}
+              <div className="p-3 text-center text-muted-foreground">
+                No routes calculated yet. Add destinations and click Optimize
+                Route.
+              </div>
+            </div>
+          )
+        )}
       </div>
 
       <div className="hidden lg:flex w-full lg:w-[70%] relative">
@@ -1391,13 +1609,22 @@ export default function RoutePlanner() {
               <div
                 className="w-3 h-3 rounded-full"
                 style={{
-                  backgroundColor: driverRoutes.find((r) => r.driverId === selectedDriverId)?.color,
+                  backgroundColor: driverRoutes.find(
+                    (r) => r.driverId === selectedDriverId
+                  )?.color,
                 }}
               />
               <span>Driver {selectedDriverId + 1} selected</span>
               <span className="text-xs text-muted-foreground">
-                {driverRoutes.find((r) => r.driverId === selectedDriverId)?.totalDistance} •{" "}
-                {driverRoutes.find((r) => r.driverId === selectedDriverId)?.totalDuration}
+                {
+                  driverRoutes.find((r) => r.driverId === selectedDriverId)
+                    ?.totalDistance
+                }{" "}
+                •{" "}
+                {
+                  driverRoutes.find((r) => r.driverId === selectedDriverId)
+                    ?.totalDuration
+                }
               </span>
             </div>
           </div>
@@ -1416,7 +1643,9 @@ export default function RoutePlanner() {
               id="route-name"
               placeholder="My Route"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
             />
           </div>
           <div className="flex justify-end gap-2">
@@ -1431,7 +1660,9 @@ export default function RoutePlanner() {
       <Dialog open={showRouteOptions} onOpenChange={setShowRouteOptions}>
         <DialogContent>
           <DialogTitle>Route Options</DialogTitle>
-          <DialogDescription>Configure route calculation options</DialogDescription>
+          <DialogDescription>
+            Configure route calculation options
+          </DialogDescription>
           <div className="grid gap-4 py-4">
             {[
               { id: "avoidHighways", label: "Avoid highways" },
@@ -1444,7 +1675,10 @@ export default function RoutePlanner() {
                   id={id}
                   checked={config[id as keyof RouteConfiguration] as boolean}
                   onCheckedChange={(checked) =>
-                    handleConfigChange(id as keyof RouteConfiguration, checked === true)
+                    handleConfigChange(
+                      id as keyof RouteConfiguration,
+                      checked === true
+                    )
                   }
                 />
                 <Label htmlFor={id}>{label}</Label>
@@ -1452,7 +1686,10 @@ export default function RoutePlanner() {
             ))}
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowRouteOptions(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowRouteOptions(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleRouteOptionsApply}>Apply</Button>
@@ -1463,7 +1700,8 @@ export default function RoutePlanner() {
       <Dialog open={showExport} onOpenChange={setShowExport}>
         <DialogContent>
           <DialogTitle>
-            Export Route {exportDriverId !== null ? `for Driver ${exportDriverId + 1}` : ""}
+            Export Route{" "}
+            {exportDriverId !== null ? `for Driver ${exportDriverId + 1}` : ""}
           </DialogTitle>
           <DialogDescription>
             Access your route in Google Maps
@@ -1471,7 +1709,9 @@ export default function RoutePlanner() {
           {mapsUrls.map((url, index) => (
             <div key={index} className="mb-4 p-3 bg-muted/30 rounded-md">
               <p className="font-medium">
-                {mapsUrls.length > 1 ? `Segment ${index + 1}` : "Complete Route"}
+                {mapsUrls.length > 1
+                  ? `Segment ${index + 1}`
+                  : "Complete Route"}
               </p>
               <div className="flex flex-col sm:flex-row gap-2 mt-2">
                 <Button
@@ -1501,14 +1741,19 @@ export default function RoutePlanner() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={showUnreachableAlert} onOpenChange={setShowUnreachableAlert}>
+      <AlertDialog
+        open={showUnreachableAlert}
+        onOpenChange={setShowUnreachableAlert}
+      >
         <AlertDialogContent>
           <AlertDialogTitle>Unreachable Route Segments</AlertDialogTitle>
           <AlertDialogDescription className="whitespace-pre-line">
             {unreachableAlertMessage}
           </AlertDialogDescription>
           <AlertDialogFooter>
-            <Button onClick={() => setShowUnreachableAlert(false)}>Understood</Button>
+            <Button onClick={() => setShowUnreachableAlert(false)}>
+              Understood
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1524,7 +1769,10 @@ export default function RoutePlanner() {
             <span>Balance: {credit}</span>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowNoCreditsDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowNoCreditsDialog(false)}
+            >
               Cancel
             </Button>
             <Button
