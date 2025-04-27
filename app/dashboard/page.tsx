@@ -942,6 +942,14 @@ export default function RoutePlanner() {
         config.avoidFerries || false,
       ];
 
+      console.log(`what im sending ${JSON.stringify({
+        features: markers,
+        config,
+        numberDrivers: numDrivers,
+        returnToStart: config.returnToStart,
+        options: [config.avoidHighways, config.avoidTolls, config.avoidFerries],
+      })}`)
+
       const response = await fetch("/api/process", {
         method: "POST",
         headers: {
@@ -962,6 +970,7 @@ export default function RoutePlanner() {
 
       removeCredits(10);
       const data = await response.json();
+      console.log(data);
       setRawData(data);
       const originalDriverCount = numDrivers; // Store original count for comparison
 
