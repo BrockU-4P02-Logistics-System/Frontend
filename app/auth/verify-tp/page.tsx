@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react"; // Add useEffect
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { verify } from "@/actions/verify";
@@ -19,12 +19,11 @@ export default function Main() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  // Move checkDB logic to useEffect
   useEffect(() => {
     const checkDB = async () => {
       if (session?.user?.email) {
         const DBExists = await verify({
-          email: session?.user?.email,
+          email: session.user.email,
         });
 
         if (DBExists) {
@@ -34,13 +33,31 @@ export default function Main() {
     };
 
     checkDB();
-  }, [session, router]); // Dependencies: run when session or router changes
+  }, [session, router]);
 
   const handleSubmit = async (formData: FormData) => {
+    const email = session?.user?.email;
+    if (!email) {
+      setError("User email not found. Please log in again.");
+      return;
+    }
+
+    const username = formData.get("username");
+    if (!username || typeof username !== "string") {
+      setError("Username is required and must be a string.");
+      return;
+    }
+
+    const password = formData.get("password");
+    if (!password || typeof password !== "string") {
+      setError("Password is required and must be a string.");
+      return;
+    }
+
     const r = await register({
-      email: session?.user?.email,
-      password: formData.get("password"),
-      username: formData.get("username"),
+      email,
+      password,
+      username,
     });
 
     if (r?.error) {
@@ -57,29 +74,31 @@ export default function Main() {
         <CardHeader>
           <CardTitle className="text-2xl">Add Username & Password</CardTitle>
           <CardDescription>
-            {"Enter username and password for account."}
+            Enter username and password for account.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" action={handleSubmit}>
-            {error && <div className="text-black">{error}</div>}
+            {error && <div className="text-red-500">{error}</div>}
             <input
-              type="text" // Change type to "text" for username
+              type="text"
               placeholder="Username"
               className="w-full h-8 border border-solid border-black rounded p-2"
               name="username"
+              required
             />
             <CardDescription>
-              {"Password: must contain one digit from 1 to 9, one lowercase letter, one uppercase letter, one special character, no space, and between 8-16 characters"}
+              Password: must contain one digit from 1 to 9, one lowercase letter, one uppercase letter, one special character, no space, and between 8-16 characters
             </CardDescription>
             <input
               type="password"
               placeholder="Password"
               className="w-full h-8 border border-solid border-black rounded p-2"
               name="password"
+              required
             />
             <Button type="submit" className="w-full">
-              {"Update Account"}
+              Update Account
             </Button>
           </form>
         </CardContent>

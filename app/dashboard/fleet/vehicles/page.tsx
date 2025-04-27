@@ -103,7 +103,7 @@ export default function VehiclesPage() {
       // Set this specific vehicle as being deleted
       setDeletingVehicles(prev => new Set(prev).add(vehicleKey));
       
-      await remove_vehicle(vehicle);
+      await remove_vehicle(log, vehicle);
       await refresh();
     } catch (error) {
       console.error("Error removing vehicle:", error);

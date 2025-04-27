@@ -1,5 +1,5 @@
 "use client";
-import React, { Suspense, useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useJsApiLoader } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,9 +21,10 @@ import {
   Navigation,
 } from "lucide-react";
 import { toast } from "sonner";
+
 import MapComponent from "@/components/map/google";
 import AddressAutocomplete from "@/components/map/autocomplete";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   AlertDialog,
@@ -48,9 +49,10 @@ import { Badge } from "@/components/ui/badge";
 
 import {
   check_credits,
-  num_routes,
+
   remove_credits,
   save_route,
+  get_routes,
 } from "@/actions/register";
 import { DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import {
@@ -61,7 +63,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { decompress } from "lz-string";
 
 interface MarkerLocation {
   address: string;
@@ -109,6 +110,11 @@ interface DriverRoute {
   color: string;
 }
 
+interface RouteTuple {
+  name: string;
+  id: string;
+}
+
 const DEFAULT_CONFIG: RouteConfiguration = {
   maxSpeed: 90,
   weight: 4500,
@@ -154,7 +160,6 @@ export default function RoutePlanner() {
   const [newAddress, setNewAddress] = useState("");
   const [routeHistory, setRouteHistory] = useState<MarkerLocation[][]>([]);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
-  const [shouldLoadRoute, setShouldLoadRoute] = useState(false);
   const [exportDriverId, setExportDriverId] = useState<number | null>(null);
 
   // Multi-driver state
@@ -184,20 +189,11 @@ export default function RoutePlanner() {
   const { data: session, status } = useSession();
   const [credit, setCredits] = useState(0);
   const log = session?.user?.email ?? "";
+  const [rawData, setRawData] = useState("");
   const [mapsUrls, setMapURLs] = useState<string[]>([]);
-  function SearchParamLoader({
-    onLoad,
-  }: {
-    onLoad: (shouldLoad: boolean) => void;
-  }) {
-    const search = useSearchParams().get("load");
-    useEffect(() => {
-      if (search === "true") {
-        onLoad(true);
-      }
-    }, [search, onLoad]);
-    return null;
-  }
+
+  // Fixed SearchParamLoader to only run once
+
   const [formData, setFormData] = useState({
     name: "",
   });
@@ -209,13 +205,232 @@ export default function RoutePlanner() {
 
   const router = useRouter();
 
-  // Toggle the expanded state for directions section
-
   // Maximum number of drivers based on number of markers
   const maxDrivers = Math.min(10, Math.max(1, markers.length - 1));
 
   const [isSaving, setIsSaving] = useState(false);
+  
+  const removeDuplicateMarkers = (
+    markers: MarkerLocation[]
+  ): MarkerLocation[] => {
+    // Use a Map with location coordinates as keys to identify duplicates
+    const uniqueMarkers = new Map<string, MarkerLocation>();
 
+    markers.forEach((marker) => {
+      const locationKey = `${marker.latitude.toFixed(
+        6
+      )},${marker.longitude.toFixed(6)}`;
+
+      // If this location doesn't exist yet, or if this marker has a driver ID and the existing one doesn't
+      if (
+        !uniqueMarkers.has(locationKey) ||
+        (marker.driverId !== undefined &&
+          uniqueMarkers.get(locationKey)?.driverId === undefined)
+      ) {
+        uniqueMarkers.set(locationKey, marker);
+      }
+    });
+
+    return Array.from(uniqueMarkers.values());
+  };
+
+  const handleDriverSelect = useCallback(
+    (driverId: number) => {
+      // Prevent unnecessary state updates
+      if (selectedDriverId === driverId) return;
+
+      // Set the selected driver ID
+      setSelectedDriverId(driverId);
+
+      // Find the driver route once
+      const driverRoute = driverRoutes.find(
+        (route) => route.driverId === driverId
+      );
+
+      if (driverRoute) {
+        // Update the displayed route information directly without using updateRouteView
+        setRoutePath(driverRoute.routePath || []);
+        setStraightLinePaths(driverRoute.straightLinePaths || []);
+        setTotalRouteDistance(driverRoute.totalDistance);
+
+        // Generate map URLs only when needed
+        const urls = generateGoogleMapsRouteUrls(driverRoute.markers, config);
+        setMapURLs(urls);
+      }
+    },
+    [driverRoutes, config]
+  );
+
+  const processDriverRoutes = async (optimizedMarkers: MarkerLocation[]) => {
+    // Guard against concurrent execution
+    if (isCalculating) return;
+    setIsCalculating(true);
+
+    try {
+      const directionsService = new google.maps.DirectionsService();
+      const driverRoutesMap = new Map<number, MarkerLocation[]>();
+
+      // Get the starting location (first marker entered by user)
+      const startLocation = optimizedMarkers[0];
+
+      // Group markers by driver ID
+      optimizedMarkers.forEach((marker) => {
+        // Make sure undefined driverId is treated as 0
+        const driverId = marker.driverId !== undefined ? marker.driverId : 0;
+        if (!driverRoutesMap.has(driverId)) {
+          driverRoutesMap.set(driverId, []);
+          // Add the start location as the first stop for each driver
+          driverRoutesMap.get(driverId)?.push({
+            ...startLocation,
+            driverId: driverId,
+            note:
+              marker === optimizedMarkers[0]
+                ? startLocation.note
+                : startLocation.note || "Start point",
+          });
+        }
+
+        // Only add the marker if it's not duplicating the start location
+        const isSameAsStart =
+          Math.abs(marker.latitude - startLocation.latitude) < 0.000001 &&
+          Math.abs(marker.longitude - startLocation.longitude) < 0.000001;
+
+        if (!isSameAsStart || marker.driverId !== driverId) {
+          driverRoutesMap.get(driverId)?.push(marker);
+        }
+      });
+
+      const routes: DriverRoute[] = [];
+      const problematicDrivers: {
+        driverId: number;
+        unreachableRoutes: { origin: string; destination: string }[];
+      }[] = [];
+
+      // Process each driver's route
+      for (const [driverId, driverMarkers] of driverRoutesMap.entries()) {
+        // Only process if driver has at least 2 markers (start and end)
+        if (driverMarkers.length >= 2) {
+          // Handle "return home" option by adding the first stop as the last stop if needed
+          const routeMarkers = [...driverMarkers];
+          const firstMarker = routeMarkers[0];
+          const lastMarker = routeMarkers[routeMarkers.length - 1];
+
+          // Check if we need to add the start location as the end point
+          const needToAddReturnStop =
+            config.returnToStart &&
+            (Math.abs(lastMarker.latitude - firstMarker.latitude) >= 0.000001 ||
+              Math.abs(lastMarker.longitude - firstMarker.longitude) >=
+                0.000001);
+
+          if (needToAddReturnStop) {
+            routeMarkers.push({
+              ...firstMarker,
+              note: "Return to start",
+            });
+          }
+
+          // Check for unreachable locations
+          const { unreachableRoutes } = await detectUnreachableLocations(
+            routeMarkers,
+            directionsService,
+            config
+          );
+
+          if (unreachableRoutes.length > 0) {
+            problematicDrivers.push({ driverId, unreachableRoutes });
+          }
+
+          // Get both road paths and straight lines for unreachable segments
+          const { roadPath, unreachablePaths } =
+            await getRoutePathFromDirections(routeMarkers);
+
+          // Get directions info
+          const { directions, totalDistance, totalDuration } =
+            await getDetailedDirections(routeMarkers);
+
+          routes.push({
+            driverId,
+            markers: routeMarkers,
+            routePath: roadPath,
+            straightLinePaths: unreachablePaths,
+            directions,
+            totalDistance,
+            totalDuration,
+            color: ROUTE_COLORS[driverId % ROUTE_COLORS.length],
+          });
+        }
+      }
+
+      // Handle problematic routes - alert but still show route
+      if (problematicDrivers.length > 0) {
+        let detailedMessage = "ALERT: Problematic Route(s) Detected\n\n";
+
+        problematicDrivers.forEach(({ driverId, unreachableRoutes }) => {
+          detailedMessage += `Issues with Driver ${driverId + 1}:\n`;
+
+          unreachableRoutes.forEach(({ origin, destination }) => {
+            detailedMessage += `- Cannot find road route from "${origin}" to "${destination}" - showing direct line instead\n`;
+          });
+
+          detailedMessage += "\n";
+        });
+
+        detailedMessage +=
+          "For unreachable locations, a straight line will be shown. Road routes will be shown where available.";
+        setUnreachableAlertMessage(detailedMessage);
+        setShowUnreachableAlert(true);
+      }
+
+      // Capture current state values to avoid stale closures
+      const currentSelectedDriverId = selectedDriverId;
+
+      // Batch updates to minimize re-renders
+      // First set driver routes
+      setDriverRoutes(routes);
+
+      // Then adjust driver count if needed
+      if (Math.max(1, routes.length) !== numDrivers) {
+        setNumDrivers(Math.max(1, routes.length));
+      }
+
+      // Then handle driver selection and route display
+      if (routes.length > 0) {
+        // Determine if we need a new driver selection
+        const needNewDriverSelection =
+          currentSelectedDriverId === null ||
+          !routes.some((r) => r.driverId === currentSelectedDriverId);
+
+        if (needNewDriverSelection) {
+          // Select the first driver
+          const newDriverId = routes[0].driverId;
+          setSelectedDriverId(newDriverId);
+
+          // Directly update view state to avoid calling another function
+          const routeToShow = routes[0];
+          setRoutePath(routeToShow.routePath || []);
+          setStraightLinePaths(routeToShow.straightLinePaths || []);
+          setTotalRouteDistance(routeToShow.totalDistance);
+        } else {
+          // Keep current selection but update the view
+          const routeToShow = routes.find(
+            (r) => r.driverId === currentSelectedDriverId
+          );
+          if (routeToShow) {
+            setRoutePath(routeToShow.routePath || []);
+            setStraightLinePaths(routeToShow.straightLinePaths || []);
+            setTotalRouteDistance(routeToShow.totalDistance);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error processing driver routes:", error);
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  // This function handles loading a route safely with error handling
+ 
   // Effect to handle driver count changes
   useEffect(() => {
     // Ensure we don't have more drivers than possible
@@ -231,23 +446,33 @@ export default function RoutePlanner() {
     }
   }, [status, router]);
 
-  // Effect to select first driver when routes are calculated
+  // Fixed effect to prevent recursive calls by checking a flag first
+
+  // Effect for initial driver selection that won't trigger recursive calls
   useEffect(() => {
+    // Only run if we have driver routes but no selected driver
     if (driverRoutes.length > 0 && selectedDriverId === null) {
-      setSelectedDriverId(driverRoutes[0].driverId);
+      // Directly set selected driver ID without calling handleDriverSelect
+      const driverId = driverRoutes[0].driverId;
+      setSelectedDriverId(driverId);
 
-      // Set the view to the first driver's route
-      updateRouteView(driverRoutes[0]);
+      // Directly update view state without calling updateRouteView
+      const driverRoute = driverRoutes[0];
+      setRoutePath(driverRoute.routePath || []);
+      setStraightLinePaths(driverRoute.straightLinePaths || []);
+      setTotalRouteDistance(driverRoute.totalDistance);
     }
-  }, [driverRoutes, selectedDriverId]);
+  }, [driverRoutes]); // Do not include selectedDriverId to avoid potential loop
 
-  const handleSearchParamsLoad = useCallback((shouldLoad: boolean) => {
-    setShouldLoadRoute(shouldLoad);
-  }, []);
+  // For markers extraction in loadRoute
+
+
+  // Similar fix for handleSearchParamsLoad
 
   const handleSaveDialogOpen = () => {
     setShowSaveDialog(true);
   };
+
   const handleRouteOptionsApply = () => {
     if (driverRoutes.length > 0) {
       setIsCalculating(true); // Disable optimize button
@@ -266,122 +491,10 @@ export default function RoutePlanner() {
     }
     setShowRouteOptions(false);
   };
+
   const handleSaveDialogClose = () => {
     setShowSaveDialog(false);
   };
-
-  // Update the displayed route based on selected driver
-  // Enhanced updateRouteView function with better logging
-  const updateRouteView = useCallback((driverRoute: DriverRoute) => {
-    console.log("Updating route view with:", {
-      routePathLength: driverRoute.routePath?.length || 0,
-      straightLinePathsLength: driverRoute.straightLinePaths?.length || 0,
-      directionsLength: driverRoute.directions.length,
-    });
-
-    if (
-      driverRoute.straightLinePaths &&
-      driverRoute.straightLinePaths.length > 0
-    ) {
-      console.log(
-        "Setting straight line paths:",
-        driverRoute.straightLinePaths
-      );
-    }
-
-    // Set all the route data
-    setRoutePath(driverRoute.routePath || []);
-    setStraightLinePaths(driverRoute.straightLinePaths || []);
-    setTotalRouteDistance(driverRoute.totalDistance);
-
-    // Double-check what was actually set
-    setTimeout(() => {
-      console.log(
-        "After update, straight line paths length:",
-        straightLinePaths.length
-      );
-    }, 0);
-  }, []);
-
-  const loadRoute = useCallback(async () => {
-    try {
-      const savedRouteItem = sessionStorage.getItem("savedLoadedRoute");
-      // Check if item exists before decompressing
-      if (!savedRouteItem) {
-        console.log("No saved route found in sessionStorage.");
-        return;
-      }
-  
-      const savedRouteJson = decompress(savedRouteItem);
-      if (!savedRouteJson) {
-        console.log("Failed to decompress saved route.");
-        return;
-      }
-  
-      const savedMarkersJson = sessionStorage.getItem("savedMarkers");
-      const savedConfigJson = sessionStorage.getItem("savedConfig");
-  
-      // Handle driver routes safely
-      const savedDriverRoutesItem = sessionStorage.getItem("savedDriverRoutes");
-      let savedDriverRoutesJson = null;
-      if (savedDriverRoutesItem) {
-        savedDriverRoutesJson = decompress(savedDriverRoutesItem);
-      }
-  
-      const savedNumDriversJson = sessionStorage.getItem("savedNumDrivers");
-  
-      // Parse and set markers
-      let parsedMarkers: MarkerLocation[] = [];
-      if (savedMarkersJson) {
-        parsedMarkers = JSON.parse(savedMarkersJson) as MarkerLocation[];
-        setMarkers(parsedMarkers);
-      }
-  
-      // Parse and set config
-      if (savedConfigJson) {
-        const parsedConfig = JSON.parse(savedConfigJson) as RouteConfiguration;
-        setConfig(parsedConfig);
-      }
-  
-      // Parse and set driver routes
-      if (savedDriverRoutesJson) {
-        const parsedDriverRoutes = JSON.parse(
-          savedDriverRoutesJson
-        ) as DriverRoute[];
-        
-        // Check if routes are missing coordinate data and regenerate if needed
-        const hasRoutePathData = parsedDriverRoutes.some(
-          route => route.routePath && route.routePath.length > 0
-        );
-        
-        if (!hasRoutePathData && parsedMarkers.length > 0) {
-          console.log("Coordinate data missing, will regenerate from markers");
-          // Set driver routes but don't update view yet
-          setDriverRoutes(parsedDriverRoutes);
-          
-          // Process each driver's route to regenerate coordinates
-          setIsCalculating(true);
-          await processDriverRoutes(parsedMarkers);
-          setIsCalculating(false);
-        } else {
-          // If route paths exist, use them directly
-          setDriverRoutes(parsedDriverRoutes);
-        }
-      }
-  
-      // Parse and set number of drivers
-      if (savedNumDriversJson) {
-        const parsedNumDrivers = JSON.parse(savedNumDriversJson) as number;
-        setNumDrivers(parsedNumDrivers);
-      }
-  
-      // Select the first driver
-      handleDriverSelect(0);
-    } catch (err) {
-      console.error("Error loading route:", err);
-      toast.error("Failed to load saved route");
-    }
-  }, []);
 
   const saveToHistory = useCallback(() => {
     setRouteHistory((prev) => [...prev, [...markers]]);
@@ -494,6 +607,7 @@ export default function RoutePlanner() {
     unreachableSegments?: { origin: string; destination: string }[];
   }> => {
     if (!isLoaded || markers.length < 2) {
+
       return {
         directions: [],
         totalDistance: "0 km",
@@ -699,36 +813,7 @@ export default function RoutePlanner() {
       }
     }
 
-    console.log(
-      `Found ${roadPath.length} road path points and ${unreachablePaths.length} unreachable segments`
-    );
-
     return { roadPath, unreachablePaths };
-  };
-
-  // Remove duplicate markers based on location and driver ID
-  const removeDuplicateMarkers = (
-    markers: MarkerLocation[]
-  ): MarkerLocation[] => {
-    // Use a Map with location coordinates as keys to identify duplicates
-    const uniqueMarkers = new Map<string, MarkerLocation>();
-
-    markers.forEach((marker) => {
-      const locationKey = `${marker.latitude.toFixed(
-        6
-      )},${marker.longitude.toFixed(6)}`;
-
-      // If this location doesn't exist yet, or if this marker has a driver ID and the existing one doesn't
-      if (
-        !uniqueMarkers.has(locationKey) ||
-        (marker.driverId !== undefined &&
-          uniqueMarkers.get(locationKey)?.driverId === undefined)
-      ) {
-        uniqueMarkers.set(locationKey, marker);
-      }
-    });
-
-    return Array.from(uniqueMarkers.values());
   };
 
   // Function to detect unreachable locations
@@ -791,12 +876,14 @@ export default function RoutePlanner() {
 
     return { unreachableRoutes, allRoutesChecked };
   };
+
   const handleConfigChange = <K extends keyof RouteConfiguration>(
     key: K,
     value: RouteConfiguration[K]
   ) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
+
   // Function to handle exporting a specific driver's route
   const handleExportDriver = (driverId: number, e?: React.MouseEvent) => {
     // Stop event propagation if provided (for buttons within collapsible)
@@ -819,149 +906,6 @@ export default function RoutePlanner() {
       setExport(true);
     } else {
       toast.error("No route data available for this driver");
-    }
-  };
-
-  // Enhanced version of processDriverRoutes that identifies problematic routes
-  const processDriverRoutes = async (optimizedMarkers: MarkerLocation[]) => {
-    const directionsService = new google.maps.DirectionsService();
-    const driverRoutesMap = new Map<number, MarkerLocation[]>();
-  
-    // Get the starting location (first marker entered by user)
-    const startLocation = optimizedMarkers[0];
-  
-    // Group markers by driver ID
-    optimizedMarkers.forEach((marker) => {
-      // Make sure undefined driverId is treated as 0
-      const driverId = marker.driverId !== undefined ? marker.driverId : 0;
-      if (!driverRoutesMap.has(driverId)) {
-        driverRoutesMap.set(driverId, []);
-        // Add the start location as the first stop for each driver
-        driverRoutesMap.get(driverId)?.push({
-          ...startLocation,
-          driverId: driverId,
-          note:
-            marker === optimizedMarkers[0]
-              ? startLocation.note
-              : startLocation.note || "Start point",
-        });
-      }
-  
-      // Only add the marker if it's not duplicating the start location
-      const isSameAsStart =
-        Math.abs(marker.latitude - startLocation.latitude) < 0.000001 &&
-        Math.abs(marker.longitude - startLocation.longitude) < 0.000001;
-  
-      if (!isSameAsStart || marker.driverId !== driverId) {
-        driverRoutesMap.get(driverId)?.push(marker);
-      }
-    });
-  
-    const routes: DriverRoute[] = [];
-    const problematicDrivers: {
-      driverId: number;
-      unreachableRoutes: { origin: string; destination: string }[];
-    }[] = [];
-  
-    // Process each driver's route
-    for (const [driverId, driverMarkers] of driverRoutesMap.entries()) {
-      // Only process if driver has at least 2 markers (start and end)
-      if (driverMarkers.length >= 2) {
-        // Handle "return home" option by adding the first stop as the last stop if needed
-        const routeMarkers = [...driverMarkers];
-        const firstMarker = routeMarkers[0];
-        const lastMarker = routeMarkers[routeMarkers.length - 1];
-  
-        // Check if we need to add the start location as the end point
-        const needToAddReturnStop =
-          config.returnToStart &&
-          (Math.abs(lastMarker.latitude - firstMarker.latitude) >= 0.000001 ||
-            Math.abs(lastMarker.longitude - firstMarker.longitude) >= 0.000001);
-  
-        if (needToAddReturnStop) {
-          routeMarkers.push({
-            ...firstMarker,
-            note: "Return to start",
-          });
-        }
-  
-        // Check for unreachable locations
-        const { unreachableRoutes } = await detectUnreachableLocations(
-          routeMarkers,
-          directionsService,
-          config
-        );
-  
-        if (unreachableRoutes.length > 0) {
-          problematicDrivers.push({ driverId, unreachableRoutes });
-        }
-  
-        // Get both road paths and straight lines for unreachable segments - ONLY ONCE
-        console.log("Getting route paths for driver:", driverId);
-        const { roadPath, unreachablePaths } = await getRoutePathFromDirections(
-          routeMarkers
-        );
-        console.log("Road path length:", roadPath.length);
-        console.log("Unreachable paths:", unreachablePaths);
-  
-        // Get directions info - ONLY ONCE
-        const { directions, totalDistance, totalDuration } =
-          await getDetailedDirections(routeMarkers);
-  
-        routes.push({
-          driverId,
-          markers: routeMarkers,
-          routePath: roadPath,
-          straightLinePaths: unreachablePaths,
-          directions,
-          totalDistance,
-          totalDuration,
-          color: ROUTE_COLORS[driverId % ROUTE_COLORS.length],
-        });
-      }
-    }
-  
-    // Handle problematic routes - alert but still show route
-    if (problematicDrivers.length > 0) {
-      let detailedMessage = "ALERT: Problematic Route(s) Detected\n\n";
-  
-      problematicDrivers.forEach(({ driverId, unreachableRoutes }) => {
-        detailedMessage += `Issues with Driver ${driverId + 1}:\n`;
-  
-        unreachableRoutes.forEach(({ origin, destination }) => {
-          detailedMessage += `- Cannot find road route from "${origin}" to "${destination}" - showing direct line instead\n`;
-        });
-  
-        detailedMessage += "\n";
-      });
-  
-      detailedMessage +=
-        "For unreachable locations, a straight line will be shown. Road routes will be shown where available.";
-      setUnreachableAlertMessage(detailedMessage);
-      setShowUnreachableAlert(true);
-    }
-  
-    // Debug the routes that will be set
-    console.log("Setting driver routes:", routes);
-    routes.forEach((route, idx) => {
-      console.log(
-        `Route ${idx} - roadPath: ${
-          route.routePath.length
-        }, straightLinePaths: ${route.straightLinePaths?.length || 0}`
-      );
-    });
-  
-    setDriverRoutes(routes);
-  
-    // Update numDrivers to match the actual number of drivers detected
-    if (routes.length > 0) {
-      setNumDrivers(routes.length);
-    }
-  
-    // If we have routes, select the first one
-    if (routes.length > 0) {
-      setSelectedDriverId(routes[0].driverId);
-      updateRouteView(routes[0]);
     }
   };
 
@@ -1016,7 +960,9 @@ export default function RoutePlanner() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
+      removeCredits(10);
       const data = await response.json();
+      setRawData(data);
       const originalDriverCount = numDrivers; // Store original count for comparison
 
       if (data.routes && Array.isArray(data.routes)) {
@@ -1038,34 +984,60 @@ export default function RoutePlanner() {
         const uniqueMarkers = removeDuplicateMarkers(allMarkers);
         setMarkers(uniqueMarkers);
 
+        // Use a separate variable to track completion
+        let processingComplete = false;
+
         // Now check for unreachable routes AFTER getting the optimized route from backend
-        // Process each driver's route
-        await processDriverRoutes(uniqueMarkers);
+        // Process each driver's route with a separate try/catch to avoid affecting the UI
+        setTimeout(async () => {
+          try {
+            await processDriverRoutes(uniqueMarkers);
 
-        // Check if the actual number of drivers is different from what was requested
-        const actualDriverCount = data.totalDrivers || data.routes.length;
-        if (actualDriverCount < originalDriverCount) {
-          setDriverCountMessage(
-            `The route has been optimized with ${actualDriverCount} driver${
-              actualDriverCount !== 1 ? "s" : ""
-            } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
-          );
-          setShowDriverCountAlert(true);
-        }
+            // Check if the actual number of drivers is different from what was requested
+            const actualDriverCount = data.totalDrivers || data.routes.length;
+            if (actualDriverCount < originalDriverCount) {
+              setDriverCountMessage(
+                `The route has been optimized with ${actualDriverCount} driver${
+                  actualDriverCount !== 1 ? "s" : ""
+                } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
+              );
+              setShowDriverCountAlert(true);
+            }
 
-        handleDriverSelect(0);
-        toast.success("Route optimized successfully!");
+            // Select first driver
+            if (driverRoutes.length > 0) {
+              handleDriverSelect(0);
+            }
 
-        // Expand directions section when route is calculated
-        setExpandedDirections(true);
-        // Automatically expand the first driver's directions
-        if (driverRoutes.length > 0) {
-          setExpandedDrivers(new Set([driverRoutes[0].driverId]));
-        }
-        // Make sure log is not null before passing to removeCredits
-        if (log) {
-          await removeCredits(10 * actualDriverCount);
-        }
+            // Expand directions section when route is calculated
+            setExpandedDirections(true);
+
+            // Automatically expand the first driver's directions
+            if (driverRoutes.length > 0) {
+              setExpandedDrivers(new Set([driverRoutes[0].driverId]));
+            }
+
+            // Mark as complete
+            processingComplete = true;
+
+            // Success message
+            toast.success("Route optimized successfully!");
+
+            // Charge credits
+            if (log) {
+              await remove_credits(log, 10 * (actualDriverCount || 1));
+            }
+          } catch (error) {
+            console.error("Error processing driver routes:", error);
+
+            // Prevent duplicate error messages
+            if (!processingComplete) {
+              toast.error("Error calculating directions for optimized route");
+            }
+          } finally {
+            setIsCalculating(false);
+          }
+        }, 0);
       } else if (data.route) {
         // Backward compatibility with old format
         const optimizedMarkers = data.route.map((marker: MarkerLocation) => ({
@@ -1076,36 +1048,50 @@ export default function RoutePlanner() {
         const uniqueMarkers = removeDuplicateMarkers(optimizedMarkers);
         setMarkers(uniqueMarkers);
 
-        // Now check for unreachable routes AFTER getting the optimized route from backend
-        // Process each driver's route
-        await processDriverRoutes(uniqueMarkers);
+        // Use setTimeout to break potential recursive chain
+        setTimeout(async () => {
+          try {
+            // Process each driver's route
+            await processDriverRoutes(uniqueMarkers);
 
-        // Check how many unique driver IDs are in the response
-        const uniqueDriverIds = new Set(
-          optimizedMarkers.map((m: { driverId: string }) => m.driverId)
-        ).size;
-        if (uniqueDriverIds < originalDriverCount) {
-          toast.info(
-            `The route has been optimized with ${uniqueDriverIds} driver${
-              uniqueDriverIds !== 1 ? "s" : ""
-            } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
-          );
-        }
+            // Check how many unique driver IDs are in the response
+            const uniqueDriverIds = new Set(
+              optimizedMarkers.map((m: { driverId: string }) => m.driverId)
+            ).size;
 
-        toast.success("Route optimized successfully!");
+            if (uniqueDriverIds < originalDriverCount) {
+              toast.info(
+                `The route has been optimized with ${uniqueDriverIds} driver${
+                  uniqueDriverIds !== 1 ? "s" : ""
+                } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
+              );
+            }
 
-        // Expand directions section when route is calculated
-        setExpandedDirections(true);
-        // Automatically expand the first driver's directions
-        if (driverRoutes.length > 0) {
-          setExpandedDrivers(new Set([driverRoutes[0].driverId]));
-        }
-        // Make sure log is not null before passing to removeCredits
-        if (log) {
-          await removeCredits(10);
-        }
+            // Success message
+            toast.success("Route optimized successfully!");
+
+            // Expand directions section when route is calculated
+            setExpandedDirections(true);
+
+            // Automatically expand the first driver's directions
+            if (driverRoutes.length > 0) {
+              setExpandedDrivers(new Set([driverRoutes[0].driverId]));
+            }
+
+            // Charge credits
+            if (log) {
+              await remove_credits(log, 10);
+            }
+          } catch (error) {
+            console.error("Error processing optimized route:", error);
+            toast.error("Error calculating directions for optimized route");
+          } finally {
+            setIsCalculating(false);
+          }
+        }, 0);
       } else {
         toast.error("Invalid route data received");
+        setIsCalculating(false);
       }
     } catch (err) {
       console.error("Error calculating route:", err);
@@ -1113,7 +1099,6 @@ export default function RoutePlanner() {
         "Failed to calculate route: " +
           (err instanceof Error ? err.message : "Unknown error")
       );
-    } finally {
       setIsCalculating(false);
     }
   };
@@ -1123,7 +1108,7 @@ export default function RoutePlanner() {
     routeConfig?: RouteConfiguration
   ): string[] {
     if (!Array.isArray(markers) || markers.length === 0) {
-      throw new Error("Invalid markers array");
+      return [];
     }
 
     // Use the modern Google Maps URL format with ?api=1
@@ -1178,13 +1163,23 @@ export default function RoutePlanner() {
 
     return urls;
   }
+
   const [showDriverCountAlert, setShowDriverCountAlert] = useState(false);
   const [driverCountMessage, setDriverCountMessage] = useState("");
 
+  // Utility function to sanitize route names for URL-friendliness
+  const sanitizeRouteName = (name: string): string => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+      .trim()
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .slice(0, 50); // Limit length
+  };
 
-  
-  const handleSaveRoute = async () => {
+  const handleSaveRoute = async (): Promise<void> => {
     const cost = 10;
+
     if (!log) {
       toast.error("You must be logged in to save routes");
       return;
@@ -1207,34 +1202,40 @@ export default function RoutePlanner() {
       return;
     }
 
-    setIsSaving(true); // Set saving state to true
+    setIsSaving(true);
 
     try {
-      const num = await num_routes(log);
+      // Sanitize route name for URL
+      const sanitizedName = sanitizeRouteName(formData.name);
 
-      if (num === false) {
-        toast.error("Too many routes already saved.");
-        handleSaveDialogClose();
-        setUnreachableAlertMessage("");
-        setShowUnreachableAlert(true);
+      // Check if route name already exists
+      const existingRoutes = await get_routes(log);
+      const routes = JSON.parse(existingRoutes).routes as RouteTuple[];
+      if (routes.some(route => route.name === sanitizedName)) {
+        toast.error("A route with this name already exists!");
         return;
       }
 
-      const routeData = {
-        markers,
-        config,
-        driverRoutes,
-        numDrivers,
-        timestamp: new Date().toISOString(),
-      };
+      await remove_credits(log, cost);
 
-      await save_route(log, JSON.stringify(routeData), formData.name);
-      await removeCredits(cost);
+      // Save to server with sanitized name
+      const saveResult = await save_route(
+        log,
+        JSON.stringify(rawData),
+        sanitizedName
+      );
+
+      if (!saveResult) {
+        throw new Error("Failed to save route to server");
+      }
+
       toast.success("Route saved successfully");
       handleSaveDialogClose();
-   
+    } catch (error) {
+      console.error("Error saving route:", error);
+      toast.error("Failed to save route");
     } finally {
-      setIsSaving(false); // Reset saving state
+      setIsSaving(false);
     }
   };
 
@@ -1254,22 +1255,6 @@ export default function RoutePlanner() {
     toast.success("Route cleared");
   };
 
-  const handleDriverSelect = (driverId: number) => {
-    setSelectedDriverId(driverId);
-  
-    // Update the displayed route information
-    const driverRoute = driverRoutes.find(
-      (route) => route.driverId === driverId
-    );
-  
-    if (driverRoute) {
-      updateRouteView(driverRoute);
-  
-      // Pass the route configuration here too
-      const urls = generateGoogleMapsRouteUrls(driverRoute.markers, config);
-      setMapURLs(urls);
-    }
-  };
   const handleDriverCountChange = (value: string) => {
     const count = parseInt(value, 10);
     if (!isNaN(count) && count >= 1 && count <= maxDrivers) {
@@ -1306,12 +1291,6 @@ export default function RoutePlanner() {
     }
   }, [status, log]);
 
-  useEffect(() => {
-    if (status === "authenticated" && shouldLoadRoute) {
-      loadRoute();
-    }
-  }, [status, shouldLoadRoute, loadRoute]);
-
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -1321,13 +1300,10 @@ export default function RoutePlanner() {
   }
 
   return (
+    <div>
     <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
       {/* Suspense boundary around the component that uses useSearchParams */}
-      <Suspense fallback={<div>Loading route data...</div>}>
-        <SearchParamLoader onLoad={handleSearchParamsLoad} />
-      </Suspense>
-
-      <div className="w-full lg:w-[30%] flex flex-col gap-4 p-4 overflow-y-auto">
+    <div className="w-full lg:w-[30%] flex flex-col gap-4 p-4 overflow-y-auto">
         {/* Add Location Section */}
         <div className="rounded-xl bg-muted/50 px-4 py-2">
           <div className="flex items-center justify-between">
@@ -1336,8 +1312,7 @@ export default function RoutePlanner() {
                 <DialogHeader>
                   <DialogTitle>Save Route</DialogTitle>
                   <DialogDescription>
-                    Give your route a name so you can find it later. Saving a
-                    route will cost 10 credits.
+                    Give your route a name so you can find it later. Route names will be converted to lowercase and special characters will be removed. Saving a route will cost 10 credits.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
@@ -1352,6 +1327,11 @@ export default function RoutePlanner() {
                           setFormData({ ...formData, name: e.target.value })
                         }
                       />
+                      {formData.name && (
+                        <p className="text-sm text-muted-foreground">
+                          Will be saved as: {sanitizeRouteName(formData.name)}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1928,9 +1908,7 @@ export default function RoutePlanner() {
           </div>
         )}
 
-        {/* Export Dialog remains unchanged */}
-        {/* Enhanced Export Dialog */}
-        {/* Enhanced Export Dialog with Route Options Display */}
+        {/* Export Dialog with Route Options Display */}
         <Dialog open={showExport} onOpenChange={setExport}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -1989,104 +1967,88 @@ export default function RoutePlanner() {
                         ? `Segment ${index + 1}`
                         : "Complete Route"}
                     </p>
-                    {/* Removed the Badge showing stop count */}
                   </div>
-                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                    <Button
-                      className="flex-1"
-                      onClick={() => window.open(url, "_blank")}
-                    >
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Open in Maps
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => {
-                        navigator.clipboard.writeText(url);
-                        toast.success("URL copied to clipboard");
-                      }}
-                    >
-                      <ClipboardCopy className="mr-2 h-4 w-4" />
-                      Copy URL
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <DialogFooter className="mt-4">
-              <Button variant="outline" onClick={() => setExport(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        {/* Other dialogs remain unchanged */}
-      </div>
-
-      <Dialog open={showNoCreditsDialog} onOpenChange={setShowNoCreditsDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Credits Required</DialogTitle>
-            <DialogDescription>
-              You need credits to optimize routes. Route optimization costs 10
-              credits per driver.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center justify-between py-3">
-            <div className="flex items-center gap-2">
-              <Bolt className="h-5 w-5 text-primary" />
-              <span className="font-medium">
-                Required Credits: {10 * numDrivers}
-              </span>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Current Balance: {credit}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowNoCreditsDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setShowNoCreditsDialog(false);
-                router.push("/dashboard/settings/billing");
-              }}
-            >
-              Purchase Credits
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Combined AlertDialog for both unreachable segments and max routes */}
-      <AlertDialog
-        open={showUnreachableAlert}
-        onOpenChange={setShowUnreachableAlert}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {unreachableAlertMessage
-                ? "Unreachable Route Segments"
-                : "Maximum limit of 6 saved routes reached"}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="whitespace-pre-line">
-              {unreachableAlertMessage ||
-                "Please delete some routes before adding more."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <Button onClick={() => setShowUnreachableAlert(false)}>
-              Understood
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
+                   <div className="flex items-center gap-2">
+                   <Button
+                   variant="outline"
+                   size="sm"
+                   onClick={() => {
+                   navigator.clipboard.writeText(url);
+                   toast.success("URL copied to clipboard!");
+                   }}
+                   >
+                   <ClipboardCopy className="mr-2 h-4 w-4" />
+                   Copy URL
+                   </Button>
+                   <Button
+                   variant="default"
+                   size="sm"
+                   onClick={() => window.open(url, "_blank")}
+                   >
+                   <ExternalLink className="mr-2 h-4 w-4" />
+                   Open in Google Maps
+                   </Button>
+                   </div>
+                   </div>
+                   ))}
+                   </div>
+                  
+                   <DialogFooter>
+                   <Button variant="outline" onClick={() => setExport(false)}>
+                   Close
+                   </Button>
+                   </DialogFooter>
+                   </DialogContent>
+                   </Dialog>
+                  
+                   {/* No Credits Dialog */}
+                   <AlertDialog
+                   open={showNoCreditsDialog}
+                   onOpenChange={setShowNoCreditsDialog}
+                   >
+                   <AlertDialogContent>
+                   <AlertDialogHeader>
+                   <AlertDialogTitle>Insufficient Credits</AlertDialogTitle>
+                   <AlertDialogDescription>
+                   You don&apos;t have enough credits to optimize this route. Please
+                   purchase more credits to continue.
+                   </AlertDialogDescription>
+                   </AlertDialogHeader>
+                   <AlertDialogFooter>
+                   <Button
+                   variant="outline"
+                   onClick={() => setShowNoCreditsDialog(false)}
+                   >
+                   Cancel
+                   </Button>
+                   <Button onClick={() => router.push("/pricing")}>
+                   Purchase Credits
+                   </Button>
+                   </AlertDialogFooter>
+                   </AlertDialogContent>
+                   </AlertDialog>
+                  
+                   {/* Unreachable Locations Alert Dialog */}
+                   <AlertDialog
+                   open={showUnreachableAlert}
+                   onOpenChange={setShowUnreachableAlert}
+                   >
+                   <AlertDialogContent>
+                   <AlertDialogHeader>
+                   <AlertDialogTitle>Problematic Route(s) Detected</AlertDialogTitle>
+                   <AlertDialogDescription className="whitespace-pre-wrap">
+                   {unreachableAlertMessage}
+                   </AlertDialogDescription>
+                   </AlertDialogHeader>
+                   <AlertDialogFooter>
+                   <Button onClick={() => setShowUnreachableAlert(false)}>
+                   Understood
+                   </Button>
+                   </AlertDialogFooter>
+                   </AlertDialogContent>
+                   </AlertDialog>
+                   </div>
+                   </div>
+                   </div>
+                   );
+                  }
