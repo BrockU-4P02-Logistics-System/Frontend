@@ -1375,100 +1375,133 @@ export default function RoutePlanner() {
               </span>
             </div>
             {isDestinationsOpen && (
-  <>
-    <div className="space-y-2">
-      {(() => {
-        // Create an ordered array that preserves driver route order first
-        const orderedMarkers: MarkerLocation[] = [];
-        
-        // Get unique driver IDs from markers
-        const driverIds = [...new Set(markers.map(marker => marker.driverId ?? 0))].sort((a, b) => a - b);
-        
-        // For each driver, add their markers in order
-        driverIds.forEach(driverId => {
-          const driverMarkers = markers
-            .filter(marker => (marker.driverId ?? 0) === driverId)
-            .sort((a, b) => a.order - b.order);
-          
-          orderedMarkers.push(...driverMarkers);
-        });
-        
-        return orderedMarkers.map(marker => {
-          // Find the original index in the markers array for event handlers
-          const originalIndex = markers.findIndex(m => 
-            m.latitude === marker.latitude && 
-            m.longitude === marker.longitude && 
-            m.address === marker.address
-          );
-          
-          return (
-            <div
-              key={originalIndex}
-              className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
-              draggable
-              onDragStart={() => handleDragStart(originalIndex)}
-              onDragOver={() => handleDragOver(originalIndex)}
-              onDragEnd={handleDragEnd}
-            >
-              <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-medium">
-                  {marker.address}
-                </p>
-                {marker.driverId !== undefined &&
-                  driverRoutes.length > 0 && (
-                    <p
-                      className="text-xs font-medium"
-                      style={{
-                        color:
-                          ROUTE_COLORS[
-                            marker.driverId % ROUTE_COLORS.length
-                          ],
-                      }}
-                    >
-                      Driver {marker.driverId + 1}
-                    </p>
-                  )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleRemoveAddress(originalIndex)}
-              >
-                <Trash className="h-4 w-4 text-red-500" />
-              </Button>
-            </div>
-          );
-        });
-      })()}
-    </div>
-    <div className="flex justify-between mt-4">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleClearRoute}
-      >
-        Clear All
-      </Button>
-      <Button
-        onClick={calculateRoute}
-        disabled={isCalculating || markers.length < 2}
-      >
-        {isCalculating ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Calculating...
-          </>
-        ) : (
-          <>
-            <Bolt className="mr-2 h-4 w-4" />
-            Optimize Route
-          </>
-        )}
-      </Button>
-    </div>
-  </>
-)}
+              <>
+                <div className="space-y-2">
+                  {(() => {
+                    // Create an ordered array with starting address first
+                    const orderedMarkers: MarkerLocation[] = [];
+
+                    // Find the starting address - typically the first address that appears for each driver
+                    const startingAddress = markers.find(
+                      (marker) => marker.order === 1
+                    );
+
+                    // Add the starting address first if found
+                    if (startingAddress) {
+                      orderedMarkers.push(startingAddress);
+                    }
+
+                    // Get unique driver IDs from markers, excluding the starting point's driver ID
+                    const driverIds = [
+                      ...new Set(
+                        markers
+                          .filter((marker) => marker !== startingAddress)
+                          .map((marker) => marker.driverId ?? 0)
+                      ),
+                    ].sort((a, b) => a - b);
+
+                    // For each driver, add their remaining markers in order
+                    driverIds.forEach((driverId) => {
+                      const driverMarkers = markers
+                        .filter(
+                          (marker) =>
+                            (marker.driverId ?? 0) === driverId &&
+                            marker !== startingAddress
+                        )
+                        .sort((a, b) => a.order - b.order);
+
+                      orderedMarkers.push(...driverMarkers);
+                    });
+
+                    // Remove any duplicates that might have occurred
+                    const uniqueOrderedMarkers = orderedMarkers.filter(
+                      (marker, index, self) =>
+                        index ===
+                        self.findIndex(
+                          (m) =>
+                            m.latitude === marker.latitude &&
+                            m.longitude === marker.longitude &&
+                            m.address === marker.address
+                        )
+                    );
+
+                    return uniqueOrderedMarkers.map((marker) => {
+                      // Find the original index in the markers array for event handlers
+                      const originalIndex = markers.findIndex(
+                        (m) =>
+                          m.latitude === marker.latitude &&
+                          m.longitude === marker.longitude &&
+                          m.address === marker.address
+                      );
+
+                      return (
+                        <div
+                          key={originalIndex}
+                          className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
+                          draggable
+                          onDragStart={() => handleDragStart(originalIndex)}
+                          onDragOver={() => handleDragOver(originalIndex)}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {marker.address}
+                            </p>
+                            {marker.driverId !== undefined &&
+                              driverRoutes.length > 0 && (
+                                <p
+                                  className="text-xs font-medium"
+                                  style={{
+                                    color:
+                                      ROUTE_COLORS[
+                                        marker.driverId % ROUTE_COLORS.length
+                                      ],
+                                  }}
+                                >
+                                  Driver {marker.driverId + 1}
+                                </p>
+                              )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveAddress(originalIndex)}
+                          >
+                            <Trash className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+                <div className="flex justify-between mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearRoute}
+                  >
+                    Clear All
+                  </Button>
+                  <Button
+                    onClick={calculateRoute}
+                    disabled={isCalculating || markers.length < 2}
+                  >
+                    {isCalculating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Calculating...
+                      </>
+                    ) : (
+                      <>
+                        <Bolt className="mr-2 h-4 w-4" />
+                        Optimize Route
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
