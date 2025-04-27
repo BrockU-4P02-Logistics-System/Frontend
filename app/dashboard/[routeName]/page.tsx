@@ -310,7 +310,6 @@ export default function RoutePlanner() {
       //   return;
       // }
 
-
       setConfig(DEFAULT_CONFIG);
       setFormData({ name });
       setRouteHistory([]);
@@ -1375,17 +1374,33 @@ export default function RoutePlanner() {
                 {markers.length} location{markers.length !== 1 ? "s" : ""}
               </span>
             </div>
-
             {isDestinationsOpen && (
   <>
     <div className="space-y-2">
-      {[...markers]
-        .sort((a, b) => a.order - b.order)
-        .map((marker) => {
-          // Find the original index in the markers array
-          const originalIndex = markers.findIndex(
-            (m) => m === marker
+      {(() => {
+        // Create an ordered array that preserves driver route order first
+        const orderedMarkers: MarkerLocation[] = [];
+        
+        // Get unique driver IDs from markers
+        const driverIds = [...new Set(markers.map(marker => marker.driverId ?? 0))].sort((a, b) => a - b);
+        
+        // For each driver, add their markers in order
+        driverIds.forEach(driverId => {
+          const driverMarkers = markers
+            .filter(marker => (marker.driverId ?? 0) === driverId)
+            .sort((a, b) => a.order - b.order);
+          
+          orderedMarkers.push(...driverMarkers);
+        });
+        
+        return orderedMarkers.map(marker => {
+          // Find the original index in the markers array for event handlers
+          const originalIndex = markers.findIndex(m => 
+            m.latitude === marker.latitude && 
+            m.longitude === marker.longitude && 
+            m.address === marker.address
           );
+          
           return (
             <div
               key={originalIndex}
@@ -1424,7 +1439,8 @@ export default function RoutePlanner() {
               </Button>
             </div>
           );
-        })}
+        });
+      })()}
     </div>
     <div className="flex justify-between mt-4">
       <Button
