@@ -294,16 +294,23 @@ export default function RoutePlanner() {
         )
         .sort((a, b) => a.order - b.order);
 
-      if (sortedMarkers.length < 2) {
-        console.warn("Not enough valid markers to generate a route");
-        toast.error("Not enough valid locations to load the route");
-        resetRouteState();
-        setMarkers([]);
-        return;
-      }
+      const uniqueMarkers = Array.from(
+        new Map(
+          validMarkers.map((m) => [`${m.latitude},${m.longitude}`, m])
+        ).values()
+      ).sort((a, b) => a.order - b.order);
 
-      // Set markers and other configurations
-      setMarkers(sortedMarkers);
+      setMarkers(uniqueMarkers);
+
+      // if (sortedMarkers.length < 2) {
+      //   console.warn("Not enough valid markers to generate a route");
+      //   toast.error("Not enough valid locations to load the route");
+      //   resetRouteState();
+      //   setMarkers([]);
+      //   return;
+      // }
+
+
       setConfig(DEFAULT_CONFIG);
       setFormData({ name });
       setRouteHistory([]);
@@ -1371,52 +1378,44 @@ export default function RoutePlanner() {
             {isDestinationsOpen && (
               <>
                 <div className="space-y-2">
-                  {[...markers]
-                    .sort((a, b) => a.order - b.order)
-                    .map((marker) => {
-                      // Find the original index to keep the drag-n-drop functionality working
-                      const originalIndex = markers.findIndex(
-                        (m) => m === marker
-                      );
-                      return (
-                        <div
-                          key={originalIndex}
-                          className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
-                          draggable
-                          onDragStart={() => handleDragStart(originalIndex)}
-                          onDragOver={() => handleDragOver(originalIndex)}
-                          onDragEnd={handleDragEnd}
-                        >
-                          <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
-                          <div className="flex-1 min-w-0">
-                            <p className="truncate text-sm font-medium">
-                              {marker.address}
+                  {markers.map((marker, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 bg-muted/50 rounded-md p-2"
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={() => handleDragOver(index)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <GripVertical className="h-4 w-4 cursor-move text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {marker.address}
+                        </p>
+                        {marker.driverId !== undefined &&
+                          driverRoutes.length > 0 && (
+                            <p
+                              className="text-xs font-medium"
+                              style={{
+                                color:
+                                  ROUTE_COLORS[
+                                    marker.driverId % ROUTE_COLORS.length
+                                  ],
+                              }}
+                            >
+                              Driver {marker.driverId + 1}
                             </p>
-                            {marker.driverId !== undefined &&
-                              driverRoutes.length > 0 && (
-                                <p
-                                  className="text-xs font-medium"
-                                  style={{
-                                    color:
-                                      ROUTE_COLORS[
-                                        marker.driverId % ROUTE_COLORS.length
-                                      ],
-                                  }}
-                                >
-                                  Driver {marker.driverId + 1}
-                                </p>
-                              )}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveAddress(originalIndex)}
-                          >
-                            <Trash className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      );
-                    })}
+                          )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveAddress(index)}
+                      >
+                        <Trash className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
                 <div className="flex justify-between mt-4">
                   <Button
