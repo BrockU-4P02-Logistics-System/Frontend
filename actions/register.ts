@@ -400,15 +400,14 @@ export const check_credits = async (auth: string): Promise<number | null> => {
   }
 };
 
-export const remove_credits = async (auth: string, increment: number): Promise<void> => {
+export const remove_credits = async (auth: string, amount: number): Promise<void> => {
   try {
     await connectDB();
 
     const updateResult = await User.findOneAndUpdate<UserDocument>(
       { email: auth },
-      { $inc: { credits: increment } }
+      { $inc: { credits: -amount } }
     );
-
     if (!updateResult) {
       console.warn(`User with email ${auth} not found when removing credits`);
       throw new Error("User not found");

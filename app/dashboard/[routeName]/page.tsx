@@ -1030,11 +1030,9 @@ export default function RoutePlanner() {
       toast.error(`Need ${cost} credits, have ${credits}`);
       return;
     }
-    // if (markers.length < 2) {
-    //   console.log('No enough markers');
-    //   toast.error("Add at least two locations");
-    //   return;
-    // }
+
+    await remove_credits(log, cost);
+
 
     setIsCalculating(true);
     saveToHistory();
@@ -1098,7 +1096,6 @@ export default function RoutePlanner() {
       if (driverRoutes.length > 0) {
         setExpandedDrivers(new Set([driverRoutes[0].driverId]));
       }
-      await removeCredits(10 * (data.totalDrivers || 1));
       toast.success("Route optimized successfully");
     } catch (error) {
       console.error("Error calculating route:", error);
