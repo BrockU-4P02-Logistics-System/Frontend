@@ -1289,12 +1289,6 @@ export default function RoutePlanner() {
    * too late to change now tho
    * @param amount
    */
-  const removeCredits = async (amount: number) => {
-    if (log) {
-      await remove_credits(log, -amount);
-      await loadCredits();
-    }
-  };
 
   useEffect(() => {
     if (status === "authenticated" && log) {
