@@ -934,6 +934,7 @@ export default function RoutePlanner() {
     setIsCalculating(true);
     saveToHistory();
       
+    console.log(`the cost is ${cost}`)
     await remove_credits(log, cost);
     await loadCredits();
 
@@ -1034,10 +1035,6 @@ export default function RoutePlanner() {
             // Success message
             toast.success("Route optimized successfully!");
 
-            // Charge credits
-            if (log) {
-              await remove_credits(log, 10 * (actualDriverCount || 1));
-            }
           } catch (error) {
             console.error("Error processing driver routes:", error);
 
@@ -1223,6 +1220,7 @@ export default function RoutePlanner() {
         return;
       }
 
+      console.log(`${cost} is the cost`)
       await remove_credits(log, cost);
 
       // Save to server with sanitized name

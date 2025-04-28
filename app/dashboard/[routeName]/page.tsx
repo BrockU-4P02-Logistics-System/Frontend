@@ -1022,87 +1022,197 @@ export default function RoutePlanner() {
   const calculateRoute = async () => {
     const cost = 10 * numDrivers;
     const credits = (await check_credits(log)) as number;
-    if (credits === null || credits <= 0) {
+
+    if (credits <= 0) {
       setShowNoCreditsDialog(true);
       return;
     }
+
     if (credits < cost) {
-      toast.error(`Need ${cost} credits, have ${credits}`);
+      toast.error(
+        `You don't have enough credits. Need ${cost} credits but only have ${credits}.`
+      );
       return;
     }
 
-    await remove_credits(log, cost);
-    setCredits(credits - cost);
+    if (markers.length < 2) {
+      toast.error("Please add at least two locations");
+      return;
+    }
 
     setIsCalculating(true);
     saveToHistory();
+      
+    console.log(`the cost is ${cost}`)
+    await remove_credits(log, cost);
+    await loadCredits();
 
-    console.log("sending");
-    console.log(
-      `what im sending ${JSON.stringify({
+    try {
+      // Extract route options into an array for the backend
+      const options = [
+        config.avoidHighways || false,
+        config.avoidTolls || false,
+        config.avoidFerries || false,
+      ];
+
+      console.log(`what im sending ${JSON.stringify({
         features: markers,
         config,
         numberDrivers: numDrivers,
         returnToStart: config.returnToStart,
         options: [config.avoidHighways, config.avoidTolls, config.avoidFerries],
-      })}`
-    );
-    try {
+      })}`)
+
       const response = await fetch("/api/process", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           features: markers,
           config,
           numberDrivers: numDrivers,
           returnToStart: config.returnToStart,
-          options: [
-            config.avoidHighways,
-            config.avoidTolls,
-            config.avoidFerries,
-          ],
+          options: options, // Include the options array in the request
         }),
       });
 
-      console.log("response");
-
       if (!response.ok) {
-        console.log("response error");
-
-        throw new Error(`HTTP error: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const data: ProcessRouteResponse = await response.json();
-      console.log("API process response:", data);
 
-      const allMarkers: MarkerLocation[] =
-        data.routes?.flatMap((route) =>
-          route.stops.map((marker) => ({ ...marker, driverId: route.driverId }))
-        ) ||
-        data.route?.map((marker) => ({
+      const data = await response.json();
+      console.log(data);
+      setRawData(data);
+      const originalDriverCount = numDrivers; // Store original count for comparison
+
+      if (data.routes && Array.isArray(data.routes)) {
+        let allMarkers: MarkerLocation[] = [];
+
+        // Process each driver's route from the response
+        data.routes.forEach(
+          (driverRoute: { driverId: number; stops: MarkerLocation[] }) => {
+            const driverMarkers = driverRoute.stops.map((marker) => ({
+              ...marker,
+              driverId: driverRoute.driverId,
+            }));
+
+            allMarkers = [...allMarkers, ...driverMarkers];
+          }
+        );
+
+        // Remove duplicates before updating state
+        const uniqueMarkers = removeDuplicateMarkers(allMarkers);
+        setMarkers(uniqueMarkers);
+
+        // Use a separate variable to track completion
+        let processingComplete = false;
+
+        // Now check for unreachable routes AFTER getting the optimized route from backend
+        // Process each driver's route with a separate try/catch to avoid affecting the UI
+        setTimeout(async () => {
+          try {
+            await processDriverRoutes(uniqueMarkers);
+
+            // Check if the actual number of drivers is different from what was requested
+            const actualDriverCount = data.totalDrivers || data.routes.length;
+            if (actualDriverCount < originalDriverCount) {
+              setDriverCountMessage(
+                `The route has been optimized with ${actualDriverCount} driver${
+                  actualDriverCount !== 1 ? "s" : ""
+                } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
+              );
+              setShowDriverCountAlert(true);
+            }
+
+            // Select first driver
+            if (driverRoutes.length > 0) {
+              handleDriverSelect(0);
+            }
+
+            // Expand directions section when route is calculated
+            setExpandedDirections(true);
+
+            // Automatically expand the first driver's directions
+            if (driverRoutes.length > 0) {
+              setExpandedDrivers(new Set([driverRoutes[0].driverId]));
+            }
+
+            // Mark as complete
+            processingComplete = true;
+
+            // Success message
+            toast.success("Route optimized successfully!");
+
+          } catch (error) {
+            console.error("Error processing driver routes:", error);
+
+            // Prevent duplicate error messages
+            if (!processingComplete) {
+              toast.error("Error calculating directions for optimized route");
+            }
+          } finally {
+            setIsCalculating(false);
+          }
+        }, 0);
+      } else if (data.route) {
+        // Backward compatibility with old format
+        const optimizedMarkers = data.route.map((marker: MarkerLocation) => ({
           ...marker,
-          driverId: marker.driverId ?? 0,
-        })) ||
-        [];
+          driverId: marker.driverId !== undefined ? marker.driverId : 0,
+        }));
 
-      const uniqueMarkers = Array.from(
-        new Map(
-          allMarkers.map((m) => [`${m.latitude},${m.longitude}`, m])
-        ).values()
-      ).sort((a, b) => a.order - b.order);
+        const uniqueMarkers = removeDuplicateMarkers(optimizedMarkers);
+        setMarkers(uniqueMarkers);
 
-      setMarkers(uniqueMarkers);
-      await processDriverRoutes(uniqueMarkers);
-      setExpandedDirections(true);
-      if (driverRoutes.length > 0) {
-        setExpandedDrivers(new Set([driverRoutes[0].driverId]));
+        // Use setTimeout to break potential recursive chain
+        setTimeout(async () => {
+          try {
+            // Process each driver's route
+            await processDriverRoutes(uniqueMarkers);
+
+            // Check how many unique driver IDs are in the response
+            const uniqueDriverIds = new Set(
+              optimizedMarkers.map((m: { driverId: string }) => m.driverId)
+            ).size;
+
+            if (uniqueDriverIds < originalDriverCount) {
+              toast.info(
+                `The route has been optimized with ${uniqueDriverIds} driver${
+                  uniqueDriverIds !== 1 ? "s" : ""
+                } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
+              );
+            }
+
+            // Success message
+            toast.success("Route optimized successfully!");
+
+            // Expand directions section when route is calculated
+            setExpandedDirections(true);
+
+            // Automatically expand the first driver's directions
+            if (driverRoutes.length > 0) {
+              setExpandedDrivers(new Set([driverRoutes[0].driverId]));
+            
+            }
+          } catch (error) {
+            console.error("Error processing optimized route:", error);
+            toast.error("Error calculating directions for optimized route");
+          } finally {
+            setIsCalculating(false);
+          }
+        }, 0);
+      } else {
+        toast.error("Invalid route data received");
+        setIsCalculating(false);
       }
-      toast.success("Route optimized successfully");
-    } catch (error) {
-      console.error("Error calculating route:", error);
-      toast.error("Failed to calculate route");
-    } finally {
+    } catch (err) {
+      console.error("Error calculating route:", err);
+      toast.error(
+        "Failed to calculate route: " +
+          (err instanceof Error ? err.message : "Unknown error")
+      );
       setIsCalculating(false);
-      setMapKey(Date.now());
     }
   };
 
