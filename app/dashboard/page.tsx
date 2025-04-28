@@ -933,6 +933,9 @@ export default function RoutePlanner() {
 
     setIsCalculating(true);
     saveToHistory();
+      
+    await remove_credits(log, cost);
+    setCredits(credits-cost);
 
     try {
       // Extract route options into an array for the backend
@@ -968,7 +971,6 @@ export default function RoutePlanner() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      removeCredits(10);
       const data = await response.json();
       console.log(data);
       setRawData(data);
