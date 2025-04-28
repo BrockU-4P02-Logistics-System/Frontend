@@ -1087,11 +1087,7 @@ export default function RoutePlanner() {
             // Automatically expand the first driver's directions
             if (driverRoutes.length > 0) {
               setExpandedDrivers(new Set([driverRoutes[0].driverId]));
-            }
-
-            // Charge credits
-            if (log) {
-              await remove_credits(log, 10);
+            
             }
           } catch (error) {
             console.error("Error processing optimized route:", error);
