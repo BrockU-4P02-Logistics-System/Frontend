@@ -1459,7 +1459,34 @@ export default function RoutePlanner() {
                                       ],
                                   }}
                                 >
-                                  Driver {marker.driverId + 1}
+                                  {marker.order === 1 ? (
+                                    <p
+                                      className="text-xs font-medium"
+                                      style={{
+                                        color:
+                                          ROUTE_COLORS[
+                                            marker.driverId %
+                                              ROUTE_COLORS.length
+                                          ],
+                                      }}
+                                    >
+                                      Starting Location - Driver{" "}
+                                      {marker.driverId + 1}
+                                    </p>
+                                  ) : (
+                                    <p
+                                      className="text-xs font-medium"
+                                      style={{
+                                        color:
+                                          ROUTE_COLORS[
+                                            marker.driverId %
+                                              ROUTE_COLORS.length
+                                          ],
+                                      }}
+                                    >
+                                      Driver {marker.driverId + 1}
+                                    </p>
+                                  )}{" "}
                                 </p>
                               )}
                           </div>
