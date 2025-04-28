@@ -6,7 +6,7 @@
 
 > Interactive mapping for multi-driver TSP routing (up to 10 drivers)
 
-Re-Route is a React-based frontend for planning and optimizing routes across multiple drivers. With support for up to **10 drivers**, it offers a seamless UI with dark mode, persistent route management, secure payments, and easy sign-in options.
+Re-Route is a React-based frontend for planning and optimizing routes across multiple drivers. With support for up to **10 drivers**, it offers a seamless UI with dark mode, persistent route management, secure payments, and easy sign-in options. Re-Route is currently hosted at https://re-route.ca
 
 ## Table of Contents
 
