@@ -1,22 +1,27 @@
-```markdown
-# re-route Frontend
+<p align="center">
+  <img src="./logo.png" alt="re-route Logo" width="200" />
+</p>
 
-re-route is a React-based frontend application for a multi-driver Traveling Salesperson Problem (TSP) mapping platform. It supports routing up to 10 drivers and offers features such as dark mode, persistent route management, payment handling, and user authentication.
+# Re-Route Frontend
+
+> Interactive mapping for multi-driver TSP routing (up to 10 drivers)
+
+Re-Route is a React-based frontend for planning and optimizing routes across multiple drivers. With support for up to **10 drivers**, it offers a seamless UI with dark mode, persistent route management, secure payments, and easy sign-in options.
 
 ## Table of Contents
 
-- Features
-- Demo
-- Tech Stack
-- Installation
-- Usage
-- Authentication
-- Payments
-- Theming
-- Route Management
-- Configuration
-- Contributing
-- License
+- [Features](#features)
+- [Demo](#demo)
+- [Tech Stack](#tech-stack)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Authentication](#authentication)
+- [Payments](#payments)
+- [Theming](#theming)
+- [Route Management](#route-management)
+- [Configuration](#configuration)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
@@ -32,12 +37,12 @@ Live demo and usage video coming soon.
 
 ## Tech Stack
 
-- React (TypeScript)
-- State management: Redux Toolkit / Context API
-- Styling: Tailwind CSS / Styled Components
-- Mapping: Google Maps JavaScript API
-- Authentication: Firebase Auth (Google) & custom solution
-- Payments: Stripe.js & React Stripe Elements
+- **Framework**: React (TypeScript)
+- **State Management**: Redux Toolkit / Context API
+- **Styling**: Tailwind CSS / Styled Components
+- **Mapping**: Google Maps JavaScript API
+- **Authentication**: Firebase Auth (Google) & custom solution
+- **Payments**: Stripe.js & React Stripe Elements
 
 ## Installation
 
@@ -57,7 +62,7 @@ Start the development server:
 npm start
 ```
 
-Open http://localhost:3000 in your browser.
+Open `http://localhost:3000` in your browser.
 
 Build for production:
 
@@ -67,7 +72,7 @@ npm run build
 
 ## Authentication
 
-Users can sign in with Google accounts or use a custom email and password workflow.
+Users can sign in with their Google accounts or use a custom email/password workflow.
 
 ## Payments
 
@@ -88,13 +93,21 @@ Provide necessary API keys and other settings according to your team's deploymen
 ## Contributing
 
 1. Fork the repository.
-2. Create a branch: `git checkout -b feature/your-feature`
-3. Commit changes: `git commit -m "Add feature"`
-4. Push branch: `git push origin feature/your-feature`
+2. Create a branch:
+   ```bash
+   git checkout -b feature/your-feature
+   ```
+3. Commit changes:
+   ```bash
+   git commit -m "Add feature"
+   ```
+4. Push branch:
+   ```bash
+   git push origin feature/your-feature
+   ```
 5. Open a pull request.
 
 ## License
 
-This project is licensed under the Apache 2.0. See the LICENSE file for details.
-```
+This project is licensed under the Apache 2.0 License. See the [LICENSE](LICENSE) file for details.
 
