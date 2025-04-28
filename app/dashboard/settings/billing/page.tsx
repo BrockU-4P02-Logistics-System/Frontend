@@ -112,7 +112,7 @@ function StripeCheckout({
   return (
     <div className="p-4 border rounded-lg bg-card">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">Complete Purchase</h3>
+        <h3 className="text-lg font-semibold">Complete Purchase: In test mode use card 4242 4242 4242 4242 with any future MM/YY and any CVC.</h3>
         <Button variant="ghost" size="sm" onClick={onClose}>
           ✕
         </Button>
