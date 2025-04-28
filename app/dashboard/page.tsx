@@ -935,7 +935,7 @@ export default function RoutePlanner() {
     saveToHistory();
       
     await remove_credits(log, cost);
-    setCredits(credits-cost);
+    await loadCredits();
 
     try {
       // Extract route options into an array for the backend

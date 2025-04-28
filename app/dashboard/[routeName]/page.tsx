@@ -1032,8 +1032,8 @@ export default function RoutePlanner() {
     }
 
     await remove_credits(log, cost);
-    setCredits(credits-cost);
-    
+    setCredits(credits - cost);
+
     setIsCalculating(true);
     saveToHistory();
 
