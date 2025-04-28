@@ -1018,7 +1018,29 @@ export default function RoutePlanner() {
       setIsCalculating(false);
     }
   };
+  const removeDuplicateMarkers = (
+    markers: MarkerLocation[]
+  ): MarkerLocation[] => {
+    // Use a Map with location coordinates as keys to identify duplicates
+    const uniqueMarkers = new Map<string, MarkerLocation>();
 
+    markers.forEach((marker) => {
+      const locationKey = `${marker.latitude.toFixed(
+        6
+      )},${marker.longitude.toFixed(6)}`;
+
+      // If this location doesn't exist yet, or if this marker has a driver ID and the existing one doesn't
+      if (
+        !uniqueMarkers.has(locationKey) ||
+        (marker.driverId !== undefined &&
+          uniqueMarkers.get(locationKey)?.driverId === undefined)
+      ) {
+        uniqueMarkers.set(locationKey, marker);
+      }
+    });
+
+    return Array.from(uniqueMarkers.values());
+  };
   const calculateRoute = async () => {
     const cost = 10 * numDrivers;
     const credits = (await check_credits(log)) as number;
@@ -1083,7 +1105,6 @@ export default function RoutePlanner() {
 
       const data = await response.json();
       console.log(data);
-      setRawData(data);
       const originalDriverCount = numDrivers; // Store original count for comparison
 
       if (data.routes && Array.isArray(data.routes)) {
@@ -1117,12 +1138,7 @@ export default function RoutePlanner() {
             // Check if the actual number of drivers is different from what was requested
             const actualDriverCount = data.totalDrivers || data.routes.length;
             if (actualDriverCount < originalDriverCount) {
-              setDriverCountMessage(
-                `The route has been optimized with ${actualDriverCount} driver${
-                  actualDriverCount !== 1 ? "s" : ""
-                } instead of the requested ${originalDriverCount}. This provides a more efficient route.`
-              );
-              setShowDriverCountAlert(true);
+           
             }
 
             // Select first driver
