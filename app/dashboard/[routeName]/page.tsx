@@ -362,7 +362,7 @@ export default function RoutePlanner() {
         setMarkers((prev) => [...prev, markerLocation]);
         setNewAddress("");
         resetRouteState();
-        await calculateRoute();
+        //await calculateRoute();
         toast.success("Location added successfully");
       }
     } else {
