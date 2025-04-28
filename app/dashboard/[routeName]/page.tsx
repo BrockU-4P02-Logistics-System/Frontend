@@ -1470,8 +1470,7 @@ export default function RoutePlanner() {
                                           ],
                                       }}
                                     >
-                                      Starting Location - Driver{" "}
-                                      {marker.driverId + 1}
+                                      Starting Location
                                     </p>
                                   ) : (
                                     <p
